@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Packaging BOM &amp; Costing | Manufacturing ERP</title>
+  <link rel="stylesheet" href="packaging-bom-costing-mvp.css" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- ==================================================
+       HTML structure
+       ================================================== -->
+  <div class="overlay" id="sidebar-overlay"></div>
+
+  <div class="app">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <div class="brand-mark" data-lucide-wrap>
+          <i data-lucide="package"></i>
+        </div>
+        <div class="brand-text">
+          <strong>Packaging ERP</strong>
+          <span>BOM &amp; Costing MVP</span>
+        </div>
+      </div>
+
+      <nav class="nav" id="sidebar-nav">
+        <button class="nav-item active" data-page="dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</button>
+        <button class="nav-item" data-page="finished-goods"><i data-lucide="box"></i> Finished Goods</button>
+        <button class="nav-item" data-page="raw-materials"><i data-lucide="layers"></i> Raw Materials</button>
+        <button class="nav-item" data-page="services"><i data-lucide="wrench"></i> Services</button>
+        <button class="nav-item" data-page="formulas"><i data-lucide="sigma"></i> Formula Management</button>
+        <button class="nav-item" data-page="bom-costing"><i data-lucide="calculator"></i> BOM &amp; Costing</button>
+        <button class="nav-item" data-page="bom-list"><i data-lucide="list"></i> BOM List</button>
+      </nav>
+
+      <div class="sidebar-footer">Phase 6 · BOM workflow</div>
+    </aside>
+
+    <div class="main">
+      <header class="header">
+        <div class="header-left">
+          <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <div>
+            <div class="page-title" id="header-title">Dashboard</div>
+            <div class="page-subtitle" id="header-subtitle">Manufacturing overview</div>
+          </div>
+        </div>
+        <div class="header-meta">
+          <span class="badge badge-info">Offline / local</span>
+          <span>In-memory MVP</span>
+        </div>
+      </header>
+
+      <main class="content">
+        <section class="page active" id="page-dashboard"></section>
+        <section class="page" id="page-finished-goods"></section>
+        <section class="page" id="page-raw-materials"></section>
+        <section class="page" id="page-services"></section>
+        <section class="page" id="page-formulas"></section>
+        <section class="page" id="page-bom-costing"></section>
+        <section class="page" id="page-bom-list"></section>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="app-toast" hidden></div>
+
+  <div class="modal-backdrop" id="modal-backdrop" hidden>
+    <div class="modal" id="modal-dialog" role="dialog" aria-modal="true"></div>
+  </div>
+
+  <script src="packaging-bom-costing-mvp.js"></script>
+</body>
+</html>
