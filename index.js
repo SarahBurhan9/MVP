@@ -7,7 +7,7 @@
         id: 1,
         product: "Cake Box",
         variant: "1 Pound",
-        style: "Window Lid",
+        style: "WINDOW LID",
         material: "CARD BOARD",
         ply: 3,
         dimensions: { L: 7, W: 7, H: 4 },
@@ -19,7 +19,7 @@
         id: 2,
         product: "Cake Box",
         variant: "2 Pound",
-        style: "Window Lid",
+        style: "WINDOW LID",
         material: "CARD BOARD",
         ply: 3,
         dimensions: { L: 9, W: 9, H: 5 },
@@ -66,17 +66,46 @@
     ];
 
     const styles = [
-      { id: 1, code: "WINDOW-LID", name: "Window Lid", description: "Carton with a window lid", status: "Active" },
-      { id: 2, code: "LOCKING-FLAP", name: "Locking Flap", description: "Locking flap carton", status: "Active" },
-      { id: 3, code: "SIMPLE-LID", name: "SIMPLE LID", description: "Simple lid carton", status: "Active" },
-      { id: 4, code: "STANDARD", name: "STANDARD", description: "Standard carton style", status: "Active" }
+      { id: 101, name: "WINDOW LID", description: "Lid with window cutout", status: "Active" },
+      { id: 102, name: "SIMPLE LID", description: "Lid without cutout", status: "Active" },
+      { id: 103, name: "STANDARD", description: "Standard box style", status: "Active" },
+      { id: 104, name: "Locking Flap", description: "Locking flap carton", status: "Active" }
+    ];
+
+    const styleVariables = [
+      { id: 1, styleId: 101, variableCode: "GLUE_FLAP", value: 12.25, unit: "mm" },
+      { id: 2, styleId: 101, variableCode: "SHEET_WIDTH", value: 100, unit: "cm" },
+      { id: 3, styleId: 102, variableCode: "GLUE_FLAP", value: 10.5, unit: "mm" },
+      { id: 4, styleId: 102, variableCode: "SHEET_WIDTH", value: 95, unit: "cm" },
+      { id: 5, styleId: 103, variableCode: "GLUE_FLAP", value: 15.0, unit: "mm" }
+    ];
+
+    const formulaVariables = [
+      { id: 1, code: "L", name: "Length", description: "Product Length", dataType: "numeric", defaultValue: 7, unit: "inch", category: "Dimension", isActive: true },
+      { id: 2, code: "W", name: "Width", description: "Product Width", dataType: "numeric", defaultValue: 7, unit: "inch", category: "Dimension", isActive: true },
+      { id: 3, code: "H", name: "Height", description: "Product Height", dataType: "numeric", defaultValue: 4, unit: "inch", category: "Dimension", isActive: true },
+      { id: 4, code: "GSM", name: "Basis Weight", description: "Paper Basis Weight", dataType: "numeric", defaultValue: 150, unit: "gsm", category: "Material", isActive: true },
+      { id: 5, code: "PLY", name: "Ply Count", description: "Number of Plies", dataType: "numeric", defaultValue: 3, unit: "", category: "Material", isActive: true },
+      { id: 6, code: "GLUE_FLAP", name: "Glue Flap Width", description: "Width of glue overlap", dataType: "numeric", defaultValue: 12.5, unit: "mm", category: "Costing", isActive: true },
+      { id: 7, code: "WASTAGE", name: "Wastage Percentage", description: "Material wastage percentage", dataType: "numeric", defaultValue: 5, unit: "%", category: "Costing", isActive: true },
+      { id: 8, code: "SHEET_WIDTH", name: "Sheet Width", description: "Standard sheet width", dataType: "numeric", defaultValue: 40, unit: "inch", category: "Sheet", isActive: true },
+      { id: 9, code: "SHEET_LENGTH", name: "Sheet Length", description: "Standard sheet length", dataType: "numeric", defaultValue: 48, unit: "inch", category: "Sheet", isActive: true },
+      { id: 10, code: "ORDER_QTY", name: "Order Quantity", description: "Pieces to manufacture", dataType: "numeric", defaultValue: 1, unit: "pieces", category: "Costing", isActive: true },
+      { id: 11, code: "NET_QTY", name: "Net Quantity", description: "Net quantity before wastage", dataType: "numeric", defaultValue: 1, unit: "", category: "Costing", isActive: true },
+      { id: 12, code: "SHEET_AREA", name: "Sheet Area", description: "Standard sheet area", dataType: "numeric", defaultValue: 1920, unit: "sq.inch", category: "Sheet", isActive: true },
+      { id: 13, code: "PIECE_AREA", name: "Piece Area", description: "Finished piece area", dataType: "numeric", defaultValue: 435, unit: "sq.inch", category: "Area", isActive: true },
+      { id: 14, code: "MATERIAL_RATE", name: "Material Rate", description: "Purchasing rate from material master", dataType: "numeric", defaultValue: 150, unit: "Rs./kg", category: "Costing", isActive: true },
+      { id: 15, code: "SERVICE_RATE", name: "Service Rate", description: "Rate from service master", dataType: "numeric", defaultValue: 2.5, unit: "Rs./piece", category: "Service", isActive: true },
+      { id: 16, code: "PRINT_AREA", name: "Print Area", description: "Printable area", dataType: "numeric", defaultValue: 435, unit: "sq.inch", category: "Area", isActive: true },
+      { id: 17, code: "MATERIAL_COST", name: "Material Cost", description: "Rolled-up material cost", dataType: "numeric", defaultValue: 0, unit: "Rs.", category: "Costing", isActive: true },
+      { id: 18, code: "SERVICE_COST", name: "Service Cost", description: "Rolled-up service cost", dataType: "numeric", defaultValue: 0, unit: "Rs.", category: "Service", isActive: true }
     ];
 
     const dimensions = [
-      { id: 1, code: "7x7x4", L: 7, W: 7, H: 4, uom: "inch", status: "Active" },
-      { id: 2, code: "9x9x5", L: 9, W: 9, H: 5, uom: "inch", status: "Active" },
-      { id: 3, code: "12x12x2", L: 12, W: 12, H: 2, uom: "inch", status: "Active" },
-      { id: 4, code: "10x10x5", L: 10, W: 10, H: 5, uom: "inch", status: "Active" }
+      { id: 201, name: "7x7x4", description: "Small Box 7x7x4 inches", code: "7x7x4", L: 7, W: 7, H: 4, uom: "inch", unit: "inch", status: "Active" },
+      { id: 202, name: "10x10x5", description: "Medium Box 10x10x5 inches", code: "10x10x5", L: 10, W: 10, H: 5, uom: "inch", unit: "inch", status: "Active" },
+      { id: 203, name: "12x12x2", description: "Large Box 12x12x2 inches", code: "12x12x2", L: 12, W: 12, H: 2, uom: "inch", unit: "inch", status: "Active" },
+      { id: 204, name: "9x9x5", description: "Cake box 9x9x5 inches", code: "9x9x5", L: 9, W: 9, H: 5, uom: "inch", unit: "inch", status: "Active" }
     ];
 
     const rawMaterials = [
@@ -353,7 +382,8 @@
       "finished-goods": { title: "Finished Goods", subtitle: "Product master" },
       "raw-materials": { title: "Raw Materials", subtitle: "Purchasing master" },
       services: { title: "Services", subtitle: "Conversion & process rates" },
-      style: { title: "Style", subtitle: "Style master" },
+      style: { title: "Style", subtitle: "Style master and style variables" },
+      "formula-variables": { title: "Formula Variables", subtitle: "Shared variables used by formulas" },
       dimensions: { title: "Dimensions", subtitle: "Dimension master" },
       formulas: { title: "Formula Management", subtitle: "Definitions, builder, and validation" },
       "bom-costing": { title: "BOM & Costing", subtitle: "Select a finished good to begin" },
@@ -367,6 +397,7 @@
         rawMaterials: "",
         services: "",
         style: "",
+        formulaVariables: "",
         dimensions: "",
         formulas: "",
         bomFinishedGood: "",
@@ -463,6 +494,80 @@
     function nextMasterId(items) {
       const ids = items.map((item) => Number(item.id) || 0);
       return (ids.length ? Math.max(...ids) : 0) + 1;
+    }
+
+    function masterRowActions(editAttr, editId, deleteAttr, deleteId) {
+      return `
+        <td>
+          <div class="row-actions">
+            <button type="button" class="btn btn-sm btn-icon" ${editAttr}="${editId}" title="Edit">
+              <i data-lucide="pencil"></i>
+            </button>
+            <button type="button" class="btn btn-sm btn-icon btn-danger" ${deleteAttr}="${deleteId}" title="Delete">
+              <i data-lucide="trash-2"></i>
+            </button>
+          </div>
+        </td>
+      `;
+    }
+
+    function getFormulaVariableByCode(code) {
+      return formulaVariables.find((item) => item.code === String(code || "").toUpperCase()) ||
+        formulaVariables.find((item) => item.code === code) || null;
+    }
+
+    function getActiveFormulaVariables() {
+      return formulaVariables.filter((item) => item.isActive);
+    }
+
+    function getFormulaVariableDefaults() {
+      const values = { ...DEFAULT_TEST_VALUES };
+      formulaVariables.forEach((item) => {
+        if (!item.isActive) return;
+        const numeric = numericOrNull(item.defaultValue);
+        if (numeric !== null) values[item.code] = numeric;
+      });
+      return values;
+    }
+
+    function findStyleByName(name) {
+      const needle = String(name || "").trim().toLowerCase();
+      if (!needle) return null;
+      return styles.find((item) => String(item.name).trim().toLowerCase() === needle) || null;
+    }
+
+    function getStyleVariables(styleId) {
+      return styleVariables.filter((item) => item.styleId === Number(styleId));
+    }
+
+    function getStyleVariableValue(styleId, variableCode) {
+      const row = styleVariables.find((item) =>
+        item.styleId === Number(styleId) && item.variableCode === variableCode
+      );
+      return row ? numericOrNull(row.value) : null;
+    }
+
+    function resolveVariableValue(code, finishedGood, fallback) {
+      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      if (style) {
+        const styled = getStyleVariableValue(style.id, code);
+        if (styled !== null) return styled;
+      }
+      const catalog = getFormulaVariableByCode(code);
+      if (catalog) {
+        const def = numericOrNull(catalog.defaultValue);
+        if (def !== null) return def;
+      }
+      return fallback;
+    }
+
+    function formulasUsingVariable(code) {
+      return formulas.filter((item) => extractIdentifiers(item.expression).includes(code));
+    }
+
+    function productsUsingStyle(styleName) {
+      const needle = String(styleName || "").trim().toLowerCase();
+      return finishedGoods.filter((item) => String(item.style || "").trim().toLowerCase() === needle);
     }
 
     function getPlyLayers(plyCount) {
@@ -891,7 +996,8 @@
     }
 
     function isKnownSymbol(id) {
-      return BASE_VARIABLES.includes(id) ||
+      return Boolean(getFormulaVariableByCode(id)) ||
+        BASE_VARIABLES.includes(id) ||
         Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id) ||
         Boolean(getFormulaByCode(id));
     }
@@ -923,10 +1029,10 @@
         return { success: true, value: nested.result };
       }
 
-      if (BASE_VARIABLES.includes(id)) {
+      if (getFormulaVariableByCode(id) || BASE_VARIABLES.includes(id)) {
         return { success: false, error: "Variable has no numeric value: " + id };
       }
-      return { success: false, error: "Unknown variable `" + id + "`." };
+      return { success: false, error: "Variable " + id + " not found in Formula Variables" };
     }
 
     function evaluateFormula(expression, provided, stack) {
@@ -996,10 +1102,7 @@
 
       for (const id of extractIdentifiers(expression)) {
         if (!isKnownSymbol(id)) {
-          return { valid: false, error: "Unknown variable `" + id + "`.", result: null };
-        }
-        if (!BASE_VARIABLES.includes(id) && !Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id) && !getFormulaByCode(id)) {
-          return { valid: false, error: "Unknown formula dependency.", result: null };
+          return { valid: false, error: "Variable " + id + " not found in Formula Variables", result: null };
         }
       }
 
@@ -1007,7 +1110,7 @@
         return { valid: false, error: "Circular formula dependency detected.", result: null };
       }
 
-      const evaluated = evaluateFormula(expression, { ...DEFAULT_TEST_VALUES, ...(opts.variables || {}) }, opts.selfCode ? [opts.selfCode] : []);
+      const evaluated = evaluateFormula(expression, { ...getFormulaVariableDefaults(), ...(opts.variables || {}) }, opts.selfCode ? [opts.selfCode] : []);
       if (!evaluated.success) {
         return { valid: false, error: evaluated.error || "Formula cannot be evaluated.", result: null };
       }
@@ -1015,21 +1118,27 @@
     }
 
     function buildFormulaVariables(finishedGood, material, wastagePercent) {
+      const defaults = getFormulaVariableDefaults();
+      const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
+      const sheetLength = resolveVariableValue("SHEET_LENGTH", finishedGood, defaults.SHEET_LENGTH ?? DEFAULT_TEST_VALUES.SHEET_LENGTH);
+      const sheetWidth = resolveVariableValue("SHEET_WIDTH", finishedGood, defaults.SHEET_WIDTH ?? DEFAULT_TEST_VALUES.SHEET_WIDTH);
+      const sheetArea = resolveVariableValue("SHEET_AREA", finishedGood, Number(sheetLength) * Number(sheetWidth));
+      const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       return {
         L: Number(finishedGood.dimensions.L),
         W: Number(finishedGood.dimensions.W),
         H: Number(finishedGood.dimensions.H),
         PLY: Number(finishedGood.ply),
-        GSM: material && material.gsm != null ? Number(material.gsm) : null,
-        GLUE_FLAP: DEFAULT_GLUE_FLAP,
+        GSM: material && material.gsm != null ? Number(material.gsm) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
+        GLUE_FLAP: glueFlap,
         WASTAGE: Number(wastagePercent),
-        MATERIAL_RATE: material ? Number(material.purchasingRate) : null,
-        ORDER_QTY: 1,
-        NET_QTY: 1,
-        SHEET_LENGTH: DEFAULT_TEST_VALUES.SHEET_LENGTH,
-        SHEET_WIDTH: DEFAULT_TEST_VALUES.SHEET_WIDTH,
-        SHEET_AREA: DEFAULT_TEST_VALUES.SHEET_AREA,
-        PIECE_AREA: DEFAULT_TEST_VALUES.PIECE_AREA,
+        MATERIAL_RATE: material ? Number(material.purchasingRate) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
+        ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
+        NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
+        SHEET_LENGTH: sheetLength,
+        SHEET_WIDTH: sheetWidth,
+        SHEET_AREA: sheetArea,
+        PIECE_AREA: pieceArea,
         SQ_IN_TO_SQ_M,
         GRAM_TO_KG,
         CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
@@ -1156,22 +1265,23 @@
       const L = Number(finishedGood.dimensions.L);
       const W = Number(finishedGood.dimensions.W);
       const H = Number(finishedGood.dimensions.H);
+      const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, DEFAULT_GLUE_FLAP);
       const area = evaluateFormula("COVERED_AREA", {
         L,
         W,
         H,
         PLY: Number(finishedGood.ply),
-        GLUE_FLAP: DEFAULT_GLUE_FLAP
+        GLUE_FLAP: glueFlap
       });
       return {
         L,
         W,
         H,
         PLY: Number(finishedGood.ply),
-        GLUE_FLAP: DEFAULT_GLUE_FLAP,
-        ORDER_QTY: 1,
+        GLUE_FLAP: glueFlap,
+        ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, 1),
         SERVICE_RATE: Number(service.serviceRate),
-        PRINT_AREA: area.success ? area.result : null,
+        PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, null),
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
         SERVICE_COST: 0
       };
@@ -1684,14 +1794,21 @@
     function filterStyles() {
       const q = state.searches.style;
       return styles.filter((item) =>
-        matchesQuery([item.code, item.name, item.description, item.status], q)
+        matchesQuery([item.name, item.description, item.status], q)
       );
     }
 
     function filterDimensions() {
       const q = state.searches.dimensions;
       return dimensions.filter((item) =>
-        matchesQuery([item.code, item.L, item.W, item.H, item.uom, item.status, `${item.L}x${item.W}x${item.H}`], q)
+        matchesQuery([item.name, item.description, item.code, item.L, item.W, item.H, item.uom, item.unit, item.status, `${item.L}x${item.W}x${item.H}`], q)
+      );
+    }
+
+    function filterFormulaVariables() {
+      const q = state.searches.formulaVariables;
+      return formulaVariables.filter((item) =>
+        matchesQuery([item.code, item.name, item.description, item.category, item.unit, item.dataType, item.defaultValue, item.isActive ? "Active" : "Inactive"], q)
       );
     }
 
@@ -1797,9 +1914,10 @@
               <td>${escapeHtml(item.ply)}</td>
               <td>${escapeHtml(item.uom)}</td>
               <td>${statusBadge(item.status)}</td>
+              ${masterRowActions("data-edit-fg", item.id, "data-delete-fg", item.id)}
             </tr>
           `).join("")
-        : emptyRow(8, "No finished goods match this search.");
+        : emptyRow(9, "No finished goods match this search.");
 
       document.getElementById("page-finished-goods").innerHTML = `
         <div class="toolbar">
@@ -1826,6 +1944,7 @@
                   <th>Ply</th>
                   <th>UOM</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>${body}</tbody>
@@ -1848,9 +1967,10 @@
               <td>${formatCurrency(item.purchasingRate)}</td>
               <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
               <td>${statusBadge(item.status)}</td>
+              ${masterRowActions("data-edit-rm", item.id, "data-delete-rm", item.id)}
             </tr>
           `).join("")
-        : emptyRow(8, "No raw materials match this search.");
+        : emptyRow(9, "No raw materials match this search.");
 
       document.getElementById("page-raw-materials").innerHTML = `
         <div class="toolbar">
@@ -1877,6 +1997,7 @@
                   <th>Purchasing Rate</th>
                   <th>Rate UOM</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>${body}</tbody>
@@ -1897,9 +2018,10 @@
               <td>${formatCurrency(item.serviceRate)}</td>
               <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
               <td>${statusBadge(item.status)}</td>
+              ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
           `).join("")
-        : emptyRow(6, "No services match this search.");
+        : emptyRow(7, "No services match this search.");
 
       document.getElementById("page-services").innerHTML = `
         <div class="toolbar">
@@ -1924,6 +2046,7 @@
                   <th>Service Rate</th>
                   <th>Rate UOM</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>${body}</tbody>
@@ -1938,18 +2061,19 @@
       const body = rows.length
         ? rows.map((item) => `
             <tr>
-              <td class="mono">${escapeHtml(item.code)}</td>
               <td>${escapeHtml(item.name)}</td>
               <td>${escapeHtml(item.description || "—")}</td>
+              <td>${getStyleVariables(item.id).length} variables</td>
               <td>${statusBadge(item.status)}</td>
+              ${masterRowActions("data-edit-style", item.id, "data-delete-style", item.id)}
             </tr>
           `).join("")
-        : emptyRow(4, "No styles match this search.");
+        : emptyRow(5, "No styles match this search.");
 
       document.getElementById("page-style").innerHTML = `
         <div class="toolbar">
           <div class="toolbar-left">
-            ${toolbarSearch("style-search", state.searches.style, "Search style code, name, description...")}
+            ${toolbarSearch("style-search", state.searches.style, "Search style name, description...")}
           </div>
           <div class="toolbar-right">
             <button type="button" class="btn btn-primary" id="btn-add-style">
@@ -1963,10 +2087,11 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
-                  <th>Style</th>
+                  <th>Style Name</th>
                   <th>Description</th>
+                  <th>Variables</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>${body}</tbody>
@@ -1981,15 +2106,17 @@
       const body = rows.length
         ? rows.map((item) => `
             <tr>
-              <td class="mono">${escapeHtml(item.code)}</td>
+              <td>${escapeHtml(item.name || item.code)}</td>
+              <td>${escapeHtml(item.description || "—")}</td>
               <td>${escapeHtml(item.L)}</td>
               <td>${escapeHtml(item.W)}</td>
               <td>${escapeHtml(item.H)}</td>
-              <td>${escapeHtml(item.uom)}</td>
+              <td>${escapeHtml(item.unit || item.uom)}</td>
               <td>${statusBadge(item.status)}</td>
+              ${masterRowActions("data-edit-dim", item.id, "data-delete-dim", item.id)}
             </tr>
           `).join("")
-        : emptyRow(6, "No dimensions match this search.");
+        : emptyRow(8, "No dimensions match this search.");
 
       document.getElementById("page-dimensions").innerHTML = `
         <div class="toolbar">
@@ -2008,12 +2135,67 @@
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Description</th>
                   <th>Length</th>
                   <th>Width</th>
                   <th>Height</th>
-                  <th>UOM</th>
+                  <th>Unit</th>
                   <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderFormulaVariables() {
+      const rows = filterFormulaVariables();
+      const body = rows.length
+        ? rows.map((item) => `
+            <tr>
+              <td class="mono">${escapeHtml(item.code)}</td>
+              <td>${escapeHtml(item.name)}</td>
+              <td>${escapeHtml(item.description || "—")}</td>
+              <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
+              <td>${escapeHtml(item.unit || "—")}</td>
+              <td>${escapeHtml(item.dataType)}</td>
+              <td>${item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : escapeHtml(item.defaultValue)}</td>
+              <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
+              ${masterRowActions("data-edit-fvar", item.id, "data-delete-fvar", item.id)}
+            </tr>
+          `).join("")
+        : emptyRow(9, "No formula variables match this search.");
+
+      document.getElementById("page-formula-variables").innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-left">
+            ${toolbarSearch("fvar-search", state.searches.formulaVariables, "Search code, name, category...")}
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
+              <i data-lucide="plus"></i> Add Variable
+            </button>
+            <span class="badge badge-muted">${rows.length} of ${formulaVariables.length}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table" style="min-width:1100px;">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Unit</th>
+                  <th>Data Type</th>
+                  <th>Default Value</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>${body}</tbody>
@@ -2672,7 +2854,7 @@
         type: formula ? formula.type : "Material",
         description: formula ? formula.description : "",
         expression: formula ? formula.expression : "",
-        testValues: { ...DEFAULT_TEST_VALUES },
+        testValues: { ...getFormulaVariableDefaults() },
         testResult: null
       };
     }
@@ -2709,12 +2891,16 @@
       if (!vars.length) return `<p class="stat-hint">No variables detected in this expression.</p>`;
       return `
         <div class="test-fields">
-          ${vars.map((name) => `
+          ${vars.map((name) => {
+            const catalog = getFormulaVariableByCode(name);
+            const label = catalog ? `${catalog.code} — ${catalog.name}` : name;
+            const unit = catalog && catalog.unit ? ` (${catalog.unit})` : "";
+            return `
             <div>
-              <label class="form-label" for="ft-${escapeHtml(name)}">${escapeHtml(name)}</label>
+              <label class="form-label" for="ft-${escapeHtml(name)}">${escapeHtml(label)}${escapeHtml(unit)}</label>
               <input id="ft-${escapeHtml(name)}" class="full-search" data-test-var="${escapeHtml(name)}" type="number" step="any" value="${testValues[name] ?? ""}" />
-            </div>
-          `).join("")}
+            </div>`;
+          }).join("")}
         </div>
       `;
     }
@@ -2776,7 +2962,7 @@
               <div class="section-kicker">Variables</div>
               <p class="stat-hint" style="margin:6px 0 8px;">Click to insert into the expression.</p>
               <div class="chip-wrap">
-                ${BASE_VARIABLES.map((name) => `<button type="button" class="chip" data-insert="${name}">${name}</button>`).join("")}
+                ${getActiveFormulaVariables().map((item) => `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" title="${escapeHtml(item.name)}">${escapeHtml(item.code)}</button>`).join("")}
               </div>
             </div>
           </div>
@@ -3032,7 +3218,7 @@
         <div class="modal-header">
           <div>
             <div class="section-kicker">Product master</div>
-            <strong>Add New Finished Good</strong>
+            <strong>${state.modal.mode === "edit" ? "Edit Finished Good" : "Add New Finished Good"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
@@ -3111,18 +3297,36 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-finished-good">Add Product</button>
+          <button type="button" class="btn btn-primary" id="btn-save-finished-good">${state.modal.mode === "edit" ? "Update Product" : "Add Product"}</button>
         </div>
       `;
     }
 
-    function openFinishedGoodModal() {
+    function finishedGoodToDraft(item) {
+      return {
+        id: item.id,
+        product: item.product,
+        style: item.style,
+        material: item.material || "",
+        variant: item.variant,
+        ply: item.ply,
+        L: item.dimensions.L,
+        W: item.dimensions.W,
+        H: item.dimensions.H,
+        dimensionUOM: item.dimensionUOM,
+        uom: item.uom,
+        status: item.status
+      };
+    }
+
+    function openFinishedGoodModal(id) {
+      const item = id ? finishedGoods.find((row) => row.id === Number(id)) : null;
       state.modal = {
         type: "finished-good",
-        selectedId: null,
-        mode: "add",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
         lineId: null,
-        draft: defaultFinishedGoodDraft(),
+        draft: item ? finishedGoodToDraft(item) : defaultFinishedGoodDraft(),
         errors: {}
       };
       renderModal();
@@ -3136,8 +3340,7 @@
         renderModal();
         return;
       }
-      const item = {
-        id: nextMasterId(finishedGoods),
+      const payload = {
         product: String(draft.product).trim(),
         style: String(draft.style).trim(),
         material: String(draft.material).trim(),
@@ -3148,24 +3351,34 @@
         uom: draft.uom,
         status: draft.status
       };
-      item.displayName = formatFinishedGoodDisplayName(item);
-      finishedGoods.push(item);
-      const dimCode = `${item.dimensions.L}x${item.dimensions.W}x${item.dimensions.H}`;
-      if (!dimensions.some((dim) => dim.code === dimCode && dim.uom === item.dimensionUOM)) {
+      payload.displayName = formatFinishedGoodDisplayName(payload);
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = finishedGoods.findIndex((row) => row.id === draft.id);
+        if (index >= 0) finishedGoods[index] = { ...finishedGoods[index], ...payload };
+        showNotification("Product updated successfully");
+      } else {
+        const item = { id: nextMasterId(finishedGoods), ...payload };
+        finishedGoods.push(item);
+        showNotification("Product added successfully");
+      }
+      const dimCode = `${payload.dimensions.L}x${payload.dimensions.W}x${payload.dimensions.H}`;
+      if (!dimensions.some((dim) => (dim.code === dimCode || dim.name === dimCode) && (dim.uom === payload.dimensionUOM || dim.unit === payload.dimensionUOM))) {
         dimensions.push({
           id: nextMasterId(dimensions),
+          name: dimCode,
+          description: "",
           code: dimCode,
-          L: item.dimensions.L,
-          W: item.dimensions.W,
-          H: item.dimensions.H,
-          uom: item.dimensionUOM,
+          L: payload.dimensions.L,
+          W: payload.dimensions.W,
+          H: payload.dimensions.H,
+          uom: payload.dimensionUOM,
+          unit: payload.dimensionUOM,
           status: "Active"
         });
       }
       closeModal();
       renderFinishedGoods();
       refreshIcons();
-      showNotification("Product added successfully");
     }
 
     function updateFinishedGoodDraftFromEvent(target) {
@@ -3204,7 +3417,7 @@
       const code = String(draft.code || "").trim().toUpperCase();
       if (!code) errors.code = "Code is required.";
       else if (!/^[A-Z0-9][A-Z0-9_-]*$/.test(code)) errors.code = "Code must be alphanumeric.";
-      else if (rawMaterials.some((item) => item.code.toUpperCase() === code)) errors.code = "Code must be unique.";
+      else if (rawMaterials.some((item) => item.code.toUpperCase() === code && item.id !== draft.id)) errors.code = "Code must be unique.";
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.category) errors.category = "Category is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
@@ -3227,7 +3440,7 @@
         <div class="modal-header">
           <div>
             <div class="section-kicker">Material master</div>
-            <strong>Add New Raw Material</strong>
+            <strong>${state.modal.mode === "edit" ? "Edit Raw Material" : "Add New Raw Material"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
@@ -3286,18 +3499,33 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-raw-material">Add Material</button>
+          <button type="button" class="btn btn-primary" id="btn-save-raw-material">${state.modal.mode === "edit" ? "Update Material" : "Add Material"}</button>
         </div>
       `;
     }
 
-    function openRawMaterialMasterModal() {
+    function rawMaterialToDraft(item) {
+      return {
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        category: item.category,
+        uom: item.uom,
+        purchasingRate: item.purchasingRate,
+        rateUOM: item.rateUOM,
+        gsm: item.gsm == null ? "" : item.gsm,
+        status: item.status
+      };
+    }
+
+    function openRawMaterialMasterModal(id) {
+      const item = id ? rawMaterials.find((row) => row.id === Number(id)) : null;
       state.modal = {
         type: "raw-material-master",
-        selectedId: null,
-        mode: "add",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
         lineId: null,
-        draft: defaultRawMaterialDraft(),
+        draft: item ? rawMaterialToDraft(item) : defaultRawMaterialDraft(),
         errors: {}
       };
       renderModal();
@@ -3312,8 +3540,7 @@
         return;
       }
       const showGsm = draft.category === "Paper" || draft.category === "Board";
-      rawMaterials.push({
-        id: nextMasterId(rawMaterials),
+      const payload = {
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         category: draft.category,
@@ -3322,11 +3549,18 @@
         rateUOM: draft.rateUOM,
         gsm: showGsm && draft.gsm !== "" && draft.gsm != null ? Number(draft.gsm) : null,
         status: draft.status
-      });
+      };
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = rawMaterials.findIndex((row) => row.id === draft.id);
+        if (index >= 0) rawMaterials[index] = { ...rawMaterials[index], ...payload };
+        showNotification("Material updated successfully");
+      } else {
+        rawMaterials.push({ id: nextMasterId(rawMaterials), ...payload });
+        showNotification("Material added successfully");
+      }
       closeModal();
       renderRawMaterials();
       refreshIcons();
-      showNotification("Material added successfully");
     }
 
     function updateRawMaterialDraftFromEvent(target) {
@@ -3359,7 +3593,7 @@
       const errors = {};
       const code = String(draft.code || "").trim().toUpperCase();
       if (!code) errors.code = "Code is required.";
-      else if (services.some((item) => item.code.toUpperCase() === code)) errors.code = "Code must be unique.";
+      else if (services.some((item) => item.code.toUpperCase() === code && item.id !== draft.id)) errors.code = "Code must be unique.";
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
       const rate = Number(draft.serviceRate);
@@ -3376,7 +3610,7 @@
         <div class="modal-header">
           <div>
             <div class="section-kicker">Service master</div>
-            <strong>Add New Service</strong>
+            <strong>${state.modal.mode === "edit" ? "Edit Service" : "Add New Service"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
@@ -3422,18 +3656,31 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-service-master">Add Service</button>
+          <button type="button" class="btn btn-primary" id="btn-save-service-master">${state.modal.mode === "edit" ? "Update Service" : "Add Service"}</button>
         </div>
       `;
     }
 
-    function openServiceMasterModal() {
+    function serviceToDraft(item) {
+      return {
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        uom: item.uom,
+        serviceRate: item.serviceRate,
+        rateUOM: item.rateUOM,
+        status: item.status
+      };
+    }
+
+    function openServiceMasterModal(id) {
+      const item = id ? services.find((row) => row.id === Number(id)) : null;
       state.modal = {
         type: "service-master",
-        selectedId: null,
-        mode: "add",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
         lineId: null,
-        draft: defaultServiceMasterDraft(),
+        draft: item ? serviceToDraft(item) : defaultServiceMasterDraft(),
         errors: {}
       };
       renderModal();
@@ -3447,19 +3694,25 @@
         renderModal();
         return;
       }
-      services.push({
-        id: nextMasterId(services),
+      const payload = {
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         uom: draft.uom,
         serviceRate: Number(draft.serviceRate),
         rateUOM: draft.rateUOM,
         status: draft.status
-      });
+      };
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = services.findIndex((row) => row.id === draft.id);
+        if (index >= 0) services[index] = { ...services[index], ...payload };
+        showNotification("Service updated successfully");
+      } else {
+        services.push({ id: nextMasterId(services), ...payload });
+        showNotification("Service added successfully");
+      }
       closeModal();
       renderServices();
       refreshIcons();
-      showNotification("Service added successfully");
     }
 
     function updateServiceMasterDraftFromEvent(target) {
@@ -3477,7 +3730,6 @@
 
     function defaultStyleDraft() {
       return {
-        code: "",
         name: "",
         description: "",
         status: "Active"
@@ -3486,13 +3738,11 @@
 
     function validateStyleDraft(draft) {
       const errors = {};
-      const code = String(draft.code || "").trim().toUpperCase();
       const name = String(draft.name || "").trim();
-      if (!code) errors.code = "Code is required.";
-      else if (!/^[A-Z0-9][A-Z0-9_-]*$/.test(code)) errors.code = "Code must be alphanumeric.";
-      else if (styles.some((item) => item.code.toUpperCase() === code)) errors.code = "Code must be unique.";
       if (!name) errors.name = "Style name is required.";
-      else if (styles.some((item) => item.name.toLowerCase() === name.toLowerCase())) errors.name = "Style name must be unique.";
+      else if (styles.some((item) => item.name.toLowerCase() === name.toLowerCase() && item.id !== draft.id)) {
+        errors.name = "Style name must be unique.";
+      }
       if (!draft.status) errors.status = "Status is required.";
       return errors;
     }
@@ -3500,54 +3750,100 @@
     function renderStyleFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
+      const editing = state.modal.mode === "edit";
+      const tab = state.modal.styleTab || "info";
+      const styleVars = editing && draft.id ? getStyleVariables(draft.id) : [];
+      const infoForm = `
+        <div class="form-grid">
+          <div>
+            <label class="form-label" for="style-name">Style Name</label>
+            <input id="style-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" placeholder="WINDOW LID" />
+            ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
+          </div>
+          <div>
+            <label class="form-label" for="style-status">Status</label>
+            <select id="style-status" class="full-select">
+              <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
+              <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
+            </select>
+          </div>
+          <div class="form-span-2">
+            <label class="form-label" for="style-description">Description</label>
+            <textarea id="style-description" class="full-search">${escapeHtml(draft.description)}</textarea>
+          </div>
+        </div>
+      `;
+      const varRows = styleVars.length
+        ? styleVars.map((row) => {
+            const catalog = getFormulaVariableByCode(row.variableCode);
+            return `
+              <tr>
+                <td class="mono">${escapeHtml(row.variableCode)}</td>
+                <td>${escapeHtml(catalog ? catalog.name : row.variableCode)}</td>
+                <td>${escapeHtml(row.value)}</td>
+                <td>${escapeHtml(row.unit || (catalog && catalog.unit) || "")}</td>
+                ${masterRowActions("data-edit-style-var", row.id, "data-delete-style-var", row.id)}
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(5, "No variables added to this style yet.");
+      const variablesForm = `
+        <div class="section-head">
+          <div class="section-kicker">Style variables</div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-style-variable">
+            <i data-lucide="plus"></i> Add Variable to Style
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:640px;">
+            <thead>
+              <tr>
+                <th>Variable Code</th>
+                <th>Variable Name</th>
+                <th>Value</th>
+                <th>Unit</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${varRows}</tbody>
+          </table>
+        </div>
+      `;
       return `
         <div class="modal-header">
           <div>
             <div class="section-kicker">Style master</div>
-            <strong>Add New Style</strong>
+            <strong>${editing ? "Edit Style" : "Add New Style"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
-          <div class="form-grid">
-            <div>
-              <label class="form-label" for="style-code">Code</label>
-              <input id="style-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="WINDOW-LID" />
-              ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
+          ${editing ? `
+            <div class="section-tabs">
+              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-style-tab="info">Style Info</button>
+              <button type="button" class="section-tab ${tab === "variables" ? "active" : ""}" data-style-tab="variables">Variables</button>
             </div>
-            <div>
-              <label class="form-label" for="style-name">Style Name</label>
-              <input id="style-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" placeholder="Window Lid" />
-              ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
-            </div>
-            <div>
-              <label class="form-label" for="style-description">Description</label>
-              <input id="style-description" class="full-search" value="${escapeHtml(draft.description)}" placeholder="Optional" />
-            </div>
-            <div>
-              <label class="form-label" for="style-status">Status</label>
-              <select id="style-status" class="full-select">
-                <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
-                <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
-              </select>
-            </div>
-          </div>
+            ${tab === "variables" ? variablesForm : infoForm}
+          ` : infoForm}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-style">Add Style</button>
+          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-style">${editing ? "Update Style Info" : "Add Style"}</button>` : ""}
         </div>
       `;
     }
 
-    function openStyleModal() {
+    function openStyleModal(id) {
+      const item = id ? styles.find((row) => row.id === Number(id)) : null;
       state.modal = {
         type: "style-master",
-        selectedId: null,
-        mode: "add",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
         lineId: null,
-        draft: defaultStyleDraft(),
-        errors: {}
+        styleTab: "info",
+        draft: item ? { id: item.id, name: item.name, description: item.description || "", status: item.status } : defaultStyleDraft(),
+        errors: {},
+        sub: null
       };
       renderModal();
     }
@@ -3560,13 +3856,28 @@
         renderModal();
         return;
       }
-      styles.push({
-        id: nextMasterId(styles),
-        code: String(draft.code).trim().toUpperCase(),
+      const payload = {
         name: String(draft.name).trim(),
         description: String(draft.description || "").trim(),
         status: draft.status
-      });
+      };
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = styles.findIndex((row) => row.id === draft.id);
+        const previous = index >= 0 ? styles[index].name : "";
+        if (index >= 0) styles[index] = { ...styles[index], ...payload };
+        if (previous && previous !== payload.name) {
+          finishedGoods.forEach((fg) => {
+            if (String(fg.style).toLowerCase() === String(previous).toLowerCase()) fg.style = payload.name;
+          });
+        }
+        showNotification("Style updated successfully");
+        state.modal.errors = {};
+        renderModal();
+        renderStyles();
+        refreshIcons();
+        return;
+      }
+      styles.push({ id: nextMasterId(styles), ...payload });
       closeModal();
       renderStyles();
       refreshIcons();
@@ -3576,16 +3887,143 @@
     function updateStyleDraftFromEvent(target) {
       if (!state.modal.draft || state.modal.type !== "style-master") return false;
       const draft = state.modal.draft;
-      if (target.id === "style-code") draft.code = target.value.toUpperCase();
-      else if (target.id === "style-name") draft.name = target.value;
+      if (target.id === "style-name") draft.name = target.value;
       else if (target.id === "style-description") draft.description = target.value;
       else if (target.id === "style-status") draft.status = target.value;
       else return false;
       return true;
     }
 
+    function renderStyleVariableFormModal() {
+      const sub = state.modal.sub || {};
+      const draft = sub.draft || {};
+      const errors = sub.errors || {};
+      const style = styles.find((item) => item.id === state.modal.draft.id);
+      const used = new Set(getStyleVariables(state.modal.draft.id).map((row) => row.variableCode));
+      const options = getActiveFormulaVariables().filter((item) => !used.has(item.code) || item.code === draft.variableCode);
+      const editing = sub.mode === "edit";
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Style variable</div>
+            <strong>${editing ? `Edit ${escapeHtml(draft.variableCode || "")} for ${escapeHtml(style ? style.name : "")}` : `Add Variable to ${escapeHtml(style ? style.name : "")}`}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-back-style-edit">Back</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="svar-code">Select Variable</label>
+              ${editing ? `<input class="full-search" value="${escapeHtml(draft.variableCode)}" disabled />` : `
+                <select id="svar-code" class="full-select ${errors.variableCode ? "input-invalid" : ""}">
+                  <option value="">Select a variable...</option>
+                  ${options.map((item) => `
+                    <option value="${escapeHtml(item.code)}" ${draft.variableCode === item.code ? "selected" : ""}>
+                      ${escapeHtml(item.code)} — ${escapeHtml(item.name)} — ${escapeHtml(item.unit || "")}
+                    </option>
+                  `).join("")}
+                </select>
+              `}
+              ${errors.variableCode ? `<div class="field-error">${escapeHtml(errors.variableCode)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="svar-value">Value</label>
+              <input id="svar-value" class="full-search ${errors.value ? "input-invalid" : ""}" type="number" step="any" value="${escapeHtml(draft.value)}" />
+              ${errors.value ? `<div class="field-error">${escapeHtml(errors.value)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label">Unit</label>
+              <input class="full-search" value="${escapeHtml(draft.unit || "")}" disabled />
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" id="btn-back-style-edit">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-style-variable">${editing ? "Update Variable" : "Add to Style"}</button>
+        </div>
+      `;
+    }
+
+    function openStyleVariableModal(rowId) {
+      const existing = rowId ? styleVariables.find((row) => row.id === Number(rowId)) : null;
+      const catalog = existing ? getFormulaVariableByCode(existing.variableCode) : null;
+      state.modal.sub = {
+        type: "style-variable",
+        mode: existing ? "edit" : "add",
+        draft: existing
+          ? { id: existing.id, variableCode: existing.variableCode, value: existing.value, unit: existing.unit || (catalog && catalog.unit) || "" }
+          : { variableCode: "", value: "", unit: "" },
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function saveStyleVariableFromModal() {
+      const sub = state.modal.sub;
+      if (!sub || !sub.draft) return;
+      const draft = sub.draft;
+      const errors = {};
+      if (!draft.variableCode) errors.variableCode = "Variable is required.";
+      const value = Number(draft.value);
+      if (!Number.isFinite(value)) errors.value = "Value is required.";
+      sub.errors = errors;
+      if (Object.keys(errors).length) {
+        renderModal();
+        return;
+      }
+      const catalog = getFormulaVariableByCode(draft.variableCode);
+      const unit = catalog ? catalog.unit : draft.unit;
+      if (sub.mode === "edit" && draft.id) {
+        const index = styleVariables.findIndex((row) => row.id === draft.id);
+        if (index >= 0) {
+          styleVariables[index] = { ...styleVariables[index], value, unit };
+        }
+        showNotification("Variable updated");
+      } else {
+        styleVariables.push({
+          id: nextMasterId(styleVariables),
+          styleId: state.modal.draft.id,
+          variableCode: draft.variableCode,
+          value,
+          unit
+        });
+        showNotification("Variable added to style");
+      }
+      state.modal.sub = null;
+      state.modal.styleTab = "variables";
+      renderModal();
+      renderStyles();
+      refreshIcons();
+    }
+
+    function updateStyleVariableDraftFromEvent(target) {
+      if (!state.modal.sub || !state.modal.sub.draft) return false;
+      const draft = state.modal.sub.draft;
+      if (target.id === "svar-code") {
+        draft.variableCode = target.value;
+        const catalog = getFormulaVariableByCode(target.value);
+        draft.unit = catalog ? catalog.unit : "";
+        if (catalog && draft.value === "" && catalog.defaultValue != null) draft.value = catalog.defaultValue;
+        return true;
+      }
+      if (target.id === "svar-value") {
+        draft.value = target.value === "" ? "" : Number(target.value);
+        return true;
+      }
+      return false;
+    }
+
+    function backToStyleEdit() {
+      state.modal.sub = null;
+      state.modal.styleTab = "variables";
+      renderModal();
+      refreshIcons();
+    }
+
     function defaultDimensionDraft() {
       return {
+        name: "",
+        description: "",
         L: "",
         W: "",
         H: "",
@@ -3610,7 +4048,7 @@
       if (!draft.status) errors.status = "Status is required.";
       if (!errors.L && !errors.W && !errors.H && draft.uom) {
         const code = formatDimensionCode({ L, W, H });
-        if (dimensions.some((item) => item.code === code && item.uom === draft.uom)) {
+        if (dimensions.some((item) => (item.code === code || item.name === code) && (item.uom === draft.uom || item.unit === draft.uom) && item.id !== draft.id)) {
           errors.duplicate = "This dimension already exists.";
         }
       }
@@ -3627,14 +4065,28 @@
         <div class="modal-header">
           <div>
             <div class="section-kicker">Dimension master</div>
-            <strong>Add New Dimension</strong>
+            <strong>${state.modal.mode === "edit" ? "Edit Dimension" : "Add New Dimension"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
           <div class="form-grid">
+            <div>
+              <label class="form-label" for="dim-name">Dimension Name</label>
+              <input id="dim-name" class="full-search" value="${escapeHtml(draft.name)}" placeholder="7x7x4" />
+            </div>
+            <div>
+              <label class="form-label" for="dim-uom">Unit</label>
+              <select id="dim-uom" class="full-select">
+                ${["inch", "cm", "mm"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+              </select>
+            </div>
             <div class="form-span-2">
-              <label class="form-label">Dimensions</label>
+              <label class="form-label" for="dim-description">Description</label>
+              <textarea id="dim-description" class="full-search">${escapeHtml(draft.description)}</textarea>
+            </div>
+            <div class="form-span-2">
+              <label class="form-label">Values</label>
               <div class="dim-input-row">
                 <div>
                   <input id="dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.L)}" placeholder="Length" />
@@ -3651,12 +4103,6 @@
               </div>
             </div>
             <div>
-              <label class="form-label" for="dim-uom">UOM</label>
-              <select id="dim-uom" class="full-select">
-                ${["inch", "cm", "mm"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
-              </select>
-            </div>
-            <div>
               <label class="form-label" for="dim-status">Status</label>
               <select id="dim-status" class="full-select">
                 <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
@@ -3671,18 +4117,21 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-dimension">Add Dimension</button>
+          <button type="button" class="btn btn-primary" id="btn-save-dimension">${state.modal.mode === "edit" ? "Update Dimension" : "Add Dimension"}</button>
         </div>
       `;
     }
 
-    function openDimensionModal() {
+    function openDimensionModal(id) {
+      const item = id ? dimensions.find((row) => row.id === Number(id)) : null;
       state.modal = {
         type: "dimension-master",
-        selectedId: null,
-        mode: "add",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
         lineId: null,
-        draft: defaultDimensionDraft(),
+        draft: item
+          ? { id: item.id, name: item.name || item.code, description: item.description || "", L: item.L, W: item.W, H: item.H, uom: item.unit || item.uom, status: item.status }
+          : defaultDimensionDraft(),
         errors: {}
       };
       renderModal();
@@ -3696,32 +4145,308 @@
         renderModal();
         return;
       }
-      const item = {
-        id: nextMasterId(dimensions),
+      const code = formatDimensionCode({ L: Number(draft.L), W: Number(draft.W), H: Number(draft.H) });
+      const payload = {
+        name: String(draft.name || code).trim() || code,
+        description: String(draft.description || "").trim(),
+        code,
         L: Number(draft.L),
         W: Number(draft.W),
         H: Number(draft.H),
         uom: draft.uom,
+        unit: draft.uom,
         status: draft.status
       };
-      item.code = formatDimensionCode(item);
-      dimensions.push(item);
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = dimensions.findIndex((row) => row.id === draft.id);
+        if (index >= 0) dimensions[index] = { ...dimensions[index], ...payload };
+        showNotification("Dimension updated successfully");
+      } else {
+        dimensions.push({ id: nextMasterId(dimensions), ...payload });
+        showNotification("Dimension added successfully");
+      }
       closeModal();
       renderDimensions();
       refreshIcons();
-      showNotification("Dimension added successfully");
     }
 
     function updateDimensionDraftFromEvent(target) {
       if (!state.modal.draft || state.modal.type !== "dimension-master") return false;
       const draft = state.modal.draft;
-      if (target.id === "dim-l") draft.L = target.value === "" ? "" : Number(target.value);
+      if (target.id === "dim-name") draft.name = target.value;
+      else if (target.id === "dim-description") draft.description = target.value;
+      else if (target.id === "dim-l") draft.L = target.value === "" ? "" : Number(target.value);
       else if (target.id === "dim-w") draft.W = target.value === "" ? "" : Number(target.value);
       else if (target.id === "dim-h") draft.H = target.value === "" ? "" : Number(target.value);
       else if (target.id === "dim-uom") draft.uom = target.value;
       else if (target.id === "dim-status") draft.status = target.value;
       else return false;
       return true;
+    }
+
+    function defaultFormulaVariableDraft() {
+      return {
+        code: "",
+        name: "",
+        description: "",
+        category: "Dimension",
+        dataType: "numeric",
+        unit: "inch",
+        defaultValue: "",
+        isActive: true
+      };
+    }
+
+    function validateFormulaVariableDraft(draft) {
+      const errors = {};
+      const code = String(draft.code || "").trim().toUpperCase();
+      if (!code) errors.code = "Code is required.";
+      else if (!/^[A-Z][A-Z0-9_]*$/.test(code)) errors.code = "Code can contain only A-Z, 0-9 and underscores.";
+      else if (formulaVariables.some((item) => item.code.toUpperCase() === code && item.id !== draft.id)) {
+        errors.code = "Code must be unique.";
+      }
+      if (!String(draft.name || "").trim()) errors.name = "Name is required.";
+      if (!draft.category) errors.category = "Category is required.";
+      if (!draft.dataType) errors.dataType = "Data type is required.";
+      return errors;
+    }
+
+    function renderFormulaVariableFormModal() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const editing = state.modal.mode === "edit";
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Formula variable</div>
+            <strong>${editing ? "Edit Formula Variable" : "Add New Formula Variable"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid two">
+            <div>
+              <label class="form-label" for="fvar-code">Code</label>
+              <input id="fvar-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="GLUE_FLAP" ${editing ? "disabled" : ""} />
+              ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="fvar-name">Name</label>
+              <input id="fvar-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" placeholder="Glue Flap Width" />
+              ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label" for="fvar-description">Description</label>
+              <textarea id="fvar-description" class="full-search">${escapeHtml(draft.description)}</textarea>
+            </div>
+            <div>
+              <label class="form-label" for="fvar-category">Category</label>
+              <select id="fvar-category" class="full-select">
+                ${["Dimension", "Material", "Costing", "Sheet", "Area", "Service", "Other"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="fvar-datatype">Data Type</label>
+              <select id="fvar-datatype" class="full-select">
+                <option value="numeric" ${draft.dataType === "numeric" ? "selected" : ""}>numeric</option>
+                <option value="text" ${draft.dataType === "text" ? "selected" : ""}>text</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="fvar-unit">Unit</label>
+              <select id="fvar-unit" class="full-select">
+                ${["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", ""].map((unit) => `<option value="${escapeHtml(unit)}" ${String(draft.unit) === unit ? "selected" : ""}>${unit || "(none)"}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="fvar-default">Default Value</label>
+              <input id="fvar-default" class="full-search" value="${escapeHtml(draft.defaultValue)}" />
+            </div>
+            <div>
+              <label class="form-label" for="fvar-status">Status</label>
+              <select id="fvar-status" class="full-select">
+                <option value="Active" ${draft.isActive ? "selected" : ""}>Active</option>
+                <option value="Inactive" ${!draft.isActive ? "selected" : ""}>Inactive</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-formula-variable">${editing ? "Update Variable" : "Add Variable"}</button>
+        </div>
+      `;
+    }
+
+    function openFormulaVariableModal(id) {
+      const item = id ? formulaVariables.find((row) => row.id === Number(id)) : null;
+      state.modal = {
+        type: "formula-variable",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
+        lineId: null,
+        draft: item
+          ? { id: item.id, code: item.code, name: item.name, description: item.description || "", category: item.category, dataType: item.dataType, unit: item.unit || "", defaultValue: item.defaultValue == null ? "" : item.defaultValue, isActive: item.isActive !== false }
+          : defaultFormulaVariableDraft(),
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function saveFormulaVariableFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateFormulaVariableDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        renderModal();
+        return;
+      }
+      const payload = {
+        name: String(draft.name).trim(),
+        description: String(draft.description || "").trim(),
+        category: draft.category,
+        dataType: draft.dataType,
+        unit: draft.unit,
+        defaultValue: draft.defaultValue === "" ? null : draft.defaultValue,
+        isActive: draft.isActive !== false
+      };
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = formulaVariables.findIndex((row) => row.id === draft.id);
+        if (index >= 0) formulaVariables[index] = { ...formulaVariables[index], ...payload };
+        showNotification("Variable updated successfully");
+      } else {
+        formulaVariables.push({
+          id: nextMasterId(formulaVariables),
+          code: String(draft.code).trim().toUpperCase(),
+          ...payload
+        });
+        showNotification("Variable added successfully");
+      }
+      closeModal();
+      renderFormulaVariables();
+      refreshIcons();
+    }
+
+    function updateFormulaVariableDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "formula-variable") return false;
+      const draft = state.modal.draft;
+      if (target.id === "fvar-code") draft.code = target.value.toUpperCase();
+      else if (target.id === "fvar-name") draft.name = target.value;
+      else if (target.id === "fvar-description") draft.description = target.value;
+      else if (target.id === "fvar-category") draft.category = target.value;
+      else if (target.id === "fvar-datatype") draft.dataType = target.value;
+      else if (target.id === "fvar-unit") draft.unit = target.value;
+      else if (target.id === "fvar-default") draft.defaultValue = target.value;
+      else if (target.id === "fvar-status") draft.isActive = target.value === "Active";
+      else return false;
+      return true;
+    }
+
+    function openMasterDeleteModal(entity, id, label) {
+      state.modal = {
+        type: "confirm-delete-master",
+        entity,
+        selectedId: Number(id),
+        label,
+        mode: "delete",
+        lineId: null,
+        draft: null,
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function renderMasterDeleteModal() {
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Confirm</div>
+            <strong>Delete Confirmation</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to delete ${escapeHtml(state.modal.label)}? This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-danger-solid" id="btn-confirm-master-delete">Delete</button>
+        </div>
+      `;
+    }
+
+    function confirmMasterDelete() {
+      const id = Number(state.modal.selectedId);
+      const entity = state.modal.entity;
+      if (entity === "finished-good") {
+        const index = finishedGoods.findIndex((item) => item.id === id);
+        if (index >= 0) finishedGoods.splice(index, 1);
+        closeModal();
+        renderFinishedGoods();
+        showNotification("Product deleted successfully");
+      } else if (entity === "raw-material") {
+        const index = rawMaterials.findIndex((item) => item.id === id);
+        if (index >= 0) rawMaterials.splice(index, 1);
+        closeModal();
+        renderRawMaterials();
+        showNotification("Material deleted successfully");
+      } else if (entity === "service") {
+        const index = services.findIndex((item) => item.id === id);
+        if (index >= 0) services.splice(index, 1);
+        closeModal();
+        renderServices();
+        showNotification("Service deleted successfully");
+      } else if (entity === "style") {
+        const style = styles.find((item) => item.id === id);
+        const used = style ? productsUsingStyle(style.name) : [];
+        if (used.length) {
+          showNotification("Cannot delete. Style is used in " + used.length + " products", "error");
+          return;
+        }
+        const index = styles.findIndex((item) => item.id === id);
+        if (index >= 0) styles.splice(index, 1);
+        for (let i = styleVariables.length - 1; i >= 0; i -= 1) {
+          if (styleVariables[i].styleId === id) styleVariables.splice(i, 1);
+        }
+        closeModal();
+        renderStyles();
+        showNotification("Style deleted successfully");
+      } else if (entity === "dimension") {
+        const index = dimensions.findIndex((item) => item.id === id);
+        if (index >= 0) dimensions.splice(index, 1);
+        closeModal();
+        renderDimensions();
+        showNotification("Dimension deleted successfully");
+      } else if (entity === "formula-variable") {
+        const variable = formulaVariables.find((item) => item.id === id);
+        const used = variable ? formulasUsingVariable(variable.code) : [];
+        if (used.length) {
+          showNotification("Cannot delete. Variable is used in formulas: " + used.map((item) => item.code).join(", "), "error");
+          return;
+        }
+        const index = formulaVariables.findIndex((item) => item.id === id);
+        if (index >= 0) formulaVariables.splice(index, 1);
+        closeModal();
+        renderFormulaVariables();
+        showNotification("Variable deleted successfully");
+      } else if (entity === "style-variable") {
+        const parent = state.modal.parentStyle;
+        const index = styleVariables.findIndex((item) => item.id === id);
+        if (index >= 0) styleVariables.splice(index, 1);
+        showNotification("Variable removed");
+        if (parent) {
+          state.modal = parent;
+          state.modal.sub = null;
+          state.modal.styleTab = "variables";
+          renderModal();
+        } else {
+          closeModal();
+        }
+        renderStyles();
+        refreshIcons();
+        return;
+      }
+      refreshIcons();
     }
 
     function defaultMaterialDraft(line) {
@@ -3979,8 +4704,8 @@
         return;
       }
 
-      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test");
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good");
+      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit"));
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable");
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -3988,10 +4713,16 @@
         dialog.innerHTML = renderRawMaterialFormModal();
       } else if (state.modal.type === "service-master") {
         dialog.innerHTML = renderServiceMasterFormModal();
+      } else if (state.modal.type === "style-master" && state.modal.sub && state.modal.sub.type === "style-variable") {
+        dialog.innerHTML = renderStyleVariableFormModal();
       } else if (state.modal.type === "style-master") {
         dialog.innerHTML = renderStyleFormModal();
       } else if (state.modal.type === "dimension-master") {
         dialog.innerHTML = renderDimensionFormModal();
+      } else if (state.modal.type === "formula-variable") {
+        dialog.innerHTML = renderFormulaVariableFormModal();
+      } else if (state.modal.type === "confirm-delete-master") {
+        dialog.innerHTML = renderMasterDeleteModal();
       } else if (state.modal.type === "material") {
         dialog.innerHTML = renderMaterialFormModal();
       } else if (state.modal.type === "formula-builder") {
@@ -4437,6 +5168,7 @@
       if (page === "raw-materials") renderRawMaterials();
       if (page === "services") renderServices();
       if (page === "style") renderStyles();
+      if (page === "formula-variables") renderFormulaVariables();
       if (page === "dimensions") renderDimensions();
       if (page === "formulas") renderFormulas();
       if (page === "bom-costing") renderBOMPage();
@@ -4541,6 +5273,11 @@
         } else if (id === "style-search") {
           state.searches.style = event.target.value;
           renderStyles();
+          refreshIcons();
+          restoreFocus(id);
+        } else if (id === "fvar-search") {
+          state.searches.formulaVariables = event.target.value;
+          renderFormulaVariables();
           refreshIcons();
           restoreFocus(id);
         } else if (id === "dim-search") {
@@ -4653,8 +5390,90 @@
           openStyleModal();
           return;
         }
+        if (event.target.closest("#btn-add-formula-variable")) {
+          openFormulaVariableModal();
+          return;
+        }
         if (event.target.closest("#btn-add-dimension")) {
           openDimensionModal();
+          return;
+        }
+        const editFg = event.target.closest("[data-edit-fg]");
+        if (editFg) {
+          openFinishedGoodModal(editFg.dataset.editFg);
+          return;
+        }
+        const deleteFg = event.target.closest("[data-delete-fg]");
+        if (deleteFg) {
+          const item = finishedGoods.find((row) => row.id === Number(deleteFg.dataset.deleteFg));
+          openMasterDeleteModal("finished-good", deleteFg.dataset.deleteFg, item ? item.product : "this product");
+          return;
+        }
+        const editRm = event.target.closest("[data-edit-rm]");
+        if (editRm) {
+          openRawMaterialMasterModal(editRm.dataset.editRm);
+          return;
+        }
+        const deleteRm = event.target.closest("[data-delete-rm]");
+        if (deleteRm) {
+          const item = rawMaterials.find((row) => row.id === Number(deleteRm.dataset.deleteRm));
+          openMasterDeleteModal("raw-material", deleteRm.dataset.deleteRm, item ? item.name : "this material");
+          return;
+        }
+        const editSrv = event.target.closest("[data-edit-srv-master]");
+        if (editSrv) {
+          openServiceMasterModal(editSrv.dataset.editSrvMaster);
+          return;
+        }
+        const deleteSrv = event.target.closest("[data-delete-srv-master]");
+        if (deleteSrv) {
+          const item = services.find((row) => row.id === Number(deleteSrv.dataset.deleteSrvMaster));
+          openMasterDeleteModal("service", deleteSrv.dataset.deleteSrvMaster, item ? item.name : "this service");
+          return;
+        }
+        const editStyle = event.target.closest("[data-edit-style]");
+        if (editStyle) {
+          openStyleModal(editStyle.dataset.editStyle);
+          return;
+        }
+        const deleteStyle = event.target.closest("[data-delete-style]");
+        if (deleteStyle) {
+          const item = styles.find((row) => row.id === Number(deleteStyle.dataset.deleteStyle));
+          const used = item ? productsUsingStyle(item.name) : [];
+          if (used.length) {
+            showNotification("Cannot delete. Style is used in " + used.length + " products", "error");
+            return;
+          }
+          openMasterDeleteModal("style", deleteStyle.dataset.deleteStyle, item ? item.name : "this style");
+          return;
+        }
+        const editDim = event.target.closest("[data-edit-dim]");
+        if (editDim) {
+          openDimensionModal(editDim.dataset.editDim);
+          return;
+        }
+        const deleteDim = event.target.closest("[data-delete-dim]");
+        if (deleteDim) {
+          const item = dimensions.find((row) => row.id === Number(deleteDim.dataset.deleteDim));
+          openMasterDeleteModal("dimension", deleteDim.dataset.deleteDim, item ? (item.name || item.code) : "this dimension");
+          return;
+        }
+        const editFvar = event.target.closest("[data-edit-fvar]");
+        if (editFvar) {
+          openFormulaVariableModal(editFvar.dataset.editFvar);
+          return;
+        }
+        const deleteFvar = event.target.closest("[data-delete-fvar]");
+        if (deleteFvar) {
+          const item = formulaVariables.find((row) => row.id === Number(deleteFvar.dataset.deleteFvar));
+          if (item) {
+            const used = formulasUsingVariable(item.code);
+            if (used.length) {
+              showNotification("Cannot delete. Variable is used in formulas: " + used.map((row) => row.code).join(", "), "error");
+              return;
+            }
+          }
+          openMasterDeleteModal("formula-variable", deleteFvar.dataset.deleteFvar, item ? item.code : "this variable");
           return;
         }
         if (event.target.closest("#btn-new-formula")) {
@@ -4771,6 +5590,12 @@
         }
         if (updateServiceMasterDraftFromEvent(event.target)) return;
         if (updateStyleDraftFromEvent(event.target)) return;
+        if (updateStyleVariableDraftFromEvent(event.target)) {
+          renderModal();
+          restoreFocus(event.target.id);
+          return;
+        }
+        if (updateFormulaVariableDraftFromEvent(event.target)) return;
         if (updateDimensionDraftFromEvent(event.target)) {
           renderModal();
           restoreFocus(event.target.id);
@@ -4807,7 +5632,13 @@
           restoreFocus(event.target.id);
         }
         if (updateStyleDraftFromEvent(event.target)) {
-          if (event.target.id === "style-code") event.target.value = String(event.target.value || "").toUpperCase();
+          restoreFocus(event.target.id);
+        }
+        if (updateStyleVariableDraftFromEvent(event.target)) {
+          restoreFocus(event.target.id);
+        }
+        if (updateFormulaVariableDraftFromEvent(event.target)) {
+          if (event.target.id === "fvar-code") event.target.value = String(event.target.value || "").toUpperCase();
           restoreFocus(event.target.id);
         }
         if (updateDimensionDraftFromEvent(event.target)) {
@@ -4855,6 +5686,55 @@
         }
         if (event.target.closest("#btn-save-style")) {
           saveStyleFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-style-variable")) {
+          saveStyleVariableFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-back-style-edit")) {
+          backToStyleEdit();
+          return;
+        }
+        if (event.target.closest("#btn-add-style-variable")) {
+          openStyleVariableModal();
+          return;
+        }
+        const styleTab = event.target.closest("[data-style-tab]");
+        if (styleTab) {
+          state.modal.styleTab = styleTab.dataset.styleTab;
+          renderModal();
+          refreshIcons();
+          return;
+        }
+        const editStyleVar = event.target.closest("[data-edit-style-var]");
+        if (editStyleVar) {
+          openStyleVariableModal(editStyleVar.dataset.editStyleVar);
+          return;
+        }
+        const deleteStyleVar = event.target.closest("[data-delete-style-var]");
+        if (deleteStyleVar) {
+          const row = styleVariables.find((item) => item.id === Number(deleteStyleVar.dataset.deleteStyleVar));
+          const parent = {
+            type: state.modal.type,
+            selectedId: state.modal.selectedId,
+            mode: state.modal.mode,
+            lineId: state.modal.lineId,
+            styleTab: "variables",
+            draft: state.modal.draft,
+            errors: {},
+            sub: null
+          };
+          openMasterDeleteModal("style-variable", deleteStyleVar.dataset.deleteStyleVar, row ? row.variableCode : "this variable");
+          state.modal.parentStyle = parent;
+          return;
+        }
+        if (event.target.closest("#btn-save-formula-variable")) {
+          saveFormulaVariableFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-confirm-master-delete")) {
+          confirmMasterDelete();
           return;
         }
         if (event.target.closest("#btn-save-dimension")) {

@@ -608,6 +608,18 @@
 
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-danger { color: var(--danger); }
+    .btn-danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
+    .btn-danger-solid:hover { background: #991b1b; }
+    .section-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    .section-tab {
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      cursor: pointer;
+    }
+    .section-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+    textarea.full-search { min-height: 72px; resize: vertical; }
     .btn-icon { width: 30px; height: 30px; padding: 0; justify-content: center; }
 
     .field-error { color: var(--danger); font-size: 12px; margin-top: 6px; }
