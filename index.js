@@ -109,28 +109,28 @@
     ];
 
     const rawMaterials = [
-      { id: 101, code: "RM-KRAFT-125", name: "Kraft Paper 125 GSM", category: "Paper", uom: "kg", purchasingRate: 165, rateUOM: "kg", gsm: 125, status: "Active" },
-      { id: 102, code: "RM-KRAFT-150", name: "Kraft Paper 150 GSM", category: "Paper", uom: "kg", purchasingRate: 185, rateUOM: "kg", gsm: 150, status: "Active" },
-      { id: 103, code: "RM-FLUTE-120", name: "Fluting Paper 120 GSM", category: "Paper", uom: "kg", purchasingRate: 155, rateUOM: "kg", gsm: 120, status: "Active" },
-      { id: 104, code: "RM-FLUTE-140", name: "Fluting Paper 140 GSM", category: "Paper", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 140, status: "Active" },
-      { id: 105, code: "RM-DUPLEX-300", name: "Duplex Board 300 GSM", category: "Board", uom: "kg", purchasingRate: 160, rateUOM: "kg", gsm: 300, status: "Active" },
-      { id: 106, code: "RM-DUPLEX-350", name: "Duplex Board 350 GSM", category: "Board", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 350, status: "Active" },
-      { id: 107, code: "RM-SHEET-3PLY", name: "Corrugated Sheet 3 Ply", category: "Sheet", uom: "sheet", purchasingRate: 150, rateUOM: "sheet", gsm: null, status: "Active" },
-      { id: 108, code: "RM-FILM-WIN", name: "Window Film", category: "Film", uom: "kg", purchasingRate: 300, rateUOM: "kg", gsm: null, status: "Active" },
-      { id: 109, code: "RM-INK-PRINT", name: "Printing Ink", category: "Consumable", uom: "kg", purchasingRate: 800, rateUOM: "kg", gsm: null, status: "Active" },
-      { id: 110, code: "RM-GLUE-ADH", name: "Glue / Adhesive", category: "Consumable", uom: "kg", purchasingRate: 600, rateUOM: "kg", gsm: null, status: "Active" },
-      { id: 111, code: "RM-BOARD-CORR", name: "Corrugated Board", category: "Board", uom: "sq.meter", purchasingRate: 150, rateUOM: "sq.meter", gsm: 180, status: "Active" }
+      { id: 101, code: "RM-KRAFT-125", name: "Kraft Paper 125 GSM", category: "Paper", uom: "kg", purchasingRate: 165, rateUOM: "kg", gsm: 125, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 102, code: "RM-KRAFT-150", name: "Kraft Paper 150 GSM", category: "Paper", uom: "kg", purchasingRate: 185, rateUOM: "kg", gsm: 150, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 103, code: "RM-FLUTE-120", name: "Fluting Paper 120 GSM", category: "Paper", uom: "kg", purchasingRate: 155, rateUOM: "kg", gsm: 120, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 104, code: "RM-FLUTE-140", name: "Fluting Paper 140 GSM", category: "Paper", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 140, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 105, code: "RM-DUPLEX-300", name: "Duplex Board 300 GSM", category: "Board", uom: "kg", purchasingRate: 160, rateUOM: "kg", gsm: 300, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 106, code: "RM-DUPLEX-350", name: "Duplex Board 350 GSM", category: "Board", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 350, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 107, code: "RM-SHEET-3PLY", name: "Corrugated Sheet 3 Ply", category: "Sheet", uom: "sheet", purchasingRate: 150, rateUOM: "sheet", gsm: null, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 108, code: "RM-FILM-WIN", name: "Window Film", category: "Film", uom: "kg", purchasingRate: 300, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 109, code: "RM-INK-PRINT", name: "Printing Ink", category: "Consumable", uom: "kg", purchasingRate: 800, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 110, code: "RM-GLUE-ADH", name: "Glue / Adhesive", category: "Consumable", uom: "kg", purchasingRate: 600, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, rateFormulaId: null },
+      { id: 111, code: "RM-BOARD-CORR", name: "Corrugated Board", category: "Board", uom: "sq.meter", purchasingRate: 150, rateUOM: "sq.meter", gsm: 180, status: "Active", qtyFormulaId: null, rateFormulaId: null }
     ];
 
     const services = [
-      { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", serviceRate: 3.5, rateUOM: "piece", status: "Active" },
-      { id: 202, code: "SRV-DIECUT", name: "Die Cutting", uom: "pieces", serviceRate: 2, rateUOM: "piece", status: "Active" },
-      { id: 203, code: "SRV-LAM", name: "Lamination", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active" },
-      { id: 204, code: "SRV-PASTE", name: "Pasting", uom: "pieces", serviceRate: 1, rateUOM: "piece", status: "Active" },
-      { id: 205, code: "SRV-WINPASTE", name: "Window Pasting", uom: "pieces", serviceRate: 1.25, rateUOM: "piece", status: "Active" },
-      { id: 206, code: "SRV-STITCH", name: "Stitching", uom: "pieces", serviceRate: 0.85, rateUOM: "piece", status: "Active" },
-      { id: 207, code: "SRV-PLATE", name: "Plate", uom: "job", serviceRate: 1800, rateUOM: "job", status: "Active" },
-      { id: 208, code: "SRV-LABOUR", name: "Labour", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active" }
+      { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", serviceRate: 3.5, rateUOM: "piece", status: "Active", formulaId: null },
+      { id: 202, code: "SRV-DIECUT", name: "Die Cutting", uom: "pieces", serviceRate: 2, rateUOM: "piece", status: "Active", formulaId: null },
+      { id: 203, code: "SRV-LAM", name: "Lamination", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null },
+      { id: 204, code: "SRV-PASTE", name: "Pasting", uom: "pieces", serviceRate: 1, rateUOM: "piece", status: "Active", formulaId: null },
+      { id: 205, code: "SRV-WINPASTE", name: "Window Pasting", uom: "pieces", serviceRate: 1.25, rateUOM: "piece", status: "Active", formulaId: null },
+      { id: 206, code: "SRV-STITCH", name: "Stitching", uom: "pieces", serviceRate: 0.85, rateUOM: "piece", status: "Active", formulaId: null },
+      { id: 207, code: "SRV-PLATE", name: "Plate", uom: "job", serviceRate: 1800, rateUOM: "job", status: "Active", formulaId: null },
+      { id: 208, code: "SRV-LABOUR", name: "Labour", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null }
     ];
 
     const formulas = [
@@ -724,6 +724,7 @@
       try {
         const meta = await getAppStateRecord("meta");
         if (!meta || !meta.initialized) {
+          sanitizeNumericMasters();
           await persistAllCollections();
           await persistSequencesNow();
           await persistEditorNow();
@@ -742,6 +743,7 @@
         IDB_COLLECTION_STORES.forEach((name) => {
           replaceArrayContents(getCollectionArray(name), loaded[name]);
         });
+        sanitizeNumericMasters();
 
         try {
           const sequences = await getAppStateRecord("sequences");
@@ -803,6 +805,7 @@
       replaceArrayContents(dimensions, snapshotData(SEED_DATA.dimensions));
       replaceArrayContents(formulaVariables, snapshotData(SEED_DATA.formulaVariables));
       replaceArrayContents(styleVariables, snapshotData(SEED_DATA.styleVariables));
+      sanitizeNumericMasters();
       resetBomEditor();
       bomLineSeq = 1;
       bomSeq = 1;
@@ -847,11 +850,84 @@
         .replace(/"/g, "&quot;");
     }
 
+    const DECIMAL_RULES = {
+      dimension: { decimals: 2, min: 0.1, max: 99999, label: "Dimension" },
+      rate: { decimals: 2, min: 0.01, max: 999999.99, label: "Rate", decimalError: "Rate must have maximum 2 decimal places" },
+      quantity: { decimals: 4, min: 0.0001, max: 999999, label: "Quantity" },
+      wastage: { decimals: 2, min: 0, max: 100, label: "Wastage" },
+      gsm: { decimals: 1, min: 1, max: 999, label: "GSM" },
+      variable: { decimals: 4, min: -999999999, max: 999999999, label: "Value" }
+    };
+
+    function roundTo(value, decimals) {
+      const n = Number(value);
+      const places = Number.isFinite(Number(decimals)) ? Math.max(0, Math.min(10, Number(decimals))) : 2;
+      if (!Number.isFinite(n)) return n;
+      return Number(Math.round(Number(n + "e" + places)) + "e-" + places);
+    }
+
+    function formatDecimal(value, decimals, padZeros) {
+      const places = decimals == null ? 2 : decimals;
+      const rounded = roundTo(value, places);
+      if (!Number.isFinite(rounded)) return "";
+      const fixed = rounded.toFixed(places);
+      if (padZeros !== false) return fixed;
+      return String(parseFloat(fixed));
+    }
+
+    function countDecimalPlaces(raw) {
+      const text = String(raw ?? "").trim();
+      const match = text.match(/\.(\d+)$/);
+      return match ? match[1].length : 0;
+    }
+
+    function parseNumeric(stringInput, maxDecimals, options) {
+      const opts = options || {};
+      const places = maxDecimals == null ? 2 : maxDecimals;
+      const raw = String(stringInput ?? "").trim();
+      if (raw === "") {
+        return { ok: false, value: null, error: opts.requiredError || "Please enter a valid number" };
+      }
+      if (!/^-?\d+(\.\d+)?$/.test(raw)) {
+        return { ok: false, value: null, error: "Please enter a valid number" };
+      }
+      if (countDecimalPlaces(raw) > places) {
+        return {
+          ok: false,
+          value: null,
+          error: opts.decimalError || ("Value must have maximum " + places + " decimal place" + (places === 1 ? "" : "s"))
+        };
+      }
+      const n = Number(raw);
+      if (!Number.isFinite(n)) {
+        return { ok: false, value: null, error: "Please enter a valid number" };
+      }
+      if (opts.min != null && n < opts.min) {
+        return { ok: false, value: null, error: opts.minError || ((opts.label || "Value") + " must be at least " + opts.min) };
+      }
+      if (opts.max != null && n > opts.max) {
+        return { ok: false, value: null, error: opts.maxError || ((opts.label || "Value") + " must be at most " + opts.max) };
+      }
+      return { ok: true, value: roundTo(n, places), error: null };
+    }
+
+    function parseByRule(stringInput, ruleName, extra) {
+      const rule = DECIMAL_RULES[ruleName] || DECIMAL_RULES.variable;
+      return parseNumeric(stringInput, rule.decimals, { ...rule, ...(extra || {}) });
+    }
+
+    function showFirstValidationError(errors) {
+      const first = errors && Object.keys(errors).map((key) => errors[key]).find(Boolean);
+      if (first) showNotification(first, "error");
+    }
+
     function formatNumber(value, decimals) {
-      if (value === null || value === undefined || Number.isNaN(value)) return "—";
-      return Number(value).toLocaleString(undefined, {
-        minimumFractionDigits: decimals ?? 0,
-        maximumFractionDigits: decimals ?? 0
+      if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
+      const places = decimals ?? 0;
+      const rounded = roundTo(value, places);
+      return rounded.toLocaleString("en-US", {
+        minimumFractionDigits: places,
+        maximumFractionDigits: places
       });
     }
 
@@ -861,10 +937,66 @@
 
     function formatCurrency(value) {
       if (value === null || value === undefined || Number.isNaN(Number(value))) return "—";
-      return "Rs. " + Number(value).toLocaleString("en-US", {
+      const rounded = roundTo(value, 2);
+      return "Rs. " + rounded.toLocaleString("en-US", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
       });
+    }
+
+    function formatCurrencyDisplay(value) {
+      return formatCurrency(value);
+    }
+
+    function sanitizeNumericMasters() {
+      dimensions.forEach((item) => {
+        item.L = roundTo(item.L, 2);
+        item.W = roundTo(item.W, 2);
+        item.H = roundTo(item.H, 2);
+        const clean = formatDimensionCode(item.L, item.W, item.H);
+        if (!item.code || /^\d+(\.\d+)?x\d+(\.\d+)?x\d+(\.\d+)?$/i.test(String(item.code))) item.code = clean;
+        if (!item.name || /^\d+(\.\d+)?x\d+(\.\d+)?x\d+(\.\d+)?$/i.test(String(item.name))) item.name = clean;
+      });
+      finishedGoods.forEach((item) => {
+        if (!item.dimensions) return;
+        item.dimensions.L = roundTo(item.dimensions.L, 2);
+        item.dimensions.W = roundTo(item.dimensions.W, 2);
+        item.dimensions.H = roundTo(item.dimensions.H, 2);
+        item.displayName = formatFinishedGoodDisplayName(item);
+      });
+      rawMaterials.forEach((item) => {
+        item.purchasingRate = roundTo(item.purchasingRate, 2);
+        if (item.gsm != null && item.gsm !== "") item.gsm = roundTo(item.gsm, 1);
+        item.qtyFormulaId = normalizeFormulaBinding(item.qtyFormulaId);
+        item.rateFormulaId = normalizeFormulaBinding(item.rateFormulaId);
+      });
+      services.forEach((item) => {
+        item.serviceRate = roundTo(item.serviceRate, 2);
+        item.formulaId = normalizeFormulaBinding(item.formulaId);
+      });
+      styleVariables.forEach((item) => {
+        if (item.value != null && item.value !== "") item.value = roundTo(item.value, 4);
+      });
+      formulaVariables.forEach((item) => {
+        if (item.dataType === "numeric" && item.defaultValue != null && item.defaultValue !== "") {
+          const n = Number(item.defaultValue);
+          if (Number.isFinite(n)) item.defaultValue = roundTo(n, 4);
+        }
+      });
+    }
+
+    function numericTestValues(values) {
+      const out = {};
+      Object.keys(values || {}).forEach((key) => {
+        const raw = values[key];
+        if (raw === "" || raw == null) {
+          out[key] = raw;
+          return;
+        }
+        const parsed = parseByRule(raw, "variable");
+        out[key] = parsed.ok ? parsed.value : Number(raw);
+      });
+      return out;
     }
 
     function formatRateUnit(rateUom) {
@@ -879,8 +1011,8 @@
 
     function formatDimensions(item) {
       const dims = item.dimensions || item;
-      const { L, W, H } = dims;
-      return `${L} × ${W} × ${H} ${item.dimensionUOM || item.uom || ""}`.trim();
+      const code = formatDimensionCode(dims.L, dims.W, dims.H).replace(/x/g, " × ");
+      return `${code} ${item.dimensionUOM || item.uom || ""}`.trim();
     }
 
     function formatRupees(value) {
@@ -888,7 +1020,7 @@
     }
 
     function formatFinishedGoodDisplayName(item) {
-      const dims = `${item.dimensions.L}x${item.dimensions.W}x${item.dimensions.H}`;
+      const dims = formatDimensionCode(item.dimensions);
       return [item.product, item.style, item.material, item.variant, dims]
         .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
         .join(" ");
@@ -1068,14 +1200,14 @@
       const asKg = toKg(n, from);
       if (asKg != null) {
         const converted = fromKg(asKg, to);
-        if (converted != null && Number.isFinite(converted)) return converted;
+        if (converted != null && Number.isFinite(converted)) return roundTo(converted, 8);
       }
 
-      if (from === "piece" && to === "1000piece") return n / 1000;
-      if (from === "1000piece" && to === "piece") return n * 1000;
-      if (from === "sqin" && to === "sqm") return n * SQ_IN_TO_SQ_M;
-      if (from === "sqm" && to === "sqin") return n / SQ_IN_TO_SQ_M;
-      if (from === "sqin" && to === "m") return n * SQ_IN_TO_SQ_M;
+      if (from === "piece" && to === "1000piece") return roundTo(n / 1000, 8);
+      if (from === "1000piece" && to === "piece") return roundTo(n * 1000, 8);
+      if (from === "sqin" && to === "sqm") return roundTo(n * SQ_IN_TO_SQ_M, 8);
+      if (from === "sqm" && to === "sqin") return roundTo(n / SQ_IN_TO_SQ_M, 8);
+      if (from === "sqin" && to === "m") return roundTo(n * SQ_IN_TO_SQ_M, 8);
       return n;
     }
 
@@ -1084,8 +1216,8 @@
       if (!Number.isFinite(n)) return n;
       const from = normalizeUnit(fromUnit);
       const to = normalizeUnit(toUnit);
-      if (from === to) return n;
-      return n * convertQuantity(1, to, from, { gsm });
+      if (from === to) return roundTo(n, 6);
+      return roundTo(n * convertQuantity(1, to, from, { gsm }), 6);
     }
 
     function getSelectedFinishedGood() {
@@ -1218,7 +1350,36 @@
     }
 
     function formatQty(value) {
-      return formatNumber(value, 4);
+      if (value === null || value === undefined || !Number.isFinite(Number(value))) return "—";
+      return formatDecimal(value, 4, false);
+    }
+
+    function formatFormulaResult(value) {
+      if (value === null || value === undefined || value === "") return "—";
+      const n = Number(value);
+      if (!Number.isFinite(n)) return String(value);
+      return formatDecimal(n, 6, false);
+    }
+
+    function refreshDimensionCodePreview() {
+      const el = document.querySelector("#modal-dialog .preview-box .mono");
+      if (!el || !state.modal || !state.modal.draft) return;
+      const parsedL = parseByRule(state.modal.draft.L, "dimension");
+      const parsedW = parseByRule(state.modal.draft.W, "dimension");
+      const parsedH = parseByRule(state.modal.draft.H, "dimension");
+      el.textContent = parsedL.ok && parsedW.ok && parsedH.ok
+        ? formatDimensionCode(parsedL.value, parsedW.value, parsedH.value)
+        : "—";
+    }
+
+    function normalizeDraftNumber(target, draftKey, ruleName, padZeros, draftObj) {
+      const draft = draftObj || (state.modal && state.modal.draft);
+      if (!draft) return;
+      const parsed = parseByRule(target.value, ruleName);
+      if (!parsed.ok) return;
+      const rule = DECIMAL_RULES[ruleName] || DECIMAL_RULES.variable;
+      draft[draftKey] = parsed.value;
+      target.value = formatDecimal(parsed.value, rule.decimals, padZeros === true);
     }
 
     function nextBomLineId() {
@@ -1247,6 +1408,54 @@
 
     function getMaterialFormulas() {
       return formulas.filter((item) => item.type === "Material" && item.isActive);
+    }
+
+    function normalizeFormulaBinding(value) {
+      if (value === "" || value == null) return null;
+      const n = Number(value);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function formatBoundFormulaCode(id) {
+      const formula = getFormula(id);
+      return formula ? formula.code : "—";
+    }
+
+    function renderBoundFormulaOptions(type, selectedId) {
+      const selected = selectedId ? getFormula(selectedId) : null;
+      const active = formulas.filter((item) => item.type === type && item.isActive);
+      const list = selected && !active.some((item) => item.id === selected.id)
+        ? [selected].concat(active)
+        : active;
+      return `<option value="">None</option>` + list.map((item) => `
+        <option value="${item.id}" ${Number(selectedId) === item.id ? "selected" : ""}>
+          ${escapeHtml(item.name)} (${escapeHtml(item.code)})${item.isActive ? "" : " — inactive"}
+        </option>
+      `).join("");
+    }
+
+    function applyMaterialFormulaBindings(draft) {
+      const material = getRawMaterial(draft.rawMaterialId);
+      if (!material) return;
+      if (material.qtyFormulaId) {
+        draft.calculationMethod = "formula";
+        draft.formulaId = Number(material.qtyFormulaId);
+      }
+      draft.rateFormulaId = material.rateFormulaId != null ? Number(material.rateFormulaId) : null;
+    }
+
+    function applyServiceFormulaBinding(draft) {
+      const service = getService(draft.serviceId);
+      if (!service) return;
+      if (service.formulaId) {
+        draft.calculationMethod = "formula";
+        draft.formulaId = Number(service.formulaId);
+      }
+    }
+
+    function resolveRateFormulaId(line, material) {
+      if (line && line.rateFormulaId !== undefined) return normalizeFormulaBinding(line.rateFormulaId);
+      return material ? normalizeFormulaBinding(material.rateFormulaId) : null;
     }
 
     function nextFormulaId() {
@@ -1532,14 +1741,14 @@
       const sheetArea = resolveVariableValue("SHEET_AREA", finishedGood, Number(sheetLength) * Number(sheetWidth));
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       return {
-        L: Number(finishedGood.dimensions.L),
-        W: Number(finishedGood.dimensions.W),
-        H: Number(finishedGood.dimensions.H),
+        L: roundTo(finishedGood.dimensions.L, 2),
+        W: roundTo(finishedGood.dimensions.W, 2),
+        H: roundTo(finishedGood.dimensions.H, 2),
         PLY: Number(finishedGood.ply),
-        GSM: material && material.gsm != null ? Number(material.gsm) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
+        GSM: material && material.gsm != null ? roundTo(material.gsm, 1) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
         GLUE_FLAP: glueFlap,
-        WASTAGE: Number(wastagePercent),
-        MATERIAL_RATE: material ? Number(material.purchasingRate) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
+        WASTAGE: roundTo(wastagePercent, 2),
+        MATERIAL_RATE: material ? roundTo(material.purchasingRate, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
         SHEET_LENGTH: sheetLength,
@@ -1575,8 +1784,8 @@
         return line;
       }
 
-      const rate = Number(material.purchasingRate);
-      if (!Number.isFinite(rate) || rate < 0) {
+      const masterRate = Number(material.purchasingRate);
+      if (!Number.isFinite(masterRate) || masterRate < 0) {
         line.error = "Purchasing rate from the Raw Material Master is not valid.";
         line.netQty = 0;
         line.grossQty = 0;
@@ -1585,7 +1794,8 @@
         return line;
       }
 
-      line.rate = rate;
+      line.rate = roundTo(masterRate, 2);
+      line.rateSource = "master";
       const wastage = Number(line.wastagePercent);
       if (Number.isNaN(wastage) || wastage < 0) {
         line.error = "Wastage cannot be negative.";
@@ -1648,8 +1858,34 @@
       } else {
         grossQty = netQty * (1 + wastage / 100);
       }
-      line.netQty = netQty;
-      line.grossQty = grossQty;
+      line.netQty = roundTo(netQty, 4);
+      line.grossQty = roundTo(grossQty, 4);
+      const rateFormulaId = resolveRateFormulaId(line, material);
+      if (rateFormulaId) {
+        const rateFormula = getFormula(rateFormulaId);
+        if (!rateFormula || !rateFormula.isActive) {
+          line.error = rateFormula && !rateFormula.isActive
+            ? "The bound rate formula is inactive."
+            : "The bound rate formula is not valid.";
+          line.costPerPiece = 0;
+          return line;
+        }
+        const rateEval = evaluateFormula(
+          rateFormula.expression,
+          { ...variables, NET_QTY: netQty, WASTAGE: wastage, MATERIAL_RATE: masterRate },
+          [rateFormula.code]
+        );
+        if (!rateEval.success || !Number.isFinite(rateEval.result) || rateEval.result < 0) {
+          line.error = rateEval.error || "Rate formula could not be evaluated.";
+          line.costPerPiece = 0;
+          return line;
+        }
+        line.rate = roundTo(rateEval.result, 2);
+        line.rateSource = "formula";
+        line.rateFormulaId = rateFormulaId;
+      } else {
+        line.rateFormulaId = line.rateFormulaId === undefined ? undefined : null;
+      }
       const qtyForRate = convertQuantity(grossQty, material.uom, formatRateUnit(material.rateUOM), {
         gsm: material.gsm,
         sheetArea: DEFAULT_TEST_VALUES.SHEET_AREA
@@ -1659,8 +1895,8 @@
         line.costPerPiece = 0;
         return line;
       }
-      line.qtyForRate = qtyForRate;
-      line.costPerPiece = qtyForRate * line.rate;
+      line.qtyForRate = roundTo(qtyForRate, 4);
+      line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
       return line;
     }
 
@@ -1669,9 +1905,9 @@
     }
 
     function buildServiceFormulaVariables(finishedGood, service) {
-      const L = Number(finishedGood.dimensions.L);
-      const W = Number(finishedGood.dimensions.W);
-      const H = Number(finishedGood.dimensions.H);
+      const L = roundTo(finishedGood.dimensions.L, 2);
+      const W = roundTo(finishedGood.dimensions.W, 2);
+      const H = roundTo(finishedGood.dimensions.H, 2);
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, DEFAULT_GLUE_FLAP);
       const area = evaluateFormula("COVERED_AREA", {
         L,
@@ -1687,7 +1923,7 @@
         PLY: Number(finishedGood.ply),
         GLUE_FLAP: glueFlap,
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, 1),
-        SERVICE_RATE: Number(service.serviceRate),
+        SERVICE_RATE: roundTo(service.serviceRate, 2),
         PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, null),
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
         SERVICE_COST: 0
@@ -1724,7 +1960,7 @@
         return line;
       }
 
-      line.rate = rate;
+      line.rate = roundTo(rate, 2);
       let quantity = 0;
 
       if (line.calculationMethod === "manual") {
@@ -1765,15 +2001,15 @@
         }
       }
 
-      line.quantity = quantity;
+      line.quantity = roundTo(quantity, 4);
       const qtyForRate = convertQuantity(quantity, service.uom, formatRateUnit(service.rateUOM), {});
       if (!Number.isFinite(qtyForRate)) {
         line.error = "Quantity could not be converted to the service rate unit.";
         line.costPerPiece = 0;
         return line;
       }
-      line.qtyForRate = qtyForRate;
-      line.costPerPiece = qtyForRate * line.rate;
+      line.qtyForRate = roundTo(qtyForRate, 4);
+      line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
       return line;
     }
 
@@ -1783,22 +2019,26 @@
 
     function recalculateBOMCosts() {
       state.bomMaterials = state.bomMaterials.map((line) => calculateMaterialCost(line));
-      state.totalMaterialCost = calculateTotalMaterialCost();
+      state.totalMaterialCost = roundTo(calculateTotalMaterialCost(), 2);
       state.bomServices = state.bomServices.map((line) => calculateServiceCost(line));
-      state.totalServiceCost = calculateTotalServiceCost();
-      state.finalCostPerPiece = state.totalMaterialCost + state.totalServiceCost;
-      state.costPer100 = state.finalCostPerPiece * 100;
-      state.costPer1000 = state.finalCostPerPiece * 1000;
+      state.totalServiceCost = roundTo(calculateTotalServiceCost(), 2);
+      state.finalCostPerPiece = roundTo(state.totalMaterialCost + state.totalServiceCost, 2);
+      state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
+      state.costPer1000 = roundTo(state.finalCostPerPiece * 1000, 2);
     }
 
     function createMaterialLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
+      const material = getRawMaterial(config.rawMaterialId);
       return calculateMaterialCost({
         id: nextBomLineId(),
         rawMaterialId: config.rawMaterialId,
         layer: config.layer,
         calculationMethod: config.calculationMethod,
-        formulaId: formula ? formula.id : null,
+        formulaId: formula ? formula.id : (material ? normalizeFormulaBinding(material.qtyFormulaId) : null),
+        rateFormulaId: config.rateFormulaId !== undefined
+          ? normalizeFormulaBinding(config.rateFormulaId)
+          : (material ? normalizeFormulaBinding(material.rateFormulaId) : null),
         manualQty: config.manualQty,
         wastagePercent: config.wastagePercent ?? DEFAULT_WASTAGE_PERCENT,
         netQty: 0,
@@ -1815,11 +2055,12 @@
 
     function createServiceLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
+      const service = getService(config.serviceId);
       return calculateServiceCost({
         id: nextBomLineId(),
         serviceId: config.serviceId,
         calculationMethod: config.calculationMethod,
-        formulaId: formula ? formula.id : null,
+        formulaId: formula ? formula.id : normalizeFormulaBinding(service && service.formulaId),
         manualQty: config.manualQty,
         quantity: 0,
         rate: 0,
@@ -2194,7 +2435,18 @@
       const q = state.searches.rawMaterials;
       return rawMaterials.filter((item) =>
         matchesQuery(
-          [item.code, item.name, item.category, item.uom, item.rateUOM, item.gsm, item.purchasingRate, item.status],
+          [
+            item.code,
+            item.name,
+            item.category,
+            item.uom,
+            item.rateUOM,
+            item.gsm,
+            item.purchasingRate,
+            item.status,
+            formatBoundFormulaCode(item.qtyFormulaId),
+            formatBoundFormulaCode(item.rateFormulaId)
+          ],
           q
         )
       );
@@ -2203,7 +2455,10 @@
     function filterServices() {
       const q = state.searches.services;
       return services.filter((item) =>
-        matchesQuery([item.code, item.name, item.uom, item.rateUOM, item.serviceRate, item.status], q)
+        matchesQuery(
+          [item.code, item.name, item.uom, item.rateUOM, item.serviceRate, item.status, formatBoundFormulaCode(item.formulaId)],
+          q
+        )
       );
     }
 
@@ -2382,15 +2637,16 @@
               <td class="mono">${escapeHtml(item.code)}</td>
               <td>${escapeHtml(item.name)}</td>
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
-              <td>${item.gsm === null ? "—" : escapeHtml(item.gsm)}</td>
+              <td>${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</td>
               <td>${escapeHtml(item.uom)}</td>
               <td>${formatCurrency(item.purchasingRate)}</td>
               <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
+              <td class="mono">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))} / ${escapeHtml(formatBoundFormulaCode(item.rateFormulaId))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-rm", item.id, "data-delete-rm", item.id)}
             </tr>
           `).join("")
-        : emptyRow(9, "No raw materials match this search.");
+        : emptyRow(10, "No raw materials match this search.");
 
       document.getElementById("page-raw-materials").innerHTML = `
         <div class="toolbar">
@@ -2416,6 +2672,7 @@
                   <th>UOM</th>
                   <th>Purchasing Rate</th>
                   <th>Rate UOM</th>
+                  <th>Qty / Rate Formula</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -2437,11 +2694,12 @@
               <td>${escapeHtml(item.uom)}</td>
               <td>${formatCurrency(item.serviceRate)}</td>
               <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
+              <td class="mono">${escapeHtml(formatBoundFormulaCode(item.formulaId))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
           `).join("")
-        : emptyRow(7, "No services match this search.");
+        : emptyRow(8, "No services match this search.");
 
       document.getElementById("page-services").innerHTML = `
         <div class="toolbar">
@@ -2465,6 +2723,7 @@
                   <th>UOM</th>
                   <th>Service Rate</th>
                   <th>Rate UOM</th>
+                  <th>Formula</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -2528,9 +2787,9 @@
             <tr>
               <td>${escapeHtml(item.name || item.code)}</td>
               <td>${escapeHtml(item.description || "—")}</td>
-              <td>${escapeHtml(item.L)}</td>
-              <td>${escapeHtml(item.W)}</td>
-              <td>${escapeHtml(item.H)}</td>
+              <td>${escapeHtml(formatDecimal(item.L, 2, false))}</td>
+              <td>${escapeHtml(formatDecimal(item.W, 2, false))}</td>
+              <td>${escapeHtml(formatDecimal(item.H, 2, false))}</td>
               <td>${escapeHtml(item.unit || item.uom)}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-dim", item.id, "data-delete-dim", item.id)}
@@ -2583,7 +2842,7 @@
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
               <td>${escapeHtml(item.unit || "—")}</td>
               <td>${escapeHtml(item.dataType)}</td>
-              <td>${item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : escapeHtml(item.defaultValue)}</td>
+              <td>${item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : escapeHtml(item.dataType === "numeric" ? formatDecimal(item.defaultValue, 4, false) : item.defaultValue)}</td>
               <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
               ${masterRowActions("data-edit-fvar", item.id, "data-delete-fvar", item.id)}
             </tr>
@@ -2636,22 +2895,30 @@
       return false;
     }
 
-    function lineUsesFormula(line, formula) {
-      if (!formula) return false;
-      if (Number(line.formulaId) === formula.id) return true;
-      const used = getFormula(line.formulaId);
+    function bindingUsesFormula(bindingId, formula) {
+      if (!formula || bindingId == null || bindingId === "") return false;
+      if (Number(bindingId) === formula.id) return true;
+      const used = getFormula(bindingId);
       return used ? formulaDependsOnCode(used.expression, formula.code) : false;
+    }
+
+    function lineUsesFormula(line, formula) {
+      if (!formula || !line) return false;
+      return bindingUsesFormula(line.formulaId, formula) || bindingUsesFormula(line.rateFormulaId, formula);
     }
 
     function isFormulaUsed(formulaId) {
       const formula = getFormula(formulaId);
+      const usedInMasters = rawMaterials.some((item) =>
+        bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.rateFormulaId, formula)
+      ) || services.some((item) => bindingUsesFormula(item.formulaId, formula));
       const usedInEditor = state.bomMaterials.some((line) => lineUsesFormula(line, formula)) ||
         state.bomServices.some((line) => lineUsesFormula(line, formula));
       const usedInSaved = boms.some((bom) =>
         (bom.materials || []).some((line) => lineUsesFormula(line, formula)) ||
         (bom.services || []).some((line) => lineUsesFormula(line, formula))
       );
-      return usedInEditor || usedInSaved;
+      return usedInMasters || usedInEditor || usedInSaved;
     }
 
     function renderDependencyBadges(expression) {
@@ -3030,15 +3297,15 @@
                 <div class="dim-grid">
                   <div class="dim-box">
                     <div class="field-label">Length</div>
-                    <strong>${escapeHtml(fg.dimensions.L)} ${escapeHtml(fg.dimensionUOM)}</strong>
+                    <strong>${escapeHtml(formatDecimal(fg.dimensions.L, 2, false))} ${escapeHtml(fg.dimensionUOM)}</strong>
                   </div>
                   <div class="dim-box">
                     <div class="field-label">Width</div>
-                    <strong>${escapeHtml(fg.dimensions.W)} ${escapeHtml(fg.dimensionUOM)}</strong>
+                    <strong>${escapeHtml(formatDecimal(fg.dimensions.W, 2, false))} ${escapeHtml(fg.dimensionUOM)}</strong>
                   </div>
                   <div class="dim-box">
                     <div class="field-label">Height</div>
-                    <strong>${escapeHtml(fg.dimensions.H)} ${escapeHtml(fg.dimensionUOM)}</strong>
+                    <strong>${escapeHtml(formatDecimal(fg.dimensions.H, 2, false))} ${escapeHtml(fg.dimensionUOM)}</strong>
                   </div>
                 </div>
               </div>
@@ -3079,10 +3346,13 @@
                   <td>${escapeHtml(formulaLabel)}</td>
                   <td>${formatQty(line.netQty)}</td>
                   <td>
-                    <input class="wastage-input" type="number" min="0" step="1" data-wastage-line="${line.id}" value="${escapeHtml(line.wastagePercent)}" />
+                    <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" />
                   </td>
                   <td>${formatQty(line.grossQty)}</td>
-                  <td>${material ? formatRatePkr(material.purchasingRate, material.rateUOM) : "—"}</td>
+                  <td>
+                    ${material ? formatRatePkr(line.rate, material.rateUOM) : "—"}
+                    ${line.rateSource === "formula" ? `<div class="stat-hint">Rate formula</div>` : ""}
+                  </td>
                   <td>${formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
@@ -3166,7 +3436,9 @@
                   <td>${formatQty(line.quantity)}</td>
                   <td>
                     ${service ? formatRatePkr(service.serviceRate, service.rateUOM) : "—"}
-                    <div class="stat-hint">Rate Source: Service Master (PKR)</div>
+                    <div class="stat-hint">${service && service.formulaId
+                      ? "Bound formula: " + escapeHtml(formatBoundFormulaCode(service.formulaId))
+                      : "Rate Source: Service Master (PKR)"}</div>
                   </td>
                   <td>${formatRupees(line.costPerPiece)}</td>
                   <td>
@@ -3225,8 +3497,8 @@
       const root = document.getElementById("bom-cost-root");
       if (!root) return;
       const total = Number(state.finalCostPerPiece) || 0;
-      const materialPct = total > 0 ? (Number(state.totalMaterialCost) / total) * 100 : 0;
-      const servicePct = total > 0 ? (Number(state.totalServiceCost) / total) * 100 : 0;
+      const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
+      const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
       root.innerHTML = `
         <div class="card cost-summary">
           <div class="card-body">
@@ -3297,7 +3569,7 @@
       const draft = state.modal.draft || {};
       return validateFormula(draft.expression, {
         selfCode: draft.code || null,
-        variables: draft.testValues || {}
+        variables: numericTestValues(draft.testValues || {})
       });
     }
 
@@ -3399,7 +3671,7 @@
             ${test ? `
               <div class="preview-box">
                 ${renderFormulaStatus({ valid: test.success, error: test.error })}
-                ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(test.result)}</strong></div>` : ""}
+                ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(formatFormulaResult(test.result))}</strong></div>` : ""}
               </div>
             ` : ""}
           </div>
@@ -3440,7 +3712,7 @@
           ${test ? `
             <div class="preview-box">
               ${renderFormulaStatus({ valid: test.success, error: test.error })}
-              ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(test.result)}</strong></div>` : ""}
+              ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(formatFormulaResult(test.result))}</strong></div>` : ""}
             </div>
           ` : ""}
         </div>
@@ -3502,7 +3774,7 @@
       if (!state.modal.draft) return;
       const result = evaluateFormula(
         state.modal.draft.expression,
-        state.modal.draft.testValues || {},
+        numericTestValues(state.modal.draft.testValues || {}),
         state.modal.draft.code ? [state.modal.draft.code] : []
       );
       state.modal.draft.testResult = result;
@@ -3522,7 +3794,7 @@
       const duplicate = formulas.find((item) => item.code === code && item.id !== draft.id);
       if (!errors.code && duplicate) errors.code = "Formula Code must be unique.";
 
-      const validation = validateFormula(draft.expression, { selfCode: code, variables: draft.testValues || {} });
+      const validation = validateFormula(draft.expression, { selfCode: code, variables: numericTestValues(draft.testValues || {}) });
       if (!errors.expression && !validation.valid) errors.expression = validation.error;
 
       state.modal.errors = errors;
@@ -3622,12 +3894,12 @@
       if (!String(draft.material || "").trim()) errors.material = "Material is required.";
       if (!String(draft.variant || "").trim()) errors.variant = "Variant is required.";
       if (![1, 2, 3].includes(Number(draft.ply))) errors.ply = "Ply must be 1, 2, or 3.";
-      const L = Number(draft.L);
-      const W = Number(draft.W);
-      const H = Number(draft.H);
-      if (!Number.isFinite(L) || L <= 0) errors.L = "Length must be greater than 0.";
-      if (!Number.isFinite(W) || W <= 0) errors.W = "Width must be greater than 0.";
-      if (!Number.isFinite(H) || H <= 0) errors.H = "Height must be greater than 0.";
+      const L = parseByRule(draft.L, "dimension", { requiredError: "Length must be greater than 0.", minError: "Length must be at least 0.1." });
+      const W = parseByRule(draft.W, "dimension", { requiredError: "Width must be greater than 0.", minError: "Width must be at least 0.1." });
+      const H = parseByRule(draft.H, "dimension", { requiredError: "Height must be greater than 0.", minError: "Height must be at least 0.1." });
+      if (!L.ok) errors.L = L.error;
+      if (!W.ok) errors.W = W.error;
+      if (!H.ok) errors.H = H.error;
       if (!draft.dimensionUOM) errors.dimensionUOM = "Dimension UOM is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
@@ -3685,15 +3957,15 @@
               <label class="form-label">Dimensions</label>
               <div class="dim-input-row">
                 <div>
-                  <input id="fg-dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.L)}" placeholder="Length" />
+                  <input id="fg-dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.L === "" || draft.L == null ? "" : formatDecimal(draft.L, 2, false))}" placeholder="Length" />
                   ${errors.L ? `<div class="field-error">${escapeHtml(errors.L)}</div>` : ""}
                 </div>
                 <div>
-                  <input id="fg-dim-w" class="full-search ${errors.W ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.W)}" placeholder="Width" />
+                  <input id="fg-dim-w" class="full-search ${errors.W ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.W === "" || draft.W == null ? "" : formatDecimal(draft.W, 2, false))}" placeholder="Width" />
                   ${errors.W ? `<div class="field-error">${escapeHtml(errors.W)}</div>` : ""}
                 </div>
                 <div>
-                  <input id="fg-dim-h" class="full-search ${errors.H ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.H)}" placeholder="Height" />
+                  <input id="fg-dim-h" class="full-search ${errors.H ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.H === "" || draft.H == null ? "" : formatDecimal(draft.H, 2, false))}" placeholder="Height" />
                   ${errors.H ? `<div class="field-error">${escapeHtml(errors.H)}</div>` : ""}
                 </div>
               </div>
@@ -3734,9 +4006,9 @@
         material: item.material || "",
         variant: item.variant,
         ply: item.ply,
-        L: item.dimensions.L,
-        W: item.dimensions.W,
-        H: item.dimensions.H,
+        L: formatDecimal(item.dimensions.L, 2, false),
+        W: formatDecimal(item.dimensions.W, 2, false),
+        H: formatDecimal(item.dimensions.H, 2, false),
         dimensionUOM: item.dimensionUOM,
         uom: item.uom,
         status: item.status
@@ -3761,16 +4033,20 @@
       const errors = validateFinishedGoodDraft(draft);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
+      const parsedL = parseByRule(draft.L, "dimension");
+      const parsedW = parseByRule(draft.W, "dimension");
+      const parsedH = parseByRule(draft.H, "dimension");
       const payload = {
         product: String(draft.product).trim(),
         style: String(draft.style).trim(),
         material: String(draft.material).trim(),
         variant: String(draft.variant).trim(),
         ply: Number(draft.ply),
-        dimensions: { L: Number(draft.L), W: Number(draft.W), H: Number(draft.H) },
+        dimensions: { L: parsedL.value, W: parsedW.value, H: parsedH.value },
         dimensionUOM: draft.dimensionUOM,
         uom: draft.uom,
         status: draft.status
@@ -3785,7 +4061,7 @@
         finishedGoods.push(item);
         showNotification("Product added successfully");
       }
-      const dimCode = `${payload.dimensions.L}x${payload.dimensions.W}x${payload.dimensions.H}`;
+      const dimCode = formatDimensionCode(payload.dimensions);
       if (!dimensions.some((dim) => (dim.code === dimCode || dim.name === dimCode) && (dim.uom === payload.dimensionUOM || dim.unit === payload.dimensionUOM))) {
         dimensions.push({
           id: nextMasterId(dimensions),
@@ -3814,9 +4090,9 @@
       else if (target.id === "fg-material") draft.material = target.value;
       else if (target.id === "fg-variant") draft.variant = target.value;
       else if (target.id === "fg-ply") draft.ply = Number(target.value);
-      else if (target.id === "fg-dim-l") draft.L = target.value === "" ? "" : Number(target.value);
-      else if (target.id === "fg-dim-w") draft.W = target.value === "" ? "" : Number(target.value);
-      else if (target.id === "fg-dim-h") draft.H = target.value === "" ? "" : Number(target.value);
+      else if (target.id === "fg-dim-l") draft.L = target.value;
+      else if (target.id === "fg-dim-w") draft.W = target.value;
+      else if (target.id === "fg-dim-h") draft.H = target.value;
       else if (target.id === "fg-dim-uom") draft.dimensionUOM = target.value;
       else if (target.id === "fg-uom") draft.uom = target.value;
       else if (target.id === "fg-status") draft.status = target.value;
@@ -3833,6 +4109,8 @@
         purchasingRate: "",
         rateUOM: "kg",
         gsm: "",
+        qtyFormulaId: null,
+        rateFormulaId: null,
         status: "Active"
       };
     }
@@ -3846,12 +4124,12 @@
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.category) errors.category = "Category is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
-      const rate = Number(draft.purchasingRate);
-      if (!Number.isFinite(rate) || rate <= 0) errors.purchasingRate = "Purchasing rate must be greater than 0.";
+      const rate = parseByRule(draft.purchasingRate, "rate", { requiredError: "Purchasing rate must be greater than 0." });
+      if (!rate.ok) errors.purchasingRate = rate.error;
       if (!draft.rateUOM) errors.rateUOM = "Rate UOM is required.";
       if ((draft.category === "Paper" || draft.category === "Board") && draft.gsm !== "" && draft.gsm != null) {
-        const gsm = Number(draft.gsm);
-        if (!Number.isFinite(gsm) || gsm <= 0) errors.gsm = "GSM must be greater than 0.";
+        const gsm = parseByRule(draft.gsm, "gsm", { requiredError: "GSM must be greater than 0." });
+        if (!gsm.ok) errors.gsm = gsm.error;
       }
       if (!draft.status) errors.status = "Status is required.";
       return errors;
@@ -3895,7 +4173,7 @@
             </div>
             <div>
               <label class="form-label" for="rm-rate">Purchasing Rate (PKR)</label>
-              <input id="rm-rate" class="full-search ${errors.purchasingRate ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.purchasingRate)}" placeholder="150.50" />
+              <input id="rm-rate" class="full-search ${errors.purchasingRate ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.purchasingRate === "" || draft.purchasingRate == null ? "" : formatDecimal(draft.purchasingRate, 2, true))}" placeholder="150.50" />
               ${errors.purchasingRate ? `<div class="field-error">${escapeHtml(errors.purchasingRate)}</div>` : ""}
             </div>
             <div>
@@ -3906,10 +4184,24 @@
                 `).join("")}
               </select>
             </div>
+            <div>
+              <label class="form-label" for="rm-qty-formula">Quantity Formula</label>
+              <select id="rm-qty-formula" class="full-select">
+                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId)}
+              </select>
+              <p class="stat-hint" style="margin-top:6px;">Optional. Used to auto-fill quantity in the BOM editor.</p>
+            </div>
+            <div>
+              <label class="form-label" for="rm-rate-formula">Rate Formula</label>
+              <select id="rm-rate-formula" class="full-select">
+                ${renderBoundFormulaOptions("Material", draft.rateFormulaId)}
+              </select>
+              <p class="stat-hint" style="margin-top:6px;">Optional. Used to auto-calculate the material rate in the BOM.</p>
+            </div>
             ${showGsm ? `
               <div>
                 <label class="form-label" for="rm-gsm">GSM (Basis Weight)</label>
-                <input id="rm-gsm" class="full-search ${errors.gsm ? "input-invalid" : ""}" type="number" min="0" step="1" value="${escapeHtml(draft.gsm)}" placeholder="Optional" />
+                <input id="rm-gsm" class="full-search ${errors.gsm ? "input-invalid" : ""}" type="number" min="1" max="999" step="0.1" value="${escapeHtml(draft.gsm === "" || draft.gsm == null ? "" : formatDecimal(draft.gsm, 1, false))}" placeholder="Optional" />
                 ${errors.gsm ? `<div class="field-error">${escapeHtml(errors.gsm)}</div>` : ""}
               </div>
             ` : ""}
@@ -3936,9 +4228,11 @@
         name: item.name,
         category: item.category,
         uom: item.uom,
-        purchasingRate: item.purchasingRate,
+        purchasingRate: formatDecimal(item.purchasingRate, 2, true),
         rateUOM: item.rateUOM,
-        gsm: item.gsm == null ? "" : item.gsm,
+        gsm: item.gsm == null ? "" : formatDecimal(item.gsm, 1, false),
+        qtyFormulaId: normalizeFormulaBinding(item.qtyFormulaId),
+        rateFormulaId: normalizeFormulaBinding(item.rateFormulaId),
         status: item.status
       };
     }
@@ -3961,18 +4255,23 @@
       const errors = validateRawMaterialDraft(draft);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
       const showGsm = draft.category === "Paper" || draft.category === "Board";
+      const parsedRate = parseByRule(draft.purchasingRate, "rate");
+      const parsedGsm = showGsm && draft.gsm !== "" && draft.gsm != null ? parseByRule(draft.gsm, "gsm") : null;
       const payload = {
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         category: draft.category,
         uom: draft.uom,
-        purchasingRate: Number(draft.purchasingRate),
+        purchasingRate: parsedRate.value,
         rateUOM: draft.rateUOM,
-        gsm: showGsm && draft.gsm !== "" && draft.gsm != null ? Number(draft.gsm) : null,
+        gsm: parsedGsm && parsedGsm.ok ? parsedGsm.value : null,
+        qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
+        rateFormulaId: normalizeFormulaBinding(draft.rateFormulaId),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -3996,9 +4295,11 @@
       else if (target.id === "rm-name") draft.name = target.value;
       else if (target.id === "rm-category") draft.category = target.value;
       else if (target.id === "rm-uom") draft.uom = target.value;
-      else if (target.id === "rm-rate") draft.purchasingRate = target.value === "" ? "" : Number(target.value);
+      else if (target.id === "rm-rate") draft.purchasingRate = target.value;
       else if (target.id === "rm-rate-uom") draft.rateUOM = target.value;
-      else if (target.id === "rm-gsm") draft.gsm = target.value === "" ? "" : Number(target.value);
+      else if (target.id === "rm-gsm") draft.gsm = target.value;
+      else if (target.id === "rm-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "rm-rate-formula") draft.rateFormulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "rm-status") draft.status = target.value;
       else return false;
       return true;
@@ -4011,6 +4312,7 @@
         uom: "pieces",
         serviceRate: "",
         rateUOM: "piece",
+        formulaId: null,
         status: "Active"
       };
     }
@@ -4022,8 +4324,8 @@
       else if (services.some((item) => item.code.toUpperCase() === code && item.id !== draft.id)) errors.code = "Code must be unique.";
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
-      const rate = Number(draft.serviceRate);
-      if (!Number.isFinite(rate) || rate <= 0) errors.serviceRate = "Service rate must be greater than 0.";
+      const rate = parseByRule(draft.serviceRate, "rate", { requiredError: "Service rate must be greater than 0." });
+      if (!rate.ok) errors.serviceRate = rate.error;
       if (!draft.rateUOM) errors.rateUOM = "Rate UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
       return errors;
@@ -4060,7 +4362,7 @@
             </div>
             <div>
               <label class="form-label" for="srv-rate">Service Rate (PKR)</label>
-              <input id="srv-rate" class="full-search ${errors.serviceRate ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.serviceRate)}" placeholder="2.50" />
+              <input id="srv-rate" class="full-search ${errors.serviceRate ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.serviceRate === "" || draft.serviceRate == null ? "" : formatDecimal(draft.serviceRate, 2, true))}" placeholder="2.50" />
               ${errors.serviceRate ? `<div class="field-error">${escapeHtml(errors.serviceRate)}</div>` : ""}
             </div>
             <div>
@@ -4070,6 +4372,13 @@
                   <option value="${value}" ${draft.rateUOM === value ? "selected" : ""}>${label}</option>
                 `).join("")}
               </select>
+            </div>
+            <div>
+              <label class="form-label" for="srv-formula">Formula</label>
+              <select id="srv-formula" class="full-select">
+                ${renderBoundFormulaOptions("Service", draft.formulaId)}
+              </select>
+              <p class="stat-hint" style="margin-top:6px;">Optional. Used to auto-fill the service formula in the BOM editor.</p>
             </div>
             <div>
               <label class="form-label" for="srv-status">Status</label>
@@ -4093,8 +4402,9 @@
         code: item.code,
         name: item.name,
         uom: item.uom,
-        serviceRate: item.serviceRate,
+        serviceRate: formatDecimal(item.serviceRate, 2, true),
         rateUOM: item.rateUOM,
+        formulaId: normalizeFormulaBinding(item.formulaId),
         status: item.status
       };
     }
@@ -4117,15 +4427,18 @@
       const errors = validateServiceMasterDraft(draft);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
+      const parsedRate = parseByRule(draft.serviceRate, "rate");
       const payload = {
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         uom: draft.uom,
-        serviceRate: Number(draft.serviceRate),
+        serviceRate: parsedRate.value,
         rateUOM: draft.rateUOM,
+        formulaId: normalizeFormulaBinding(draft.formulaId),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -4148,8 +4461,9 @@
       if (target.id === "srv-code") draft.code = target.value.toUpperCase();
       else if (target.id === "srv-name") draft.name = target.value;
       else if (target.id === "srv-uom") draft.uom = target.value;
-      else if (target.id === "srv-rate") draft.serviceRate = target.value === "" ? "" : Number(target.value);
+      else if (target.id === "srv-rate") draft.serviceRate = target.value;
       else if (target.id === "srv-rate-uom") draft.rateUOM = target.value;
+      else if (target.id === "srv-formula") draft.formulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "srv-status") draft.status = target.value;
       else return false;
       return true;
@@ -4159,8 +4473,80 @@
       return {
         name: "",
         description: "",
-        status: "Active"
+        status: "Active",
+        pendingVariables: []
       };
+    }
+
+    function nextPendingStyleVarKey() {
+      return "pv-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+    }
+
+    function createPendingStyleVariable() {
+      return {
+        key: nextPendingStyleVarKey(),
+        variableCode: "",
+        value: "",
+        unit: "",
+        errors: {}
+      };
+    }
+
+    function renderPendingStyleVariables() {
+      const draft = state.modal.draft || {};
+      const rows = Array.isArray(draft.pendingVariables) ? draft.pendingVariables : [];
+      const used = new Set(rows.map((row) => row.variableCode).filter(Boolean));
+      const catalog = getActiveFormulaVariables();
+      const body = rows.length
+        ? rows.map((row) => {
+            const options = catalog.filter((item) => !used.has(item.code) || item.code === row.variableCode);
+            const errors = row.errors || {};
+            return `
+              <div class="style-var-row" data-pending-var="${escapeHtml(row.key)}">
+                <div>
+                  <label class="form-label" for="pending-var-code-${escapeHtml(row.key)}">Variable Code</label>
+                  <select id="pending-var-code-${escapeHtml(row.key)}" class="full-select ${errors.variableCode ? "input-invalid" : ""}" data-pending-var-code="${escapeHtml(row.key)}">
+                    <option value="">Select a variable...</option>
+                    ${options.map((item) => `
+                      <option value="${escapeHtml(item.code)}" ${row.variableCode === item.code ? "selected" : ""}>
+                        ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
+                      </option>
+                    `).join("")}
+                  </select>
+                  ${errors.variableCode ? `<div class="field-error">${escapeHtml(errors.variableCode)}</div>` : ""}
+                </div>
+                <div>
+                  <label class="form-label style-var-row-label" for="pending-var-value-${escapeHtml(row.key)}">Value</label>
+                  <input id="pending-var-value-${escapeHtml(row.key)}" class="full-search ${errors.value ? "input-invalid" : ""}" type="number" step="0.0001" data-pending-var-value="${escapeHtml(row.key)}" value="${escapeHtml(row.value === "" || row.value == null ? "" : row.value)}" placeholder="0" />
+                  ${errors.value ? `<div class="field-error">${escapeHtml(errors.value)}</div>` : ""}
+                </div>
+                <div>
+                  <label class="form-label style-var-row-label">Unit</label>
+                  <input class="full-search" value="${escapeHtml(row.unit || "")}" placeholder="Unit" disabled />
+                </div>
+                <div class="style-var-row-actions">
+                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-remove-pending-var="${escapeHtml(row.key)}" title="Remove variable">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                </div>
+              </div>
+            `;
+          }).join("")
+        : `<div class="style-var-empty">No variables yet. Variables are optional — add them now or later from Edit Style.</div>`;
+      return `
+        <div class="style-var-composer">
+          <div class="section-head">
+            <div>
+              <div class="section-kicker">Style variables</div>
+              <p class="stat-hint" style="margin:4px 0 0;">Optional. Choose a formula variable, enter its value, then save with the style.</p>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-add-pending-style-variable">
+              <i data-lucide="plus"></i> Add Variable
+            </button>
+          </div>
+          <div class="style-var-list">${body}</div>
+        </div>
+      `;
     }
 
     function validateStyleDraft(draft) {
@@ -4207,7 +4593,7 @@
               <tr>
                 <td class="mono">${escapeHtml(row.variableCode)}</td>
                 <td>${escapeHtml(catalog ? catalog.name : row.variableCode)}</td>
-                <td>${escapeHtml(row.value)}</td>
+                <td>${escapeHtml(formatDecimal(row.value, 4, false))}</td>
                 <td>${escapeHtml(row.unit || (catalog && catalog.unit) || "")}</td>
                 ${masterRowActions("data-edit-style-var", row.id, "data-delete-style-var", row.id)}
               </tr>
@@ -4251,7 +4637,7 @@
               <button type="button" class="section-tab ${tab === "variables" ? "active" : ""}" data-style-tab="variables">Variables</button>
             </div>
             ${tab === "variables" ? variablesForm : infoForm}
-          ` : infoForm}
+          ` : `${infoForm}${renderPendingStyleVariables()}`}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
@@ -4305,12 +4691,86 @@
         afterDataChange("styles", "finishedGoods");
         return;
       }
-      styles.push({ id: nextMasterId(styles), ...payload });
+      const pending = (draft.pendingVariables || []).filter((row) =>
+        String(row.variableCode || "").trim() || String(row.value ?? "").trim() !== ""
+      );
+      let pendingInvalid = false;
+      const usedCodes = new Set();
+      pending.forEach((row) => {
+        row.errors = {};
+        if (!row.variableCode) row.errors.variableCode = "Variable is required.";
+        const parsed = parseByRule(row.value, "variable", { requiredError: "Value is required." });
+        if (!parsed.ok) row.errors.value = parsed.error;
+        if (row.variableCode && usedCodes.has(row.variableCode)) row.errors.variableCode = "Variable already added.";
+        if (row.variableCode) usedCodes.add(row.variableCode);
+        row.parsedValue = parsed.ok ? parsed.value : null;
+        if (Object.keys(row.errors).length) pendingInvalid = true;
+      });
+      if (pendingInvalid) {
+        showNotification("Please fix style variable errors", "error");
+        renderModal();
+        refreshIcons();
+        return;
+      }
+      const styleId = nextMasterId(styles);
+      styles.push({ id: styleId, ...payload });
+      pending.forEach((row) => {
+        const catalog = getFormulaVariableByCode(row.variableCode);
+        styleVariables.push({
+          id: nextMasterId(styleVariables),
+          styleId,
+          variableCode: row.variableCode,
+          value: row.parsedValue,
+          unit: catalog ? catalog.unit : row.unit
+        });
+      });
       closeModal();
       renderStyles();
       refreshIcons();
-      showNotification("Style added successfully");
-      afterDataChange("styles");
+      showNotification(
+        pending.length
+          ? "Style added with " + pending.length + " variable" + (pending.length === 1 ? "" : "s")
+          : "Style added successfully"
+      );
+      afterDataChange("styles", "styleVariables");
+    }
+
+    function addPendingStyleVariable() {
+      if (!state.modal.draft) return;
+      if (!Array.isArray(state.modal.draft.pendingVariables)) state.modal.draft.pendingVariables = [];
+      state.modal.draft.pendingVariables.push(createPendingStyleVariable());
+      renderModal();
+      refreshIcons();
+    }
+
+    function removePendingStyleVariable(key) {
+      if (!state.modal.draft || !Array.isArray(state.modal.draft.pendingVariables)) return;
+      state.modal.draft.pendingVariables = state.modal.draft.pendingVariables.filter((row) => row.key !== key);
+      renderModal();
+      refreshIcons();
+    }
+
+    function updatePendingStyleVariableFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "style-master" || state.modal.mode !== "add") return false;
+      const rows = state.modal.draft.pendingVariables || [];
+      const codeKey = target.dataset.pendingVarCode;
+      const valueKey = target.dataset.pendingVarValue;
+      if (!codeKey && !valueKey) return false;
+      const row = rows.find((item) => item.key === (codeKey || valueKey));
+      if (!row) return false;
+      if (codeKey) {
+        row.variableCode = target.value;
+        const catalog = getFormulaVariableByCode(target.value);
+        row.unit = catalog ? catalog.unit : "";
+        if (catalog && (row.value === "" || row.value == null) && catalog.defaultValue != null) {
+          row.value = catalog.defaultValue;
+        }
+        if (row.errors) row.errors.variableCode = "";
+        return "rerender";
+      }
+      row.value = target.value;
+      if (row.errors) row.errors.value = "";
+      return true;
     }
 
     function updateStyleDraftFromEvent(target) {
@@ -4357,7 +4817,7 @@
             </div>
             <div>
               <label class="form-label" for="svar-value">Value</label>
-              <input id="svar-value" class="full-search ${errors.value ? "input-invalid" : ""}" type="number" step="any" value="${escapeHtml(draft.value)}" />
+              <input id="svar-value" class="full-search ${errors.value ? "input-invalid" : ""}" type="number" step="0.0001" value="${escapeHtml(draft.value === "" || draft.value == null ? "" : formatDecimal(draft.value, 4, false))}" />
               ${errors.value ? `<div class="field-error">${escapeHtml(errors.value)}</div>` : ""}
             </div>
             <div>
@@ -4393,13 +4853,15 @@
       const draft = sub.draft;
       const errors = {};
       if (!draft.variableCode) errors.variableCode = "Variable is required.";
-      const value = Number(draft.value);
-      if (!Number.isFinite(value)) errors.value = "Value is required.";
+      const parsedValue = parseByRule(draft.value, "variable", { requiredError: "Value is required." });
+      if (!parsedValue.ok) errors.value = parsedValue.error;
       sub.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
+      const value = parsedValue.value;
       const catalog = getFormulaVariableByCode(draft.variableCode);
       const unit = catalog ? catalog.unit : draft.unit;
       if (sub.mode === "edit" && draft.id) {
@@ -4437,7 +4899,7 @@
         return true;
       }
       if (target.id === "svar-value") {
-        draft.value = target.value === "" ? "" : Number(target.value);
+        draft.value = target.value;
         return true;
       }
       return false;
@@ -4462,22 +4924,26 @@
       };
     }
 
-    function formatDimensionCode(draft) {
-      return `${draft.L}x${draft.W}x${draft.H}`;
+    function formatDimensionCode(L, W, H) {
+      const source = (L !== null && typeof L === "object" && !Array.isArray(L)) ? L : { L, W, H };
+      return [source.L, source.W, source.H].map((part) => {
+        const n = Number(part);
+        return Number.isFinite(n) ? formatDecimal(n, 2, false) : "";
+      }).join("x");
     }
 
     function validateDimensionDraft(draft) {
       const errors = {};
-      const L = Number(draft.L);
-      const W = Number(draft.W);
-      const H = Number(draft.H);
-      if (!Number.isFinite(L) || L <= 0) errors.L = "Length must be greater than 0.";
-      if (!Number.isFinite(W) || W <= 0) errors.W = "Width must be greater than 0.";
-      if (!Number.isFinite(H) || H <= 0) errors.H = "Height must be greater than 0.";
+      const L = parseByRule(draft.L, "dimension", { requiredError: "Length must be greater than 0.", minError: "Length must be at least 0.1." });
+      const W = parseByRule(draft.W, "dimension", { requiredError: "Width must be greater than 0.", minError: "Width must be at least 0.1." });
+      const H = parseByRule(draft.H, "dimension", { requiredError: "Height must be greater than 0.", minError: "Height must be at least 0.1." });
+      if (!L.ok) errors.L = L.error;
+      if (!W.ok) errors.W = W.error;
+      if (!H.ok) errors.H = H.error;
       if (!draft.uom) errors.uom = "UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
       if (!errors.L && !errors.W && !errors.H && draft.uom) {
-        const code = formatDimensionCode({ L, W, H });
+        const code = formatDimensionCode(L.value, W.value, H.value);
         if (dimensions.some((item) => (item.code === code || item.name === code) && (item.uom === draft.uom || item.unit === draft.uom) && item.id !== draft.id)) {
           errors.duplicate = "This dimension already exists.";
         }
@@ -4488,8 +4954,11 @@
     function renderDimensionFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
-      const previewCode = Number(draft.L) > 0 && Number(draft.W) > 0 && Number(draft.H) > 0
-        ? formatDimensionCode(draft)
+      const previewL = parseByRule(draft.L, "dimension");
+      const previewW = parseByRule(draft.W, "dimension");
+      const previewH = parseByRule(draft.H, "dimension");
+      const previewCode = previewL.ok && previewW.ok && previewH.ok
+        ? formatDimensionCode(previewL.value, previewW.value, previewH.value)
         : "—";
       return `
         <div class="modal-header">
@@ -4519,15 +4988,15 @@
               <label class="form-label">Values</label>
               <div class="dim-input-row">
                 <div>
-                  <input id="dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.L)}" placeholder="Length" />
+                  <input id="dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.L === "" || draft.L == null ? "" : formatDecimal(draft.L, 2, false))}" placeholder="Length" />
                   ${errors.L ? `<div class="field-error">${escapeHtml(errors.L)}</div>` : ""}
                 </div>
                 <div>
-                  <input id="dim-w" class="full-search ${errors.W ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.W)}" placeholder="Width" />
+                  <input id="dim-w" class="full-search ${errors.W ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.W === "" || draft.W == null ? "" : formatDecimal(draft.W, 2, false))}" placeholder="Width" />
                   ${errors.W ? `<div class="field-error">${escapeHtml(errors.W)}</div>` : ""}
                 </div>
                 <div>
-                  <input id="dim-h" class="full-search ${errors.H ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.H)}" placeholder="Height" />
+                  <input id="dim-h" class="full-search ${errors.H ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.H === "" || draft.H == null ? "" : formatDecimal(draft.H, 2, false))}" placeholder="Height" />
                   ${errors.H ? `<div class="field-error">${escapeHtml(errors.H)}</div>` : ""}
                 </div>
               </div>
@@ -4560,7 +5029,7 @@
         mode: item ? "edit" : "add",
         lineId: null,
         draft: item
-          ? { id: item.id, name: item.name || item.code, description: item.description || "", L: item.L, W: item.W, H: item.H, uom: item.unit || item.uom, status: item.status }
+          ? { id: item.id, name: item.name || item.code, description: item.description || "", L: formatDecimal(item.L, 2, false), W: formatDecimal(item.W, 2, false), H: formatDecimal(item.H, 2, false), uom: item.unit || item.uom, status: item.status }
           : defaultDimensionDraft(),
         errors: {}
       };
@@ -4572,17 +5041,22 @@
       const errors = validateDimensionDraft(draft);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
-      const code = formatDimensionCode({ L: Number(draft.L), W: Number(draft.W), H: Number(draft.H) });
+      const parsedL = parseByRule(draft.L, "dimension");
+      const parsedW = parseByRule(draft.W, "dimension");
+      const parsedH = parseByRule(draft.H, "dimension");
+      const code = formatDimensionCode(parsedL.value, parsedW.value, parsedH.value);
+      const typedName = String(draft.name || "").trim();
       const payload = {
-        name: String(draft.name || code).trim() || code,
+        name: !typedName || /^\d+(\.\d+)?x\d+(\.\d+)?x\d+(\.\d+)?$/i.test(typedName) ? code : typedName,
         description: String(draft.description || "").trim(),
         code,
-        L: Number(draft.L),
-        W: Number(draft.W),
-        H: Number(draft.H),
+        L: parsedL.value,
+        W: parsedW.value,
+        H: parsedH.value,
         uom: draft.uom,
         unit: draft.uom,
         status: draft.status
@@ -4606,9 +5080,9 @@
       const draft = state.modal.draft;
       if (target.id === "dim-name") draft.name = target.value;
       else if (target.id === "dim-description") draft.description = target.value;
-      else if (target.id === "dim-l") draft.L = target.value === "" ? "" : Number(target.value);
-      else if (target.id === "dim-w") draft.W = target.value === "" ? "" : Number(target.value);
-      else if (target.id === "dim-h") draft.H = target.value === "" ? "" : Number(target.value);
+      else if (target.id === "dim-l") draft.L = target.value;
+      else if (target.id === "dim-w") draft.W = target.value;
+      else if (target.id === "dim-h") draft.H = target.value;
       else if (target.id === "dim-uom") draft.uom = target.value;
       else if (target.id === "dim-status") draft.status = target.value;
       else return false;
@@ -4639,6 +5113,10 @@
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.category) errors.category = "Category is required.";
       if (!draft.dataType) errors.dataType = "Data type is required.";
+      if (draft.dataType === "numeric" && draft.defaultValue !== "" && draft.defaultValue != null) {
+        const parsed = parseByRule(draft.defaultValue, "variable");
+        if (!parsed.ok) errors.defaultValue = parsed.error;
+      }
       return errors;
     }
 
@@ -4691,7 +5169,8 @@
             </div>
             <div>
               <label class="form-label" for="fvar-default">Default Value</label>
-              <input id="fvar-default" class="full-search" value="${escapeHtml(draft.defaultValue)}" />
+              <input id="fvar-default" class="full-search ${errors.defaultValue ? "input-invalid" : ""}" value="${escapeHtml(draft.defaultValue)}" />
+              ${errors.defaultValue ? `<div class="field-error">${escapeHtml(errors.defaultValue)}</div>` : ""}
             </div>
             <div>
               <label class="form-label" for="fvar-status">Status</label>
@@ -4729,8 +5208,14 @@
       const errors = validateFormulaVariableDraft(draft);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
+      }
+      let defaultValue = draft.defaultValue === "" ? null : draft.defaultValue;
+      if (draft.dataType === "numeric" && defaultValue != null) {
+        const parsed = parseByRule(defaultValue, "variable");
+        defaultValue = parsed.ok ? parsed.value : defaultValue;
       }
       const payload = {
         name: String(draft.name).trim(),
@@ -4738,7 +5223,7 @@
         category: draft.category,
         dataType: draft.dataType,
         unit: draft.unit,
-        defaultValue: draft.defaultValue === "" ? null : draft.defaultValue,
+        defaultValue,
         isActive: draft.isActive !== false
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -4902,11 +5387,15 @@
     function defaultMaterialDraft(line) {
       const sheetWeight = getFormulaByCode("SHEET_WEIGHT");
       if (line) {
+        const material = getRawMaterial(line.rawMaterialId);
         return {
           rawMaterialId: line.rawMaterialId,
           layer: line.layer,
           calculationMethod: line.calculationMethod,
           formulaId: line.formulaId || (sheetWeight ? sheetWeight.id : null),
+          rateFormulaId: line.rateFormulaId !== undefined
+            ? normalizeFormulaBinding(line.rateFormulaId)
+            : (material ? normalizeFormulaBinding(material.rateFormulaId) : null),
           manualQty: line.manualQty,
           wastagePercent: line.wastagePercent
         };
@@ -4918,6 +5407,7 @@
         layer: layers[0],
         calculationMethod: "formula",
         formulaId: sheetWeight ? sheetWeight.id : null,
+        rateFormulaId: null,
         manualQty: null,
         wastagePercent: DEFAULT_WASTAGE_PERCENT
       };
@@ -4939,14 +5429,14 @@
         if (!draft.formulaId) errors.formulaId = "Formula is required when Formula method is selected.";
         else if (!selectedFormula || !selectedFormula.isActive) errors.formulaId = "Selected formula is not valid or is inactive.";
       } else {
-        const qty = Number(draft.manualQty);
-        if (!Number.isFinite(qty) || qty <= 0) errors.manualQty = "Manual quantity must be greater than 0.";
+        const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Manual quantity must be greater than 0." });
+        if (!qty.ok) errors.manualQty = qty.error;
       }
       if (material && !Number.isFinite(Number(material.purchasingRate))) {
         errors.rate = "Purchasing rate from the Raw Material Master is not valid.";
       }
-      const wastage = Number(draft.wastagePercent);
-      if (Number.isNaN(wastage) || wastage < 0) errors.wastagePercent = "Wastage cannot be negative.";
+      const wastage = parseByRule(draft.wastagePercent, "wastage", { requiredError: "Wastage cannot be negative." });
+      if (!wastage.ok) errors.wastagePercent = wastage.error;
       if (draft.rawMaterialId && draft.layer && findDuplicateMaterial(draft.rawMaterialId, draft.layer, lineId)) {
         errors.duplicate = "This material is already added to the selected layer.";
       }
@@ -4957,6 +5447,7 @@
           layer: draft.layer,
           calculationMethod: draft.calculationMethod,
           formulaId: draft.formulaId,
+          rateFormulaId: draft.rateFormulaId,
           manualQty: draft.manualQty,
           wastagePercent: draft.wastagePercent,
           netQty: 0,
@@ -4980,6 +5471,7 @@
         layer: draft.layer,
         calculationMethod: draft.calculationMethod,
         formulaId: draft.formulaId,
+        rateFormulaId: draft.rateFormulaId,
         manualQty: draft.manualQty,
         wastagePercent: draft.wastagePercent,
         netQty: 0,
@@ -5026,7 +5518,7 @@
             </div>
             ${draft.calculationMethod === "formula" ? `
               <div>
-                <label class="form-label" for="modal-formula-select">Formula</label>
+                <label class="form-label" for="modal-formula-select">Quantity Formula</label>
                 <select id="modal-formula-select" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
                   <option value="">Select a formula...</option>
                   ${getMaterialFormulas().map((item) => `
@@ -5042,13 +5534,20 @@
             ` : `
               <div>
                 <label class="form-label" for="modal-manual-qty">Net Quantity</label>
-                <input id="modal-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty ?? ""}" />
+                <input id="modal-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" />
                 ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
               </div>
             `}
             <div>
+              <label class="form-label" for="modal-rate-formula-select">Rate Formula</label>
+              <select id="modal-rate-formula-select" class="full-select">
+                ${renderBoundFormulaOptions("Material", draft.rateFormulaId)}
+              </select>
+              <p class="stat-hint" style="margin-top:6px;">Optional override of the material's bound rate formula.</p>
+            </div>
+            <div>
               <label class="form-label" for="modal-wastage">Wastage %</label>
-              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" step="1" value="${escapeHtml(draft.wastagePercent)}" />
+              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(draft.wastagePercent === "" || draft.wastagePercent == null ? "" : formatDecimal(draft.wastagePercent, 2, false))}" />
               ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
             </div>
           </div>
@@ -5056,12 +5555,15 @@
             <div class="detail-list">
               <div><span>Material Name</span><strong>${escapeHtml(material.name)}</strong></div>
               <div><span>Code</span><strong class="mono">${escapeHtml(material.code)}</strong></div>
-              <div><span>GSM</span><strong>${material.gsm === null ? "—" : escapeHtml(material.gsm)}</strong></div>
+              <div><span>GSM</span><strong>${material.gsm === null ? "—" : escapeHtml(formatDecimal(material.gsm, 1, false))}</strong></div>
               <div><span>UOM</span><strong>${escapeHtml(material.uom)}</strong></div>
               <div><span>Purchasing Rate</span><strong>${formatRatePkr(material.purchasingRate, material.rateUOM)}</strong></div>
+              <div><span>Bound Qty / Rate Formula</span><strong class="mono">${escapeHtml(formatBoundFormulaCode(material.qtyFormulaId))} / ${escapeHtml(formatBoundFormulaCode(material.rateFormulaId))}</strong></div>
               <div><span>Qty UOM</span><strong>${escapeHtml(material.uom)}</strong></div>
             </div>
-            <div class="rate-source">Rate Source: Purchasing Rate (PKR). Wastage is applied before unit conversion.</div>
+            <div class="rate-source">${preview && preview.rateSource === "formula"
+              ? "Rate Source: Rate Formula (" + escapeHtml(formatBoundFormulaCode(preview.rateFormulaId)) + ")."
+              : "Rate Source: Purchasing Rate (PKR)."} Wastage is applied before unit conversion.</div>
           ` : ""}
           ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
           ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
@@ -5102,22 +5604,24 @@
           <div class="detail-list">
             <div><span>Material</span><strong>${escapeHtml(material ? material.name : "—")}</strong></div>
             <div><span>Finished Good</span><strong>${escapeHtml(fg.product)} — ${escapeHtml(fg.variant)}</strong></div>
-            <div><span>Dimensions</span><strong>L = ${escapeHtml(fg.dimensions.L)} &nbsp; W = ${escapeHtml(fg.dimensions.W)} &nbsp; H = ${escapeHtml(fg.dimensions.H)}</strong></div>
-            <div><span>GSM</span><strong>${material && material.gsm != null ? escapeHtml(material.gsm) : "—"}</strong></div>
-            <div><span>Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "Manual"}</strong></div>
-            <div><span>Formula Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
+            <div><span>Dimensions</span><strong>L = ${escapeHtml(formatDecimal(fg.dimensions.L, 2, false))} &nbsp; W = ${escapeHtml(formatDecimal(fg.dimensions.W, 2, false))} &nbsp; H = ${escapeHtml(formatDecimal(fg.dimensions.H, 2, false))}</strong></div>
+            <div><span>GSM</span><strong>${material && material.gsm != null ? escapeHtml(formatDecimal(material.gsm, 1, false)) : "—"}</strong></div>
+            <div><span>Quantity Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "Manual"}</strong></div>
+            <div><span>Quantity Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
+            <div><span>Rate Formula</span><strong>${escapeHtml(formatBoundFormulaCode(resolveRateFormulaId(line, material)))}</strong></div>
             <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
-            <div><span>Wastage</span><strong>${escapeHtml(line.wastagePercent)}%</strong></div>
+            <div><span>Wastage</span><strong>${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}%</strong></div>
             <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
             <div><span>Qty at rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(material.rateUOM) : "")}</strong></div>
             <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(material.purchasingRate, material.rateUOM) : "—"}</strong></div>
+            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, material ? material.rateUOM : "")}${line.rateSource === "formula" ? " (formula)" : " (master)"}</strong></div>
             ${material && normalizeUnit(material.uom) !== normalizeUnit(material.rateUOM) ? `<div><span>Equivalent rate in ${escapeHtml(material.uom)}</span><strong>${formatRatePkr(convertRate(material.purchasingRate, material.rateUOM, material.uom, material.gsm), material.uom)}</strong></div>` : ""}
             <div><span>Material Cost</span><strong>${formatCurrency(line.costPerPiece)}</strong></div>
           </div>
           <div class="section-kicker" style="margin-top:14px;">Variables</div>
           <div class="var-grid">
             ${Object.entries(variables).map(([key, value]) => `
-              <div><span class="mono">${escapeHtml(key)}</span> = <strong>${value === null || value === undefined ? "—" : escapeHtml(value)}</strong></div>
+              <div><span class="mono">${escapeHtml(key)}</span> = <strong>${value === null || value === undefined ? "—" : escapeHtml(formatFormulaResult(value))}</strong></div>
             `).join("")}
           </div>
         </div>
@@ -5155,7 +5659,7 @@
       }
 
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit"));
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable");
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || (state.modal.type === "style-master" && state.modal.mode === "add"));
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -5269,6 +5773,7 @@
       const errors = validateMaterialDraft(draft, state.modal.lineId);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
@@ -5279,8 +5784,9 @@
         layer: draft.layer,
         calculationMethod: draft.calculationMethod,
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
-        manualQty: draft.calculationMethod === "manual" ? Number(draft.manualQty) : null,
-        wastagePercent: Number(draft.wastagePercent),
+        rateFormulaId: normalizeFormulaBinding(draft.rateFormulaId),
+        manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
+        wastagePercent: parseByRule(draft.wastagePercent, "wastage").value,
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -5308,10 +5814,15 @@
     }
 
     function updateLineWastage(lineId, value) {
-      const wastage = Number(value);
+      const parsed = parseByRule(value === "" ? "0" : value, "wastage");
+      if (!parsed.ok) {
+        showNotification(parsed.error, "error");
+        refreshBomViews();
+        return;
+      }
       state.bomMaterials = state.bomMaterials.map((line) => {
         if (line.id !== Number(lineId)) return line;
-        return { ...line, wastagePercent: wastage };
+        return { ...line, wastagePercent: parsed.value };
       });
       recalculateBOMCosts();
       refreshBomViews();
@@ -5321,13 +5832,23 @@
     function updateMaterialDraftFromEvent(target) {
       if (!state.modal.draft) return false;
       const draft = state.modal.draft;
-      if (target.id === "modal-material-select") draft.rawMaterialId = target.value ? Number(target.value) : null;
+      if (target.id === "modal-material-select") {
+        draft.rawMaterialId = target.value ? Number(target.value) : null;
+        applyMaterialFormulaBindings(draft);
+      }
       else if (target.id === "modal-layer-select") draft.layer = target.value;
       else if (target.id === "modal-method-select") draft.calculationMethod = target.value;
       else if (target.id === "modal-formula-select") draft.formulaId = target.value ? Number(target.value) : null;
-      else if (target.id === "modal-manual-qty") draft.manualQty = target.value === "" ? null : Number(target.value);
-      else if (target.id === "modal-wastage") draft.wastagePercent = target.value === "" ? "" : Number(target.value);
-      else return false;
+      else if (target.id === "modal-rate-formula-select") draft.rateFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "modal-manual-qty") {
+        draft.manualQty = target.value === "" ? null : target.value;
+        state.modal.errors = {};
+        return true;
+      } else if (target.id === "modal-wastage") {
+        draft.wastagePercent = target.value;
+        state.modal.errors = {};
+        return true;
+      } else return false;
       state.modal.errors = {};
       renderModal();
       return true;
@@ -5346,7 +5867,7 @@
       return {
         serviceId: null,
         calculationMethod: "formula",
-        formulaId: printingQty ? printingQty.id : null,
+        formulaId: null,
         manualQty: 1
       };
     }
@@ -5365,8 +5886,8 @@
           errors.formulaId = "Selected formula is not valid or is inactive.";
         }
       } else {
-        const qty = Number(draft.manualQty);
-        if (!Number.isFinite(qty) || qty <= 0) errors.manualQty = "Quantity / Piece must be greater than 0.";
+        const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Quantity / Piece must be greater than 0." });
+        if (!qty.ok) errors.manualQty = qty.error;
       }
       if (draft.serviceId && findDuplicateService(draft.serviceId, lineId)) {
         errors.duplicate = "This service is already added to the BOM.";
@@ -5450,7 +5971,7 @@
             ` : `
               <div>
                 <label class="form-label" for="modal-service-qty">Quantity / Piece</label>
-                <input id="modal-service-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty ?? ""}" />
+                <input id="modal-service-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" />
                 ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
               </div>
             `}
@@ -5461,6 +5982,7 @@
               <div><span>Code</span><strong class="mono">${escapeHtml(service.code)}</strong></div>
               <div><span>UOM</span><strong>${escapeHtml(service.uom)}</strong></div>
               <div><span>Service Rate</span><strong>${formatRatePkr(service.serviceRate, service.rateUOM)}</strong></div>
+              <div><span>Bound Formula</span><strong class="mono">${escapeHtml(formatBoundFormulaCode(service.formulaId))}</strong></div>
               <div><span>Qty UOM</span><strong>${escapeHtml(service.uom)}</strong></div>
             </div>
             <div class="rate-source">Rate Source: Service Master (PKR)</div>
@@ -5509,13 +6031,14 @@
             <div><span>Formula Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
             <div><span>Quantity / Piece</span><strong>${formatQty(line.quantity)}</strong></div>
             <div><span>Service Rate</span><strong>${service ? formatRatePkr(service.serviceRate, service.rateUOM) : "—"}</strong></div>
+            <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(service && service.formulaId))}</strong></div>
             <div><span>Rate Source</span><strong>Service Master</strong></div>
             <div><span>Service Cost / Piece</span><strong>${formatRupees(line.costPerPiece)}</strong></div>
           </div>
           <div class="section-kicker" style="margin-top:14px;">Variables</div>
           <div class="var-grid">
             ${Object.entries(variables).map(([key, value]) => `
-              <div><span class="mono">${escapeHtml(key)}</span> = <strong>${value === null || value === undefined ? "—" : escapeHtml(value)}</strong></div>
+              <div><span class="mono">${escapeHtml(key)}</span> = <strong>${value === null || value === undefined ? "—" : escapeHtml(formatFormulaResult(value))}</strong></div>
             `).join("")}
           </div>
         </div>
@@ -5568,6 +6091,7 @@
       const errors = validateServiceDraft(draft, state.modal.lineId);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
         renderModal();
         return;
       }
@@ -5577,7 +6101,7 @@
         serviceId: Number(draft.serviceId),
         calculationMethod: draft.calculationMethod,
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
-        manualQty: draft.calculationMethod === "manual" ? Number(draft.manualQty) : null,
+        manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
         quantity: 0,
         rate: 0,
         costPerPiece: 0
@@ -5606,11 +6130,17 @@
     function updateServiceDraftFromEvent(target) {
       if (!state.modal.draft || state.modal.type !== "service") return false;
       const draft = state.modal.draft;
-      if (target.id === "modal-service-select") draft.serviceId = target.value ? Number(target.value) : null;
+      if (target.id === "modal-service-select") {
+        draft.serviceId = target.value ? Number(target.value) : null;
+        applyServiceFormulaBinding(draft);
+      }
       else if (target.id === "modal-service-method") draft.calculationMethod = target.value;
       else if (target.id === "modal-service-formula") draft.formulaId = target.value ? Number(target.value) : null;
-      else if (target.id === "modal-service-qty") draft.manualQty = target.value === "" ? null : Number(target.value);
-      else return false;
+      else if (target.id === "modal-service-qty") {
+        draft.manualQty = target.value === "" ? null : target.value;
+        state.modal.errors = {};
+        return true;
+      } else return false;
       state.modal.errors = {};
       renderModal();
       return true;
@@ -6053,30 +6583,60 @@
           state.modal.draft.type = event.target.value;
           return;
         }
-        if (updateFinishedGoodDraftFromEvent(event.target)) return;
+        if (updateFinishedGoodDraftFromEvent(event.target)) {
+          if (event.target.id === "fg-dim-l") normalizeDraftNumber(event.target, "L", "dimension");
+          else if (event.target.id === "fg-dim-w") normalizeDraftNumber(event.target, "W", "dimension");
+          else if (event.target.id === "fg-dim-h") normalizeDraftNumber(event.target, "H", "dimension");
+          return;
+        }
         if (updateRawMaterialDraftFromEvent(event.target)) {
+          if (event.target.id === "rm-rate") normalizeDraftNumber(event.target, "purchasingRate", "rate", true);
+          if (event.target.id === "rm-gsm") normalizeDraftNumber(event.target, "gsm", "gsm");
           if (event.target.id === "rm-category") renderModal();
           restoreFocus(event.target.id);
           return;
         }
-        if (updateServiceMasterDraftFromEvent(event.target)) return;
+        if (updateServiceMasterDraftFromEvent(event.target)) {
+          if (event.target.id === "srv-rate") normalizeDraftNumber(event.target, "serviceRate", "rate", true);
+          return;
+        }
         if (updateStyleDraftFromEvent(event.target)) return;
+        const pendingChange = updatePendingStyleVariableFromEvent(event.target);
+        if (pendingChange) {
+          if (pendingChange === "rerender") {
+            renderModal();
+            refreshIcons();
+            restoreFocus(event.target.id);
+          }
+          return;
+        }
         if (updateStyleVariableDraftFromEvent(event.target)) {
-          renderModal();
+          if (event.target.id === "svar-value") normalizeDraftNumber(event.target, "value", "variable", false, state.modal.sub && state.modal.sub.draft);
+          if (event.target.id === "svar-code") renderModal();
           restoreFocus(event.target.id);
           return;
         }
         if (updateFormulaVariableDraftFromEvent(event.target)) return;
         if (updateDimensionDraftFromEvent(event.target)) {
-          renderModal();
-          restoreFocus(event.target.id);
+          if (event.target.id === "dim-l") normalizeDraftNumber(event.target, "L", "dimension");
+          else if (event.target.id === "dim-w") normalizeDraftNumber(event.target, "W", "dimension");
+          else if (event.target.id === "dim-h") normalizeDraftNumber(event.target, "H", "dimension");
+          if (event.target.id === "dim-l" || event.target.id === "dim-w" || event.target.id === "dim-h") {
+            refreshDimensionCodePreview();
+          } else {
+            renderModal();
+            restoreFocus(event.target.id);
+          }
           return;
         }
         if (updateServiceDraftFromEvent(event.target)) {
+          if (event.target.id === "modal-service-qty") normalizeDraftNumber(event.target, "manualQty", "quantity");
           restoreFocus(event.target.id);
           return;
         }
         if (updateMaterialDraftFromEvent(event.target)) {
+          if (event.target.id === "modal-manual-qty") normalizeDraftNumber(event.target, "manualQty", "quantity");
+          if (event.target.id === "modal-wastage") normalizeDraftNumber(event.target, "wastagePercent", "wastage");
           restoreFocus(event.target.id);
         }
       });
@@ -6105,6 +6665,9 @@
         if (updateStyleDraftFromEvent(event.target)) {
           restoreFocus(event.target.id);
         }
+        if (updatePendingStyleVariableFromEvent(event.target)) {
+          restoreFocus(event.target.id);
+        }
         if (updateStyleVariableDraftFromEvent(event.target)) {
           restoreFocus(event.target.id);
         }
@@ -6114,7 +6677,7 @@
         }
         if (updateDimensionDraftFromEvent(event.target)) {
           if (event.target.id === "dim-l" || event.target.id === "dim-w" || event.target.id === "dim-h") {
-            renderModal();
+            refreshDimensionCodePreview();
           }
           restoreFocus(event.target.id);
         }
@@ -6126,7 +6689,7 @@
         }
         if (event.target.id === "fb-description") state.modal.draft.description = event.target.value;
         if (event.target.dataset.testVar) {
-          state.modal.draft.testValues[event.target.dataset.testVar] = event.target.value === "" ? "" : Number(event.target.value);
+          state.modal.draft.testValues[event.target.dataset.testVar] = event.target.value;
         }
         if (event.target.id === "fb-expression") {
           state.modal.draft.expression = event.target.value;
@@ -6169,6 +6732,15 @@
         }
         if (event.target.closest("#btn-add-style-variable")) {
           openStyleVariableModal();
+          return;
+        }
+        if (event.target.closest("#btn-add-pending-style-variable")) {
+          addPendingStyleVariable();
+          return;
+        }
+        const removePendingVar = event.target.closest("[data-remove-pending-var]");
+        if (removePendingVar) {
+          removePendingStyleVariable(removePendingVar.dataset.removePendingVar);
           return;
         }
         const styleTab = event.target.closest("[data-style-tab]");

@@ -377,6 +377,51 @@
       margin-bottom: 12px;
     }
 
+    .style-var-composer {
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .style-var-composer .section-head {
+      flex-wrap: wrap;
+      align-items: flex-start;
+    }
+
+    .style-var-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .style-var-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1.6fr) minmax(0, 0.8fr) minmax(0, 0.7fr) auto;
+      gap: 10px;
+      align-items: end;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .style-var-row-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      min-height: 42px;
+    }
+
+    .style-var-empty {
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.45;
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+    }
+
     .section-kicker {
       font-size: 11px;
       font-weight: 700;
@@ -736,6 +781,16 @@
       .cost-summary { position: sticky; bottom: 0; top: auto; z-index: 15; }
     }
 
+    @media (max-width: 720px) {
+      .style-var-row {
+        grid-template-columns: 1fr 1fr;
+      }
+      .style-var-row > :first-child,
+      .style-var-row-actions {
+        grid-column: 1 / -1;
+      }
+    }
+
     @media (max-width: 640px) {
       .content { padding: 12px; }
       .stat-grid { grid-template-columns: 1fr; }
@@ -748,4 +803,9 @@
       .fg-combo-control input { font-size: 14px; }
       .fb-layout, .test-fields, .form-grid.two { grid-template-columns: 1fr; }
       .form-span-2 { grid-column: auto; }
+      .style-var-row { grid-template-columns: 1fr; }
+      .style-var-row-actions { justify-content: flex-start; min-height: auto; }
+      .style-var-composer .section-head .btn { width: 100%; justify-content: center; }
+      .modal, .modal.wide, .modal.wide-form { width: 100%; }
+      .modal-footer { flex-wrap: wrap; }
     }
