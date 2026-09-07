@@ -723,6 +723,31 @@
       font-size: 12px;
     }
     .chip:hover, .op-btn:hover { background: #f8fafc; border-color: var(--primary); }
+
+    .linked-dim-section { margin-top: 4px; }
+    .dim-chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-height: 28px; align-items: center; }
+    .dim-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: #115e59;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .dim-chip-remove {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font-size: 14px;
+      line-height: 1;
+      padding: 0;
+    }
+    .dim-chip-remove:hover { color: var(--danger); }
     .op-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
     .op-btn { min-width: 36px; font-weight: 700; }
     textarea.expression-input {
