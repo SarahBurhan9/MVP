@@ -159,6 +159,21 @@
     .save-status.is-saved { color: #047857; }
     .save-status.is-error { color: #991b1b; }
 
+    .cloud-sync-card {
+      margin-bottom: 16px;
+    }
+
+    .cloud-sync-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    #syncStatus.is-success { color: var(--success); }
+    #syncStatus.is-error { color: var(--danger); }
+    #syncStatus.is-info { color: var(--warning); }
+
     .content { padding: 20px; flex: 1; min-width: 0; }
 
     .page { display: none; min-width: 0; }

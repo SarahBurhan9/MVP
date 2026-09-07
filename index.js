@@ -1,3 +1,29 @@
+import { initializeApp } from "firebase/app";
+import {
+  getAuth,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut,
+  onAuthStateChanged
+} from "firebase/auth";
+import { getFirestore, setDoc, doc, getDoc } from "firebase/firestore";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
+  authDomain: "erp-bom-app.firebaseapp.com",
+  projectId: "erp-bom-app",
+  storageBucket: "erp-bom-app.firebasestorage.app",
+  messagingSenderId: "621897236908",
+  appId: "1:621897236908:web:91df86414620e9d450fa09",
+  measurementId: "G-V3XZR3DF9M"
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const db = getFirestore(firebaseApp);
+const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: "select_account" });
+
     /* ==================================================
        Static master data
        ================================================== */
@@ -468,6 +494,12 @@
     let lastSavedAt = null;
     let persistEditorTimer = null;
     let persistPrefsTimer = null;
+    let hydratedFromSeed = false;
+    let cloudUser = null;
+    let cloudSyncTimer = null;
+    let cloudReconcileInFlight = false;
+    let suppressCloudPush = false;
+    let lastReconciledUid = null;
 
     function initIndexedDB() {
       return new Promise((resolve, reject) => {
@@ -664,6 +696,7 @@
         .then(() => persistSequencesNow())
         .then(() => {
           markSaved();
+          syncDataChangeToCloud();
         })
         .catch((error) => {
           console.error("Failed to save offline data", error);
@@ -678,7 +711,10 @@
       persistEditorTimer = setTimeout(() => {
         setSaveStatus("Saving...", "saving");
         Promise.all([persistEditorNow(), persistSequencesNow()])
-          .then(() => markSaved())
+          .then(() => {
+            markSaved();
+            syncDataChangeToCloud();
+          })
           .catch((error) => {
             console.error("Failed to save offline data", error);
             setSaveStatus("Save failed", "error");
@@ -693,6 +729,290 @@
       persistPrefsTimer = setTimeout(() => {
         persistPrefsNow().catch((error) => console.error("Failed to save preferences", error));
       }, 400);
+    }
+
+    function isCloudLinked() {
+      return Boolean((auth.currentUser && auth.currentUser.uid) || localStorage.getItem("firebaseUserId"));
+    }
+
+    function getCurrentUser() {
+      const user = auth.currentUser;
+      return {
+        uid: (user && user.uid) || localStorage.getItem("firebaseUserId"),
+        email: (user && user.email) || localStorage.getItem("firebaseUserEmail")
+      };
+    }
+
+    function rememberCloudUser(user) {
+      if (!user) return;
+      cloudUser = user;
+      localStorage.setItem("firebaseUserId", user.uid);
+      localStorage.setItem("firebaseUserEmail", user.email || "");
+    }
+
+    function forgetCloudUser() {
+      cloudUser = null;
+      lastReconciledUid = null;
+      localStorage.removeItem("firebaseUserId");
+      localStorage.removeItem("firebaseUserEmail");
+    }
+
+    function parseStamp(value) {
+      const t = Date.parse(value);
+      return Number.isFinite(t) ? t : 0;
+    }
+
+    function collectCloudBackupPayload() {
+      return snapshotData({
+        finishedGoods,
+        rawMaterials,
+        services,
+        formulas,
+        formulaVariables,
+        styles,
+        styleVariables,
+        dimensions,
+        boms,
+        sequences: {
+          bomLineSeq,
+          bomSeq,
+          formulaSeq
+        },
+        editor: {
+          selectedFinishedGoodId: state.selectedFinishedGoodId,
+          currentBOM: state.currentBOM,
+          bomMaterials: state.bomMaterials,
+          bomServices: state.bomServices
+        },
+        syncTimestamp: new Date().toISOString()
+      });
+    }
+
+    async function saveAllDataToIndexedDB() {
+      if (!idbReady) return;
+      await persistAllCollections();
+      await persistSequencesNow();
+      await persistEditorNow();
+      await persistMetaNow();
+    }
+
+    function applyCloudPayload(cloudData) {
+      replaceArrayContents(finishedGoods, cloudData.finishedGoods || []);
+      replaceArrayContents(rawMaterials, cloudData.rawMaterials || []);
+      replaceArrayContents(services, cloudData.services || []);
+      replaceArrayContents(formulas, cloudData.formulas || []);
+      replaceArrayContents(formulaVariables, cloudData.formulaVariables || []);
+      replaceArrayContents(styles, cloudData.styles || []);
+      replaceArrayContents(styleVariables, cloudData.styleVariables || []);
+      replaceArrayContents(dimensions, cloudData.dimensions || []);
+      replaceArrayContents(boms, cloudData.boms || []);
+      sanitizeNumericMasters();
+      const sequences = cloudData.sequences || {};
+      if (Number.isFinite(sequences.bomLineSeq)) bomLineSeq = sequences.bomLineSeq;
+      if (Number.isFinite(sequences.bomSeq)) bomSeq = sequences.bomSeq;
+      if (Number.isFinite(sequences.formulaSeq)) formulaSeq = sequences.formulaSeq;
+      const editor = cloudData.editor;
+      if (editor) {
+        state.selectedFinishedGoodId = editor.selectedFinishedGoodId || null;
+        state.currentBOM = editor.currentBOM || null;
+        state.bomMaterials = Array.isArray(editor.bomMaterials) ? editor.bomMaterials : [];
+        state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
+      }
+      syncSequencesFromData();
+      if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
+        try {
+          recalculateBOMCosts();
+        } catch (error) {
+          console.error("Could not recalculate restored BOM", error);
+        }
+      } else if (state.selectedFinishedGoodId && !getSelectedFinishedGood()) {
+        state.selectedFinishedGoodId = null;
+        state.currentBOM = null;
+        state.bomMaterials = [];
+        state.bomServices = [];
+      }
+    }
+
+    function updateHeaderCloudBadge() {
+      const el = document.getElementById("cloud-badge");
+      if (!el) return;
+      if (isCloudLinked()) {
+        el.textContent = "Cloud linked";
+        el.className = "badge badge-info";
+      } else {
+        el.textContent = "Local only";
+        el.className = "badge badge-muted";
+      }
+    }
+
+    function updateAuthUI() {
+      updateHeaderCloudBadge();
+      const linkBtn = document.getElementById("btn-link-cloud");
+      const unlinkBtn = document.getElementById("btn-unlink-cloud");
+      const statusDiv = document.getElementById("authStatus");
+      if (!linkBtn && !unlinkBtn && !statusDiv) return;
+      const linked = isCloudLinked();
+      const user = getCurrentUser();
+      if (linkBtn) linkBtn.hidden = linked;
+      if (unlinkBtn) unlinkBtn.hidden = !linked;
+      if (statusDiv) {
+        statusDiv.innerHTML = linked
+          ? "Signed in as: <strong>" + escapeHtml(user.email || user.uid || "") + "</strong>"
+          : "Not connected to cloud";
+      }
+      const last = localStorage.getItem("lastSyncTime");
+      const syncDiv = document.getElementById("syncStatus");
+      if (linked && last && syncDiv && !syncDiv.textContent) {
+        updateSyncStatus("Last sync: " + new Date(last).toLocaleString(), "success");
+      }
+    }
+
+    function updateSyncStatus(message, status) {
+      const syncDiv = document.getElementById("syncStatus");
+      if (!syncDiv) return;
+      syncDiv.textContent = message;
+      syncDiv.className = "stat-hint" + (status ? " is-" + status : "");
+    }
+
+    async function syncAllDataToCloud() {
+      if (!isCloudLinked() || suppressCloudPush || idbHydrating) return;
+      const userId = getCurrentUser().uid;
+      if (!userId) return;
+      if (!navigator.onLine) {
+        updateSyncStatus("Offline — will sync when online", "info");
+        return;
+      }
+      try {
+        updateSyncStatus("Syncing...", "info");
+        const allData = collectCloudBackupPayload();
+        await setDoc(doc(db, "users", userId, "data", "backup"), allData);
+        localStorage.setItem("lastSyncTime", allData.syncTimestamp);
+        updateSyncStatus("Synced " + new Date(allData.syncTimestamp).toLocaleTimeString(), "success");
+      } catch (error) {
+        console.error("Sync error:", error);
+        updateSyncStatus("Sync failed", "error");
+        if (navigator.onLine) {
+          showNotification("Cloud sync failed: " + error.message, "error");
+        } else {
+          updateSyncStatus("Offline — will sync when online", "info");
+        }
+      }
+    }
+
+    function syncDataChangeToCloud() {
+      if (!isCloudLinked() || suppressCloudPush || idbHydrating) return;
+      clearTimeout(cloudSyncTimer);
+      cloudSyncTimer = setTimeout(() => {
+        syncAllDataToCloud();
+      }, 2000);
+    }
+
+    async function applyCloudData(cloudData, options) {
+      suppressCloudPush = true;
+      idbHydrating = true;
+      try {
+        applyCloudPayload(cloudData);
+        lastSavedAt = cloudData.syncTimestamp ? new Date(cloudData.syncTimestamp) : new Date();
+        await saveAllDataToIndexedDB();
+        hydratedFromSeed = false;
+        if (cloudData.syncTimestamp) localStorage.setItem("lastSyncTime", cloudData.syncTimestamp);
+        updateSyncStatus("Synced", "success");
+        if (options && options.notify) showNotification("Data restored from cloud");
+        const page = PAGE_META[state.currentPage] ? state.currentPage : "dashboard";
+        navigateTo(page);
+      } finally {
+        idbHydrating = false;
+        suppressCloudPush = false;
+      }
+    }
+
+    async function syncAllDataFromCloud() {
+      if (!isCloudLinked()) return;
+      const userId = getCurrentUser().uid;
+      if (!userId) return;
+      try {
+        updateSyncStatus("Syncing...", "info");
+        const docSnap = await getDoc(doc(db, "users", userId, "data", "backup"));
+        if (!docSnap.exists()) {
+          await syncAllDataToCloud();
+          return;
+        }
+        await applyCloudData(docSnap.data(), { notify: true });
+      } catch (error) {
+        console.error("Restore error:", error);
+        updateSyncStatus("Sync failed", "error");
+        showNotification("Could not restore cloud data: " + error.message, "error");
+      }
+    }
+
+    async function reconcileCloudOnLogin() {
+      if (!isCloudLinked() || cloudReconcileInFlight) return;
+      const userId = getCurrentUser().uid;
+      if (!userId) return;
+      cloudReconcileInFlight = true;
+      try {
+        updateSyncStatus("Syncing...", "info");
+        const docSnap = await getDoc(doc(db, "users", userId, "data", "backup"));
+        if (!docSnap.exists()) {
+          await syncAllDataToCloud();
+          return;
+        }
+        const cloudData = docSnap.data();
+        const cloudTime = parseStamp(cloudData.syncTimestamp);
+        const localTime = lastSavedAt ? lastSavedAt.getTime() : 0;
+        if (hydratedFromSeed || cloudTime > localTime + 1500) {
+          await applyCloudData(cloudData, { notify: true });
+        } else {
+          await syncAllDataToCloud();
+        }
+      } catch (error) {
+        console.error("Cloud reconcile error:", error);
+        updateSyncStatus("Sync failed", "error");
+        showNotification("Cloud sync failed: " + error.message, "error");
+      } finally {
+        cloudReconcileInFlight = false;
+      }
+    }
+
+    async function linkCloudAccount() {
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        rememberCloudUser(result.user);
+        updateAuthUI();
+        showNotification("Account linked: " + (result.user.email || result.user.uid));
+      } catch (error) {
+        console.error("Login failed:", error);
+        showNotification("Login failed: " + error.message, "error");
+      }
+    }
+
+    async function unlinkCloudAccount() {
+      try {
+        await signOut(auth);
+        forgetCloudUser();
+        updateAuthUI();
+        updateSyncStatus("", "");
+        showNotification("Account unlinked");
+      } catch (error) {
+        console.error("Logout failed:", error);
+        showNotification("Logout failed: " + error.message, "error");
+      }
+    }
+
+    function startCloudAuthListener() {
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          rememberCloudUser(user);
+          updateAuthUI();
+          if (lastReconciledUid !== user.uid) {
+            lastReconciledUid = user.uid;
+            reconcileCloudOnLogin();
+          }
+        } else {
+          forgetCloudUser();
+          updateAuthUI();
+        }
+      });
     }
 
     function syncSequencesFromData() {
@@ -831,6 +1151,8 @@
         await persistEditorNow();
         await persistPrefsNow();
         markSaved();
+        hydratedFromSeed = true;
+        await syncAllDataToCloud();
       } catch (error) {
         console.error("Failed to save offline data", error);
         setSaveStatus("Save failed", "error");
@@ -2526,8 +2848,36 @@
     function renderDashboard() {
       const activeBoms = boms.filter((bom) => bom.status === "Active").length;
       const activeFormulas = formulas.filter((f) => f.isActive).length;
+      const linked = isCloudLinked();
+      const user = getCurrentUser();
+      const lastSync = localStorage.getItem("lastSyncTime");
 
       document.getElementById("page-dashboard").innerHTML = `
+        <div class="card cloud-sync-card">
+          <div class="card-body">
+            <div class="section-kicker">Cloud backup</div>
+            <div class="section-title">Cloud Sync</div>
+            <p id="authStatus" class="stat-hint" style="margin-top:8px;">${
+              linked
+                ? "Signed in as: <strong>" + escapeHtml(user.email || user.uid || "") + "</strong>"
+                : "Not connected to cloud"
+            }</p>
+            <p style="margin-top:8px;color:var(--text-muted);line-height:1.5;">
+              IndexedDB stays primary on this device. When an account is linked, changes upload to Firestore after a short delay and restore on other devices after Google sign-in.
+            </p>
+            <div class="cloud-sync-actions">
+              <button type="button" class="btn btn-primary" id="btn-link-cloud" ${linked ? "hidden" : ""}>
+                <i data-lucide="cloud"></i> Link Cloud Account
+              </button>
+              <button type="button" class="btn btn-danger-solid" id="btn-unlink-cloud" ${linked ? "" : "hidden"}>
+                Unlink Account
+              </button>
+            </div>
+            <div id="syncStatus" class="stat-hint${lastSync && linked ? " is-success" : ""}" style="margin-top:10px;">${
+              lastSync && linked ? "Last sync: " + escapeHtml(new Date(lastSync).toLocaleString()) : ""
+            }</div>
+          </div>
+        </div>
         <div class="stat-grid">
           <article class="stat-card">
             <div class="stat-label">Total Finished Goods</div>
@@ -6375,6 +6725,14 @@
           openMasterDeleteModal("local-data", 0, "all locally saved data");
           return;
         }
+        if (event.target.closest("#btn-link-cloud")) {
+          linkCloudAccount();
+          return;
+        }
+        if (event.target.closest("#btn-unlink-cloud")) {
+          unlinkCloudAccount();
+          return;
+        }
         if (event.target.closest("#btn-add-product")) {
           openFinishedGoodModal();
           return;
@@ -6829,14 +7187,28 @@
         return;
       }
       try {
-        await loadDataFromIndexedDB();
+        const loaded = await loadDataFromIndexedDB();
+        hydratedFromSeed = Boolean(loaded && loaded.fromSeed);
       } catch (error) {
         console.error("Could not load saved data", error);
         showNotification("Could not load saved data, using defaults", "warning");
         setSaveStatus("Using defaults", "error");
       }
+      startCloudAuthListener();
+      window.addEventListener("online", () => {
+        updateSyncStatus("Syncing...", "info");
+        syncAllDataToCloud();
+      });
+      window.addEventListener("offline", () => {
+        updateSyncStatus("Offline — will sync when online", "info");
+      });
+      updateHeaderCloudBadge();
       const startPage = PAGE_META[state.currentPage] ? state.currentPage : "dashboard";
       navigateTo(startPage);
     }
 
-    document.addEventListener("DOMContentLoaded", boot);
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", boot);
+    } else {
+      boot();
+    }
