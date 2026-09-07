@@ -151,6 +151,14 @@
       font-size: 12px;
     }
 
+    .save-status {
+      white-space: nowrap;
+    }
+
+    .save-status.is-saving { color: #0f766e; }
+    .save-status.is-saved { color: #047857; }
+    .save-status.is-error { color: #991b1b; }
+
     .content { padding: 20px; flex: 1; min-width: 0; }
 
     .page { display: none; min-width: 0; }
@@ -710,6 +718,7 @@
     .toast.show { display: block; }
     .toast-success { background: #065f46; }
     .toast-error { background: #991b1b; }
+    .toast-warning { background: #92400e; }
 
     /* ---- Responsive ---- */
     @media (max-width: 1200px) {

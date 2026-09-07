@@ -339,6 +339,22 @@
     let bomSeq = 1;
     let formulaSeq = formulas.reduce((max, item) => Math.max(max, item.id), 300) + 1;
 
+    function snapshotData(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    const SEED_DATA = {
+      finishedGoods: snapshotData(finishedGoods),
+      rawMaterials: snapshotData(rawMaterials),
+      services: snapshotData(services),
+      formulas: snapshotData(formulas),
+      boms: snapshotData(boms),
+      styles: snapshotData(styles),
+      dimensions: snapshotData(dimensions),
+      formulaVariables: snapshotData(formulaVariables),
+      styleVariables: snapshotData(styleVariables)
+    };
+
     const BASE_VARIABLES = [
       "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY",
       "SHEET_LENGTH", "SHEET_WIDTH", "SHEET_AREA", "PIECE_AREA",
@@ -427,6 +443,397 @@
         errors: {}
       }
     };
+
+    /* ==================================================
+       IndexedDB persistence
+       ================================================== */
+
+    const IDB_NAME = "packaging-erp-db";
+    const IDB_VERSION = 1;
+    const IDB_COLLECTION_STORES = [
+      "finishedGoods",
+      "rawMaterials",
+      "services",
+      "formulas",
+      "boms",
+      "styles",
+      "dimensions",
+      "formulaVariables",
+      "styleVariables"
+    ];
+
+    let idb = null;
+    let idbReady = false;
+    let idbHydrating = false;
+    let lastSavedAt = null;
+    let persistEditorTimer = null;
+    let persistPrefsTimer = null;
+
+    function initIndexedDB() {
+      return new Promise((resolve, reject) => {
+        if (!window.indexedDB) {
+          reject(new Error("IndexedDB is not supported in this browser"));
+          return;
+        }
+        const request = window.indexedDB.open(IDB_NAME, IDB_VERSION);
+        request.onupgradeneeded = (event) => {
+          const database = event.target.result;
+          IDB_COLLECTION_STORES.forEach((name) => {
+            if (!database.objectStoreNames.contains(name)) {
+              database.createObjectStore(name, { keyPath: "id" });
+            }
+          });
+          if (!database.objectStoreNames.contains("appState")) {
+            database.createObjectStore("appState", { keyPath: "key" });
+          }
+        };
+        request.onsuccess = () => {
+          idb = request.result;
+          idb.onerror = (event) => console.error("IndexedDB error", event.target && event.target.error);
+          idbReady = true;
+          resolve(idb);
+        };
+        request.onerror = () => reject(request.error || new Error("Failed to open IndexedDB"));
+        request.onblocked = () => reject(new Error("IndexedDB open was blocked"));
+      });
+    }
+
+    function getCollectionArray(storeName) {
+      if (storeName === "finishedGoods") return finishedGoods;
+      if (storeName === "rawMaterials") return rawMaterials;
+      if (storeName === "services") return services;
+      if (storeName === "formulas") return formulas;
+      if (storeName === "boms") return boms;
+      if (storeName === "styles") return styles;
+      if (storeName === "dimensions") return dimensions;
+      if (storeName === "formulaVariables") return formulaVariables;
+      if (storeName === "styleVariables") return styleVariables;
+      return null;
+    }
+
+    function replaceArrayContents(target, items) {
+      target.length = 0;
+      (items || []).forEach((item) => target.push(item));
+    }
+
+    function saveToIndexedDB(storeName, arrayData) {
+      return new Promise((resolve, reject) => {
+        if (!idb) {
+          reject(new Error("IndexedDB is not ready"));
+          return;
+        }
+        const tx = idb.transaction(storeName, "readwrite");
+        const store = tx.objectStore(storeName);
+        store.clear();
+        (arrayData || []).forEach((item) => store.put(snapshotData(item)));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("Failed to save " + storeName));
+        tx.onabort = () => reject(tx.error || new Error("Save aborted for " + storeName));
+      });
+    }
+
+    function deleteFromIndexedDB(storeName, itemId) {
+      return new Promise((resolve, reject) => {
+        if (!idb) {
+          reject(new Error("IndexedDB is not ready"));
+          return;
+        }
+        const tx = idb.transaction(storeName, "readwrite");
+        tx.objectStore(storeName).delete(itemId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("Failed to delete from " + storeName));
+      });
+    }
+
+    function loadAllFromStore(storeName) {
+      return new Promise((resolve, reject) => {
+        if (!idb) {
+          reject(new Error("IndexedDB is not ready"));
+          return;
+        }
+        const tx = idb.transaction(storeName, "readonly");
+        const request = tx.objectStore(storeName).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error || new Error("Failed to load " + storeName));
+      });
+    }
+
+    function getAppStateRecord(key) {
+      return new Promise((resolve, reject) => {
+        if (!idb) {
+          reject(new Error("IndexedDB is not ready"));
+          return;
+        }
+        const tx = idb.transaction("appState", "readonly");
+        const request = tx.objectStore("appState").get(key);
+        request.onsuccess = () => resolve(request.result || null);
+        request.onerror = () => reject(request.error || new Error("Failed to read app state"));
+      });
+    }
+
+    function putAppStateRecord(record) {
+      return new Promise((resolve, reject) => {
+        if (!idb) {
+          reject(new Error("IndexedDB is not ready"));
+          return;
+        }
+        const tx = idb.transaction("appState", "readwrite");
+        tx.objectStore("appState").put(snapshotData(record));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error || new Error("Failed to write app state"));
+      });
+    }
+
+    function persistAllCollections() {
+      return Promise.all(
+        IDB_COLLECTION_STORES.map((name) => saveToIndexedDB(name, getCollectionArray(name)))
+      );
+    }
+
+    function persistSequencesNow() {
+      return putAppStateRecord({
+        key: "sequences",
+        bomLineSeq,
+        bomSeq,
+        formulaSeq
+      });
+    }
+
+    function persistEditorNow() {
+      return putAppStateRecord({
+        key: "editor",
+        selectedFinishedGoodId: state.selectedFinishedGoodId,
+        currentBOM: state.currentBOM,
+        bomMaterials: state.bomMaterials,
+        bomServices: state.bomServices
+      });
+    }
+
+    function persistPrefsNow() {
+      return putAppStateRecord({
+        key: "prefs",
+        currentPage: state.currentPage,
+        searches: state.searches,
+        formulaFilter: state.formulaFilter,
+        bomListFilter: state.bomListFilter
+      });
+    }
+
+    function persistMetaNow() {
+      const stamp = (lastSavedAt || new Date()).toISOString();
+      return putAppStateRecord({
+        key: "meta",
+        initialized: true,
+        lastSavedAt: stamp
+      });
+    }
+
+    function setSaveStatus(text, kind) {
+      const el = document.getElementById("save-status");
+      if (!el) return;
+      el.textContent = text;
+      el.className = "save-status" + (kind ? " is-" + kind : "");
+    }
+
+    function formatSavedClock(date) {
+      return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    }
+
+    function formatLastSavedRelative() {
+      if (!lastSavedAt) return "Not saved yet";
+      const diff = Date.now() - lastSavedAt.getTime();
+      if (diff < 45000) return "Saved just now";
+      const minutes = Math.round(diff / 60000);
+      if (minutes === 1) return "Last saved: 1 minute ago";
+      if (minutes < 60) return "Last saved: " + minutes + " minutes ago";
+      return "Last saved: " + formatSavedClock(lastSavedAt);
+    }
+
+    function markSaved() {
+      lastSavedAt = new Date();
+      setSaveStatus("✓ Saved", "saved");
+      persistMetaNow().catch((error) => console.error("Failed to save offline metadata", error));
+    }
+
+    function afterDataChange(...storeNames) {
+      if (!idbReady || idbHydrating) return Promise.resolve();
+      const unique = [...new Set(storeNames.filter(Boolean))];
+      if (!unique.length) return Promise.resolve();
+      setSaveStatus("Saving...", "saving");
+      return Promise.all(unique.map((name) => saveToIndexedDB(name, getCollectionArray(name))))
+        .then(() => persistSequencesNow())
+        .then(() => {
+          markSaved();
+        })
+        .catch((error) => {
+          console.error("Failed to save offline data", error);
+          setSaveStatus("Save failed", "error");
+          showNotification("Failed to save offline data", "error");
+        });
+    }
+
+    function persistEditorState() {
+      if (!idbReady || idbHydrating) return;
+      clearTimeout(persistEditorTimer);
+      persistEditorTimer = setTimeout(() => {
+        setSaveStatus("Saving...", "saving");
+        Promise.all([persistEditorNow(), persistSequencesNow()])
+          .then(() => markSaved())
+          .catch((error) => {
+            console.error("Failed to save offline data", error);
+            setSaveStatus("Save failed", "error");
+            showNotification("Failed to save offline data", "error");
+          });
+      }, 180);
+    }
+
+    function persistPrefs() {
+      if (!idbReady || idbHydrating) return;
+      clearTimeout(persistPrefsTimer);
+      persistPrefsTimer = setTimeout(() => {
+        persistPrefsNow().catch((error) => console.error("Failed to save preferences", error));
+      }, 400);
+    }
+
+    function syncSequencesFromData() {
+      const maxBomId = boms.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+      bomSeq = Math.max(bomSeq, maxBomId + 1);
+      const maxFormulaId = formulas.reduce((max, item) => Math.max(max, Number(item.id) || 0), 0);
+      formulaSeq = Math.max(formulaSeq, maxFormulaId + 1);
+      let maxLineId = 0;
+      state.bomMaterials.forEach((line) => {
+        maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+      });
+      state.bomServices.forEach((line) => {
+        maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+      });
+      boms.forEach((record) => {
+        (record.materials || []).forEach((line) => {
+          maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+        });
+        (record.services || []).forEach((line) => {
+          maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+        });
+      });
+      bomLineSeq = Math.max(bomLineSeq, maxLineId + 1);
+    }
+
+    async function loadDataFromIndexedDB() {
+      if (!idb) throw new Error("IndexedDB is not ready");
+      idbHydrating = true;
+      try {
+        const meta = await getAppStateRecord("meta");
+        if (!meta || !meta.initialized) {
+          await persistAllCollections();
+          await persistSequencesNow();
+          await persistEditorNow();
+          await persistPrefsNow();
+          lastSavedAt = new Date();
+          await persistMetaNow();
+          setSaveStatus("✓ Saved", "saved");
+          return { fromSeed: true };
+        }
+
+        const loaded = {};
+        for (let i = 0; i < IDB_COLLECTION_STORES.length; i += 1) {
+          const name = IDB_COLLECTION_STORES[i];
+          loaded[name] = await loadAllFromStore(name);
+        }
+        IDB_COLLECTION_STORES.forEach((name) => {
+          replaceArrayContents(getCollectionArray(name), loaded[name]);
+        });
+
+        try {
+          const sequences = await getAppStateRecord("sequences");
+          if (sequences) {
+            if (Number.isFinite(sequences.bomLineSeq)) bomLineSeq = sequences.bomLineSeq;
+            if (Number.isFinite(sequences.bomSeq)) bomSeq = sequences.bomSeq;
+            if (Number.isFinite(sequences.formulaSeq)) formulaSeq = sequences.formulaSeq;
+          }
+
+          const editor = await getAppStateRecord("editor");
+          if (editor) {
+            state.selectedFinishedGoodId = editor.selectedFinishedGoodId || null;
+            state.currentBOM = editor.currentBOM || null;
+            state.bomMaterials = Array.isArray(editor.bomMaterials) ? editor.bomMaterials : [];
+            state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
+          }
+
+          syncSequencesFromData();
+
+          if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
+            try {
+              recalculateBOMCosts();
+            } catch (error) {
+              console.error("Could not recalculate restored BOM", error);
+            }
+          } else if (state.selectedFinishedGoodId && !getSelectedFinishedGood()) {
+            state.selectedFinishedGoodId = null;
+            state.currentBOM = null;
+            state.bomMaterials = [];
+            state.bomServices = [];
+          }
+
+          const prefs = await getAppStateRecord("prefs");
+          if (prefs) {
+            if (prefs.searches) state.searches = { ...state.searches, ...prefs.searches };
+            if (prefs.formulaFilter) state.formulaFilter = prefs.formulaFilter;
+            if (prefs.bomListFilter) state.bomListFilter = prefs.bomListFilter;
+            if (prefs.currentPage && PAGE_META[prefs.currentPage]) state.currentPage = prefs.currentPage;
+          }
+        } catch (error) {
+          console.error("Could not restore editor or preferences", error);
+        }
+
+        lastSavedAt = meta.lastSavedAt ? new Date(meta.lastSavedAt) : new Date();
+        setSaveStatus(formatLastSavedRelative(), "saved");
+        return { fromSeed: false };
+      } finally {
+        idbHydrating = false;
+      }
+    }
+
+    async function resetToSeedData() {
+      replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
+      replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
+      replaceArrayContents(services, snapshotData(SEED_DATA.services));
+      replaceArrayContents(formulas, snapshotData(SEED_DATA.formulas));
+      replaceArrayContents(boms, snapshotData(SEED_DATA.boms));
+      replaceArrayContents(styles, snapshotData(SEED_DATA.styles));
+      replaceArrayContents(dimensions, snapshotData(SEED_DATA.dimensions));
+      replaceArrayContents(formulaVariables, snapshotData(SEED_DATA.formulaVariables));
+      replaceArrayContents(styleVariables, snapshotData(SEED_DATA.styleVariables));
+      resetBomEditor();
+      bomLineSeq = 1;
+      bomSeq = 1;
+      formulaSeq = formulas.reduce((max, item) => Math.max(max, item.id), 300) + 1;
+      state.searches = {
+        finishedGoods: "",
+        rawMaterials: "",
+        services: "",
+        style: "",
+        formulaVariables: "",
+        dimensions: "",
+        formulas: "",
+        bomFinishedGood: "",
+        boms: ""
+      };
+      state.formulaFilter = "all";
+      state.bomListFilter = "all";
+      if (!idbReady) return;
+      setSaveStatus("Saving...", "saving");
+      try {
+        await persistAllCollections();
+        await persistSequencesNow();
+        await persistEditorNow();
+        await persistPrefsNow();
+        markSaved();
+      } catch (error) {
+        console.error("Failed to save offline data", error);
+        setSaveStatus("Save failed", "error");
+        showNotification("Failed to save offline data", "error");
+      }
+    }
 
     /* ==================================================
        Utility functions
@@ -1509,6 +1916,7 @@
       state.fgSelectorOpen = false;
       state.workflowError = "";
       recalculateBOMCosts();
+      persistEditorState();
     }
 
     function upsertDraftRecord(record) {
@@ -1521,6 +1929,8 @@
         boms.push(copy);
       }
       syncEditorBomMeta(copy);
+      afterDataChange("boms");
+      persistEditorState();
       return true;
     }
 
@@ -1536,6 +1946,8 @@
       const record = snapshotCurrentBom("Draft");
       boms.push(cloneData(record));
       syncEditorBomMeta(record);
+      afterDataChange("boms");
+      persistEditorState();
       return record;
     }
 
@@ -1576,6 +1988,8 @@
       });
       boms.push(cloneData(record));
       applyBomRecordToEditor(record);
+      afterDataChange("boms");
+      persistEditorState();
       return record;
     }
 
@@ -1661,6 +2075,8 @@
           ? "BOM activated: " + record.bomNo + " version " + record.version + ". Previous Active version is now Draft."
           : "BOM activated: " + record.bomNo + " version " + record.version
       );
+      afterDataChange("boms");
+      persistEditorState();
       refreshBomViews();
     }
 
@@ -1894,8 +2310,12 @@
             <strong>BOM &amp; Costing MVP</strong>
             <p style="margin-top:8px;color:var(--text-muted);line-height:1.5;">
               Master data, formula engine, material and service costing in Pakistani Rupees (Rs.), and BOM draft/activate/duplicate workflow
-              are available in this local file. Saved BOMs stay in memory until the page is refreshed.
+              are available in this local file. All products, materials, services, formulas, BOMs, and editor work are saved in the browser (IndexedDB) and reload automatically after refresh.
             </p>
+            <p style="margin-top:8px;color:var(--text-muted);">${escapeHtml(formatLastSavedRelative())}${idbReady ? "" : " · Persistence unavailable"}</p>
+            <div style="margin-top:12px;">
+              <button type="button" class="btn" id="btn-reset-local-data">Restore seed data</button>
+            </div>
           </div>
         </div>
       `;
@@ -2396,6 +2816,7 @@
       state.fgSelectorOpen = false;
       state.workflowError = "";
       closeModal();
+      persistEditorState();
     }
 
     function handleFinishedGoodChange(id) {
@@ -2426,6 +2847,7 @@
       loadSampleBom(item.id);
       renderBOMPage();
       refreshIcons();
+      persistEditorState();
     }
 
     function plyLayerClass(layer) {
@@ -3129,6 +3551,7 @@
       closeModal();
       renderFormulas();
       refreshIcons();
+      afterDataChange("formulas");
       if (state.selectedFinishedGoodId) recalculateBOMCosts();
     }
 
@@ -3150,6 +3573,7 @@
       formula.isActive = !formula.isActive;
       renderFormulas();
       refreshIcons();
+      afterDataChange("formulas");
       if (state.selectedFinishedGoodId) recalculateBOMCosts();
     }
 
@@ -3379,6 +3803,7 @@
       closeModal();
       renderFinishedGoods();
       refreshIcons();
+      afterDataChange("finishedGoods", "dimensions");
     }
 
     function updateFinishedGoodDraftFromEvent(target) {
@@ -3561,6 +3986,7 @@
       closeModal();
       renderRawMaterials();
       refreshIcons();
+      afterDataChange("rawMaterials");
     }
 
     function updateRawMaterialDraftFromEvent(target) {
@@ -3713,6 +4139,7 @@
       closeModal();
       renderServices();
       refreshIcons();
+      afterDataChange("services");
     }
 
     function updateServiceMasterDraftFromEvent(target) {
@@ -3875,6 +4302,7 @@
         renderModal();
         renderStyles();
         refreshIcons();
+        afterDataChange("styles", "finishedGoods");
         return;
       }
       styles.push({ id: nextMasterId(styles), ...payload });
@@ -3882,6 +4310,7 @@
       renderStyles();
       refreshIcons();
       showNotification("Style added successfully");
+      afterDataChange("styles");
     }
 
     function updateStyleDraftFromEvent(target) {
@@ -3994,6 +4423,7 @@
       renderModal();
       renderStyles();
       refreshIcons();
+      afterDataChange("styleVariables");
     }
 
     function updateStyleVariableDraftFromEvent(target) {
@@ -4168,6 +4598,7 @@
       closeModal();
       renderDimensions();
       refreshIcons();
+      afterDataChange("dimensions");
     }
 
     function updateDimensionDraftFromEvent(target) {
@@ -4325,6 +4756,7 @@
       closeModal();
       renderFormulaVariables();
       refreshIcons();
+      afterDataChange("formulaVariables");
     }
 
     function updateFormulaVariableDraftFromEvent(target) {
@@ -4357,20 +4789,23 @@
     }
 
     function renderMasterDeleteModal() {
+      const isReset = state.modal.entity === "local-data";
       return `
         <div class="modal-header">
           <div>
             <div class="section-kicker">Confirm</div>
-            <strong>Delete Confirmation</strong>
+            <strong>${isReset ? "Reset local data" : "Delete Confirmation"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
-          <p>Are you sure you want to delete ${escapeHtml(state.modal.label)}? This action cannot be undone.</p>
+          <p>${isReset
+            ? "Delete all locally saved products, materials, services, formulas, BOMs, and preferences, then restore the original seed data? This cannot be undone."
+            : "Are you sure you want to delete " + escapeHtml(state.modal.label) + "? This action cannot be undone."}</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-danger-solid" id="btn-confirm-master-delete">Delete</button>
+          <button type="button" class="btn btn-danger-solid" id="btn-confirm-master-delete">${isReset ? "Reset data" : "Delete"}</button>
         </div>
       `;
     }
@@ -4378,24 +4813,35 @@
     function confirmMasterDelete() {
       const id = Number(state.modal.selectedId);
       const entity = state.modal.entity;
+      if (entity === "local-data") {
+        closeModal();
+        resetToSeedData().then(() => {
+          navigateTo("dashboard");
+          showNotification("Local data cleared. Seed data restored.");
+        });
+        return;
+      }
       if (entity === "finished-good") {
         const index = finishedGoods.findIndex((item) => item.id === id);
         if (index >= 0) finishedGoods.splice(index, 1);
         closeModal();
         renderFinishedGoods();
         showNotification("Product deleted successfully");
+        afterDataChange("finishedGoods");
       } else if (entity === "raw-material") {
         const index = rawMaterials.findIndex((item) => item.id === id);
         if (index >= 0) rawMaterials.splice(index, 1);
         closeModal();
         renderRawMaterials();
         showNotification("Material deleted successfully");
+        afterDataChange("rawMaterials");
       } else if (entity === "service") {
         const index = services.findIndex((item) => item.id === id);
         if (index >= 0) services.splice(index, 1);
         closeModal();
         renderServices();
         showNotification("Service deleted successfully");
+        afterDataChange("services");
       } else if (entity === "style") {
         const style = styles.find((item) => item.id === id);
         const used = style ? productsUsingStyle(style.name) : [];
@@ -4411,12 +4857,14 @@
         closeModal();
         renderStyles();
         showNotification("Style deleted successfully");
+        afterDataChange("styles", "styleVariables");
       } else if (entity === "dimension") {
         const index = dimensions.findIndex((item) => item.id === id);
         if (index >= 0) dimensions.splice(index, 1);
         closeModal();
         renderDimensions();
         showNotification("Dimension deleted successfully");
+        afterDataChange("dimensions");
       } else if (entity === "formula-variable") {
         const variable = formulaVariables.find((item) => item.id === id);
         const used = variable ? formulasUsingVariable(variable.code) : [];
@@ -4429,11 +4877,13 @@
         closeModal();
         renderFormulaVariables();
         showNotification("Variable deleted successfully");
+        afterDataChange("formulaVariables");
       } else if (entity === "style-variable") {
         const parent = state.modal.parentStyle;
         const index = styleVariables.findIndex((item) => item.id === id);
         if (index >= 0) styleVariables.splice(index, 1);
         showNotification("Variable removed");
+        afterDataChange("styleVariables");
         if (parent) {
           state.modal = parent;
           state.modal.sub = null;
@@ -4846,6 +5296,7 @@
       recalculateBOMCosts();
       closeModal();
       refreshBomViews();
+      persistEditorState();
     }
 
     function confirmDeleteMaterial() {
@@ -4853,6 +5304,7 @@
       recalculateBOMCosts();
       closeModal();
       refreshBomViews();
+      persistEditorState();
     }
 
     function updateLineWastage(lineId, value) {
@@ -4863,6 +5315,7 @@
       });
       recalculateBOMCosts();
       refreshBomViews();
+      persistEditorState();
     }
 
     function updateMaterialDraftFromEvent(target) {
@@ -5139,6 +5592,7 @@
       recalculateBOMCosts();
       closeModal();
       refreshBomViews();
+      persistEditorState();
     }
 
     function confirmDeleteService() {
@@ -5146,6 +5600,7 @@
       recalculateBOMCosts();
       closeModal();
       refreshBomViews();
+      persistEditorState();
     }
 
     function updateServiceDraftFromEvent(target) {
@@ -5211,6 +5666,7 @@
         closeModal();
       }
       renderCurrentPage();
+      persistPrefs();
     }
 
     function setupNavigation() {
@@ -5255,47 +5711,56 @@
           renderFinishedGoods();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "rm-search") {
           state.searches.rawMaterials = event.target.value;
           renderRawMaterials();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "srv-search") {
           state.searches.services = event.target.value;
           renderServices();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "bom-list-search") {
           state.searches.boms = event.target.value;
           renderBomList();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "style-search") {
           state.searches.style = event.target.value;
           renderStyles();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "fvar-search") {
           state.searches.formulaVariables = event.target.value;
           renderFormulaVariables();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "dim-search") {
           state.searches.dimensions = event.target.value;
           renderDimensions();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "formula-search") {
           state.searches.formulas = event.target.value;
           renderFormulas();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (id === "fg-combo-search") {
           state.searches.bomFinishedGood = event.target.value;
           state.fgSelectorOpen = true;
           renderFinishedGoodSelector();
           refreshIcons();
           restoreFocus(id);
+          persistPrefs();
         } else if (event.target.dataset.wastageLine) {
           const lineId = event.target.dataset.wastageLine;
           const caret = event.target.selectionStart;
@@ -5318,11 +5783,13 @@
           state.formulaFilter = event.target.value;
           renderFormulas();
           refreshIcons();
+          persistPrefs();
         }
         if (event.target.id === "bom-list-filter") {
           state.bomListFilter = event.target.value;
           renderBomList();
           refreshIcons();
+          persistPrefs();
         }
       });
 
@@ -5372,6 +5839,10 @@
         const duplicateSaved = event.target.closest("[data-duplicate-bom]");
         if (duplicateSaved) {
           duplicateBomRecord(duplicateSaved.dataset.duplicateBom);
+          return;
+        }
+        if (event.target.closest("#btn-reset-local-data")) {
+          openMasterDeleteModal("local-data", 0, "all locally saved data");
           return;
         }
         if (event.target.closest("#btn-add-product")) {
@@ -5772,10 +6243,28 @@
        Boot
        ================================================== */
 
-    function init() {
+    async function boot() {
       setupNavigation();
       setupEventHandlers();
-      navigateTo("dashboard");
+      try {
+        await initIndexedDB();
+      } catch (error) {
+        console.error("IndexedDB initialization failed", error);
+        idbReady = false;
+        showNotification("Could not initialize offline storage. Using seed data only.", "warning");
+        setSaveStatus("Not persisted", "error");
+        navigateTo("dashboard");
+        return;
+      }
+      try {
+        await loadDataFromIndexedDB();
+      } catch (error) {
+        console.error("Could not load saved data", error);
+        showNotification("Could not load saved data, using defaults", "warning");
+        setSaveStatus("Using defaults", "error");
+      }
+      const startPage = PAGE_META[state.currentPage] ? state.currentPage : "dashboard";
+      navigateTo(startPage);
     }
 
-    document.addEventListener("DOMContentLoaded", init);
+    document.addEventListener("DOMContentLoaded", boot);
