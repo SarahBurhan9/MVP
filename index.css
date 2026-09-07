@@ -572,6 +572,44 @@
 
     .dim-box strong { display: block; font-size: 16px; }
 
+    .calc-dims {
+      margin-top: 16px;
+      padding: 14px;
+      background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    .calc-dims-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .calc-dims-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 10px;
+    }
+
+    .calc-dims-item {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 6px;
+      padding: 10px 12px;
+      background: #fff;
+      border-radius: 6px;
+      font-size: 13px;
+      color: var(--text);
+      border-left: 3px solid var(--primary);
+    }
+
+    .calc-dims-name { color: var(--text-muted); }
+    .calc-dims-value { font-weight: 700; }
+
     .bom-meta {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -687,6 +725,19 @@
       cursor: pointer;
     }
     .section-tab.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    .style-formula-results { display: grid; gap: 10px; }
+    .style-formula-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+    .style-formula-value { text-align: right; min-width: 120px; }
     textarea.full-search { min-height: 72px; resize: vertical; }
     .btn-icon { width: 30px; height: 30px; padding: 0; justify-content: center; }
 
@@ -839,7 +890,7 @@
       .toolbar { align-items: stretch; }
       .toolbar-left, .toolbar-right { width: 100%; }
       .header { padding: 0 12px; }
-      .pi-grid, .pi-fields, .dim-grid, .bom-meta { grid-template-columns: 1fr; }
+      .pi-grid, .pi-fields, .dim-grid, .bom-meta, .calc-dims-grid { grid-template-columns: 1fr; }
       .fg-combo-control input { font-size: 14px; }
       .fb-layout, .test-fields, .form-grid.two { grid-template-columns: 1fr; }
       .form-span-2 { grid-column: auto; }

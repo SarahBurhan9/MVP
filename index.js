@@ -34,7 +34,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         product: "Cake Box",
         variant: "1 Pound",
         style: "WINDOW LID",
-        material: "CARD BOARD",
         ply: 3,
         dimensions: { L: 7, W: 7, H: 4 },
         dimensionUOM: "inch",
@@ -46,7 +45,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         product: "Cake Box",
         variant: "2 Pound",
         style: "WINDOW LID",
-        material: "CARD BOARD",
         ply: 3,
         dimensions: { L: 9, W: 9, H: 5 },
         dimensionUOM: "inch",
@@ -58,7 +56,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         product: "Pizza Box",
         variant: "Large",
         style: "Locking Flap",
-        material: "KRAFT PAPER",
         ply: 3,
         dimensions: { L: 12, W: 12, H: 2 },
         dimensionUOM: "inch",
@@ -70,7 +67,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         product: "SINGLE PLY BOX",
         variant: "STANDARD",
         style: "SIMPLE LID",
-        material: "KRAFT PAPER",
         ply: 1,
         dimensions: { L: 10, W: 10, H: 5 },
         dimensionUOM: "inch",
@@ -82,7 +78,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         product: "PIZZA BOX",
         variant: "MEDIUM",
         style: "STANDARD",
-        material: "KRAFT + FLUTING",
         ply: 2,
         dimensions: { L: 12, W: 12, H: 2 },
         dimensionUOM: "inch",
@@ -104,6 +99,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 3, styleId: 102, variableCode: "GLUE_FLAP", value: 10.5, unit: "mm" },
       { id: 4, styleId: 102, variableCode: "SHEET_WIDTH", value: 95, unit: "cm" },
       { id: 5, styleId: 103, variableCode: "GLUE_FLAP", value: 15.0, unit: "mm" }
+    ];
+
+    const styleFormulas = [
+      { id: 1, styleId: 101, formulaId: 315, order: 1, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 2, styleId: 101, formulaId: 316, order: 2, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 3, styleId: 103, formulaId: 316, order: 1, createdAt: "2026-01-01T00:00:00.000Z" }
     ];
 
     const formulaVariables = [
@@ -285,6 +286,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         description: "Pasting quantity per finished piece.",
         expression: "1",
         isActive: true
+      },
+      {
+        id: 315,
+        code: "GLUE_CALC",
+        name: "Glue Amount",
+        type: "Style",
+        description: "Glue flap allowance doubled for this style.",
+        expression: "GLUE_FLAP * 2",
+        isActive: true
+      },
+      {
+        id: 316,
+        code: "AREA_CALC",
+        name: "Covered Area",
+        type: "Style",
+        description: "Simple length times width for the style blank.",
+        expression: "L * W",
+        isActive: true
       }
     ];
 
@@ -379,8 +398,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       styles: snapshotData(styles),
       dimensions: snapshotData(dimensions),
       formulaVariables: snapshotData(formulaVariables),
-      styleVariables: snapshotData(styleVariables)
+      styleVariables: snapshotData(styleVariables),
+      styleFormulas: snapshotData(styleFormulas)
     };
+
+    const FORMULA_TYPES = ["Material", "Service", "Style"];
 
     const BASE_VARIABLES = [
       "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY",
@@ -455,6 +477,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       currentBOM: null,
       bomMaterials: [],
       bomServices: [],
+      bomStyleResults: [],
       totalMaterialCost: 0,
       totalServiceCost: 0,
       finalCostPerPiece: 0,
@@ -476,7 +499,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 1;
+    const IDB_VERSION = 2;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "rawMaterials",
@@ -486,7 +509,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "styles",
       "dimensions",
       "formulaVariables",
-      "styleVariables"
+      "styleVariables",
+      "styleFormulas"
     ];
 
     let idb = null;
@@ -541,6 +565,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (storeName === "dimensions") return dimensions;
       if (storeName === "formulaVariables") return formulaVariables;
       if (storeName === "styleVariables") return styleVariables;
+      if (storeName === "styleFormulas") return styleFormulas;
       return null;
     }
 
@@ -772,6 +797,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaVariables,
         styles,
         styleVariables,
+        styleFormulas,
         dimensions,
         boms,
         sequences: {
@@ -805,6 +831,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(formulaVariables, cloudData.formulaVariables || []);
       replaceArrayContents(styles, cloudData.styles || []);
       replaceArrayContents(styleVariables, cloudData.styleVariables || []);
+      replaceArrayContents(styleFormulas, cloudData.styleFormulas || []);
       replaceArrayContents(dimensions, cloudData.dimensions || []);
       replaceArrayContents(boms, cloudData.boms || []);
       sanitizeNumericMasters();
@@ -820,6 +847,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
       }
       syncSequencesFromData();
+      ensureSeedStyleFormulas();
+      syncSequencesFromData();
       if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
         try {
           recalculateBOMCosts();
@@ -831,6 +860,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.currentBOM = null;
         state.bomMaterials = [];
         state.bomServices = [];
+        state.bomStyleResults = [];
       }
     }
 
@@ -1083,6 +1113,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           }
 
           syncSequencesFromData();
+          if (ensureSeedStyleFormulas()) {
+            syncSequencesFromData();
+            await persistAllCollections();
+            await persistSequencesNow();
+          }
 
           if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
             try {
@@ -1116,6 +1151,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
     }
 
+    function ensureSeedStyleFormulas() {
+      const seeds = (SEED_DATA.formulas || []).filter((item) => item.type === "Style");
+      let added = false;
+      seeds.forEach((seed) => {
+        if (getFormulaByCode(seed.code)) return;
+        formulas.push({
+          id: nextFormulaId(),
+          code: seed.code,
+          name: seed.name,
+          type: "Style",
+          description: seed.description,
+          expression: seed.expression,
+          isActive: seed.isActive !== false
+        });
+        added = true;
+      });
+      if (!styleFormulas.length) {
+        (SEED_DATA.styleFormulas || []).forEach((seedLink) => {
+          const seedFormula = (SEED_DATA.formulas || []).find((item) => item.id === seedLink.formulaId);
+          const formula = seedFormula ? getFormulaByCode(seedFormula.code) : getFormula(seedLink.formulaId);
+          const style = styles.find((item) => item.id === seedLink.styleId);
+          if (!formula || !style) return;
+          if (styleFormulas.some((row) => row.styleId === style.id && Number(row.formulaId) === formula.id)) return;
+          styleFormulas.push({
+            id: nextMasterId(styleFormulas),
+            styleId: style.id,
+            formulaId: formula.id,
+            order: Number(seedLink.order) || styleFormulas.length + 1,
+            createdAt: seedLink.createdAt || new Date().toISOString()
+          });
+          added = true;
+        });
+      }
+      return added;
+    }
+
     async function resetToSeedData() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
@@ -1126,6 +1197,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(dimensions, snapshotData(SEED_DATA.dimensions));
       replaceArrayContents(formulaVariables, snapshotData(SEED_DATA.formulaVariables));
       replaceArrayContents(styleVariables, snapshotData(SEED_DATA.styleVariables));
+      replaceArrayContents(styleFormulas, snapshotData(SEED_DATA.styleFormulas));
       sanitizeNumericMasters();
       resetBomEditor();
       bomLineSeq = 1;
@@ -1285,6 +1357,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.dimensions.L = roundTo(item.dimensions.L, 2);
         item.dimensions.W = roundTo(item.dimensions.W, 2);
         item.dimensions.H = roundTo(item.dimensions.H, 2);
+        delete item.material;
         item.displayName = formatFinishedGoodDisplayName(item);
       });
       rawMaterials.forEach((item) => {
@@ -1346,7 +1419,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatFinishedGoodDisplayName(item) {
       const dims = formatDimensionCode(item.dimensions);
-      return [item.product, item.style, item.material, item.variant, dims]
+      return [item.product, item.style, item.variant, dims]
         .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
         .join(" ");
     }
@@ -1404,6 +1477,232 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return styleVariables.filter((item) => item.styleId === Number(styleId));
     }
 
+    const BOM_DIMENSION_DISPLAY = [
+      { code: "L", name: "Flat Length", kind: "fg" },
+      { code: "W", name: "Flat Width", kind: "fg" },
+      { code: "H", name: "Height", kind: "fg" },
+      { code: "AREA", name: "Covered Area", kind: "derived" },
+      { code: "PERIMETER", name: "Perimeter", kind: "derived" },
+      { code: "GLUE_FLAP", name: "Glue Flap", kind: "variable" },
+      { code: "SHEET_WIDTH", name: "Sheet Width", kind: "variable" }
+    ];
+
+    function squaredDimensionUnit(uom) {
+      const unit = String(uom || "").trim();
+      if (!unit) return "";
+      if (/²$/.test(unit) || /^sq\.?/i.test(unit)) return unit;
+      return unit + "²";
+    }
+
+    function formatDimensionDisplayValue(value) {
+      const n = roundTo(value, 2);
+      if (!Number.isFinite(n)) return "—";
+      return n.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+
+    function dimensionSourceLabel(source) {
+      if (source === "fg") return "From finished good";
+      if (source === "style") return "From style variable";
+      if (source === "formula") return "From formula variable default";
+      if (source === "derived") return "Calculated from L and W";
+      return "";
+    }
+
+    function resolveBomDimensionContext(finishedGood) {
+      const context = {};
+      const units = {};
+      const sources = {};
+      formulaVariables.forEach((item) => {
+        if (item.isActive === false) return;
+        const n = numericOrNull(item.defaultValue);
+        if (n === null) return;
+        context[item.code] = n;
+        units[item.code] = item.unit || "";
+        sources[item.code] = "formula";
+      });
+      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      if (style) {
+        getStyleVariables(style.id).forEach((row) => {
+          const n = numericOrNull(row.value);
+          if (n === null) return;
+          const catalog = getFormulaVariableByCode(row.variableCode);
+          context[row.variableCode] = n;
+          units[row.variableCode] = row.unit || (catalog && catalog.unit) || units[row.variableCode] || "";
+          sources[row.variableCode] = "style";
+        });
+      }
+      const dimUnit = String((finishedGood && finishedGood.dimensionUOM) || "").trim();
+      const dims = finishedGood && finishedGood.dimensions ? finishedGood.dimensions : {};
+      const L = numericOrNull(dims.L);
+      const W = numericOrNull(dims.W);
+      const H = numericOrNull(dims.H);
+      if (L !== null) {
+        context.L = L;
+        units.L = dimUnit || units.L || "";
+        sources.L = "fg";
+      }
+      if (W !== null) {
+        context.W = W;
+        units.W = dimUnit || units.W || "";
+        sources.W = "fg";
+      }
+      if (H !== null) {
+        context.H = H;
+        units.H = dimUnit || units.H || "";
+        sources.H = "fg";
+      }
+      return { context, units, sources, style, dimUnit };
+    }
+
+    function calculateBomDimensions(finishedGood) {
+      if (!finishedGood) return [];
+      const { context, units, sources, style, dimUnit } = resolveBomDimensionContext(finishedGood);
+      const L = Number(context.L) || 0;
+      const W = Number(context.W) || 0;
+      const linearUnit = dimUnit || units.L || units.W || "";
+      const rows = BOM_DIMENSION_DISPLAY.map((def) => {
+        if (def.kind === "derived" && def.code === "AREA") {
+          return {
+            code: def.code,
+            name: def.name,
+            value: L * W,
+            unit: squaredDimensionUnit(linearUnit),
+            source: "derived"
+          };
+        }
+        if (def.kind === "derived" && def.code === "PERIMETER") {
+          return {
+            code: def.code,
+            name: def.name,
+            value: 2 * (L + W),
+            unit: linearUnit,
+            source: "derived"
+          };
+        }
+        const catalog = getFormulaVariableByCode(def.code);
+        return {
+          code: def.code,
+          name: def.name,
+          value: context[def.code],
+          unit: units[def.code] || (catalog && catalog.unit) || (def.kind === "fg" ? linearUnit : ""),
+          source: sources[def.code] || (def.kind === "fg" ? "fg" : "formula")
+        };
+      });
+      const shown = new Set(rows.map((row) => row.code));
+      if (style) {
+        getStyleVariables(style.id).forEach((row) => {
+          if (shown.has(row.variableCode)) return;
+          const catalog = getFormulaVariableByCode(row.variableCode);
+          rows.push({
+            code: row.variableCode,
+            name: catalog ? catalog.name : row.variableCode,
+            value: numericOrNull(row.value),
+            unit: row.unit || (catalog && catalog.unit) || "",
+            source: "style"
+          });
+          shown.add(row.variableCode);
+        });
+      }
+      return rows;
+    }
+
+    function renderCalculatedDimensionsSection(finishedGood) {
+      const rows = calculateBomDimensions(finishedGood);
+      if (!rows.length) return "";
+      return `
+        <div id="calculatedDimensionsSection" class="calc-dims">
+          <div class="calc-dims-head">
+            <div>
+              <div class="section-kicker">Calculated dimensions</div>
+              <div class="section-title">Variable values for this finished good</div>
+            </div>
+            <span class="badge badge-muted">Live</span>
+          </div>
+          <div id="dimensionsGrid" class="calc-dims-grid">
+            ${rows.map((row) => {
+              const valueText = formatDimensionDisplayValue(row.value);
+              const unit = row.unit ? ` ${row.unit}` : "";
+              const source = dimensionSourceLabel(row.source);
+              return `
+                <div class="calc-dims-item" title="${escapeHtml(source)}">
+                  <span class="calc-dims-name">${escapeHtml(row.name)}</span>
+                  <span class="calc-dims-value">= ${escapeHtml(valueText)}${escapeHtml(unit)}</span>
+                </div>
+              `;
+            }).join("")}
+          </div>
+        </div>
+      `;
+    }
+
+    function getStyleFormulaLinks(styleId) {
+      return styleFormulas
+        .filter((item) => item.styleId === Number(styleId))
+        .slice()
+        .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || a.id - b.id);
+    }
+
+    function getStyleTypeFormulas() {
+      return formulas.filter((item) => item.type === "Style" && item.isActive);
+    }
+
+    function buildStyleFormulaVariables(finishedGood) {
+      const vars = buildFormulaVariables(finishedGood, null, DEFAULT_WASTAGE_PERCENT);
+      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      if (style) {
+        getStyleVariables(style.id).forEach((row) => {
+          const n = numericOrNull(row.value);
+          if (n !== null) vars[row.variableCode] = n;
+        });
+      }
+      return vars;
+    }
+
+    function evaluateStyleFormulasForFinishedGood(finishedGood) {
+      if (!finishedGood) return [];
+      const style = findStyleByName(finishedGood.style);
+      if (!style) return [];
+      const variables = buildStyleFormulaVariables(finishedGood);
+      return getStyleFormulaLinks(style.id).map((link) => {
+        const formula = getFormula(link.formulaId);
+        if (!formula) {
+          return {
+            linkId: link.id,
+            formulaId: link.formulaId,
+            code: "—",
+            name: "Missing formula",
+            expression: "",
+            success: false,
+            result: null,
+            error: "Linked style formula no longer exists."
+          };
+        }
+        if (!formula.isActive) {
+          return {
+            linkId: link.id,
+            formulaId: formula.id,
+            code: formula.code,
+            name: formula.name,
+            expression: formula.expression,
+            success: false,
+            result: null,
+            error: "This style formula is inactive."
+          };
+        }
+        const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
+        return {
+          linkId: link.id,
+          formulaId: formula.id,
+          code: formula.code,
+          name: formula.name,
+          expression: formula.expression,
+          success: calculated.success,
+          result: calculated.success ? calculated.result : null,
+          error: calculated.success ? null : calculated.error
+        };
+      });
+    }
+
     function getStyleVariableValue(styleId, variableCode) {
       const row = styleVariables.find((item) =>
         item.styleId === Number(styleId) && item.variableCode === variableCode
@@ -1447,12 +1746,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const layers = getPlyLayers(fg ? fg.ply : 3);
       if (currentLayer && !layers.includes(currentLayer)) return layers.concat([currentLayer]);
       return layers;
-    }
-
-    function getFinishedGoodMaterialOptions() {
-      const fromRm = rawMaterials.map((item) => item.name);
-      const fromFg = finishedGoods.map((item) => item.material).filter(Boolean);
-      return [...new Set(fromFg.concat(fromRm))].sort((a, b) => String(a).localeCompare(String(b)));
     }
 
     function normalizeUnit(unit) {
@@ -1668,7 +1961,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function filterBomFinishedGoods(query) {
       return finishedGoods.filter((item) =>
         matchesQuery(
-          [item.product, item.variant, item.style, item.material, item.ply, item.dimensions.L, item.dimensions.W, item.dimensions.H, formatDimensions(item), formatFinishedGoodDisplayName(item)],
+          [item.product, item.variant, item.style, item.ply, item.dimensions.L, item.dimensions.W, item.dimensions.H, formatDimensions(item), formatFinishedGoodDisplayName(item)],
           query
         )
       );
@@ -2474,6 +2767,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.finalCostPerPiece = roundTo(state.totalMaterialCost + state.totalServiceCost, 2);
       state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
       state.costPer1000 = roundTo(state.finalCostPerPiece * 1000, 2);
+      state.bomStyleResults = evaluateStyleFormulasForFinishedGood(getSelectedFinishedGood());
     }
 
     function createMaterialLineFromConfig(config) {
@@ -2831,6 +3125,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function refreshBomViews() {
       renderBOMHeader();
       renderProductInformation();
+      renderStyleFormulasSection();
       renderMaterialSection();
       renderServiceSection();
       renderCostSummary();
@@ -2877,7 +3172,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const q = state.searches.finishedGoods;
       return finishedGoods.filter((item) =>
         matchesQuery(
-          [item.product, item.variant, item.style, item.material, item.uom, item.ply, formatDimensions(item), item.status, formatFinishedGoodDisplayName(item)],
+          [item.product, item.variant, item.style, item.uom, item.ply, formatDimensions(item), item.status, formatFinishedGoodDisplayName(item)],
           q
         )
       );
@@ -2965,6 +3260,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (mode === "all") return true;
         if (mode === "material") return item.type === "Material";
         if (mode === "service") return item.type === "Service";
+        if (mode === "style") return item.type === "Style";
         if (mode === "active") return item.isActive === true;
         if (mode === "inactive") return item.isActive === false;
         return true;
@@ -3063,7 +3359,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <tr>
               <td>${escapeHtml(item.product)}</td>
               <td>${escapeHtml(item.style)}</td>
-              <td>${escapeHtml(item.material || "—")}</td>
               <td>${escapeHtml(item.variant)}</td>
               <td>${escapeHtml(formatDimensions(item))}</td>
               <td>${escapeHtml(item.ply)}</td>
@@ -3072,7 +3367,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${masterRowActions("data-edit-fg", item.id, "data-delete-fg", item.id)}
             </tr>
           `).join("")
-        : emptyRow(9, "No finished goods match this search.");
+        : emptyRow(8, "No finished goods match this search.");
 
       document.getElementById("page-finished-goods").innerHTML = `
         <div class="toolbar">
@@ -3093,7 +3388,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tr>
                   <th>Product</th>
                   <th>Style</th>
-                  <th>Material</th>
                   <th>Variant</th>
                   <th>Dimensions</th>
                   <th>Ply</th>
@@ -3227,11 +3521,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td>${escapeHtml(item.name)}</td>
               <td>${escapeHtml(item.description || "—")}</td>
               <td>${getStyleVariables(item.id).length} variables</td>
+              <td>${getStyleFormulaLinks(item.id).length} formulas</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-style", item.id, "data-delete-style", item.id)}
             </tr>
           `).join("")
-        : emptyRow(5, "No styles match this search.");
+        : emptyRow(6, "No styles match this search.");
 
       document.getElementById("page-style").innerHTML = `
         <div class="toolbar">
@@ -3253,6 +3548,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <th>Style Name</th>
                   <th>Description</th>
                   <th>Variables</th>
+                  <th>Formulas</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -3394,7 +3690,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function isFormulaUsed(formulaId) {
       const formula = getFormula(formulaId);
       const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
-        || services.some((item) => bindingUsesFormula(item.formulaId, formula));
+        || services.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || styleFormulas.some((item) => bindingUsesFormula(item.formulaId, formula));
       const usedInEditor = state.bomMaterials.some((line) => lineUsesFormula(line, formula)) ||
         state.bomServices.some((line) => lineUsesFormula(line, formula));
       const usedInSaved = boms.some((bom) =>
@@ -3410,14 +3707,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `<div class="dep-badges">${deps.map((dep) => `<span class="badge ${getFormulaByCode(dep) ? "badge-info" : "badge-muted"}">${escapeHtml(dep)}</span>`).join("")}</div>`;
     }
 
-    function renderFormulas() {
-      const rows = filterFormulas();
-      const body = rows.length
-        ? rows.map((item) => `
+    function formulaTypeBadge(type) {
+      const cls = type === "Service" ? "badge-warn" : type === "Style" ? "badge-success" : "badge-info";
+      return `<span class="badge ${cls}">${escapeHtml(type)}</span>`;
+    }
+
+    function renderFormulaTable(items, emptyMessage) {
+      const body = items.length
+        ? items.map((item) => `
             <tr>
               <td>${escapeHtml(item.name)}</td>
               <td class="mono">${escapeHtml(item.code)}</td>
-              <td><span class="badge ${item.type === "Service" ? "badge-warn" : "badge-info"}">${escapeHtml(item.type)}</span></td>
+              <td>${formulaTypeBadge(item.type)}</td>
               <td class="mono">${escapeHtml(item.expression)}</td>
               <td>${renderDependencyBadges(item.expression)}</td>
               <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
@@ -3432,7 +3733,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </td>
             </tr>
           `).join("")
-        : emptyRow(7, "No formulas match this search or filter.");
+        : emptyRow(7, emptyMessage || "No formulas match this search or filter.");
+      return `
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:1100px;">
+            <thead>
+              <tr>
+                <th>Formula Name</th>
+                <th>Code</th>
+                <th>Type</th>
+                <th>Expression</th>
+                <th>Dependencies</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderFormulas() {
+      const rows = filterFormulas();
+      const grouped = state.formulaFilter === "all";
+      const tables = grouped
+        ? FORMULA_TYPES.map((type) => {
+            const items = rows.filter((item) => item.type === type);
+            return `
+              <div class="card" style="margin-bottom:16px;">
+                <div class="card-body">
+                  <div class="section-head">
+                    <div>
+                      <div class="section-kicker">${escapeHtml(type)} formulas</div>
+                      <div class="section-title">${escapeHtml(type)}</div>
+                    </div>
+                    <span class="badge badge-muted">${items.length}</span>
+                  </div>
+                  ${renderFormulaTable(items, `No ${type.toLowerCase()} formulas.`)}
+                </div>
+              </div>
+            `;
+          }).join("")
+        : `<div class="card">${renderFormulaTable(rows)}</div>`;
 
       document.getElementById("page-formulas").innerHTML = `
         <div class="toolbar">
@@ -3451,6 +3794,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="all" ${state.formulaFilter === "all" ? "selected" : ""}>All</option>
               <option value="material" ${state.formulaFilter === "material" ? "selected" : ""}>Material</option>
               <option value="service" ${state.formulaFilter === "service" ? "selected" : ""}>Service</option>
+              <option value="style" ${state.formulaFilter === "style" ? "selected" : ""}>Style</option>
               <option value="active" ${state.formulaFilter === "active" ? "selected" : ""}>Active</option>
               <option value="inactive" ${state.formulaFilter === "inactive" ? "selected" : ""}>Inactive</option>
             </select>
@@ -3459,24 +3803,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <span class="badge badge-muted">${rows.length} of ${formulas.length}</span>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table" style="min-width:1100px;">
-              <thead>
-                <tr>
-                  <th>Formula Name</th>
-                  <th>Code</th>
-                  <th>Type</th>
-                  <th>Expression</th>
-                  <th>Dependencies</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
-          </div>
-        </div>
+        ${tables}
       `;
     }
 
@@ -3486,6 +3813,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <span>Select Finished Good</span>
           <span class="flow-arrow">↓</span>
           <span>Product Information</span>
+          <span class="flow-arrow">↓</span>
+          <span>Style Formulas</span>
           <span class="flow-arrow">↓</span>
           <span>Raw Materials</span>
           <span class="flow-arrow">↓</span>
@@ -3504,6 +3833,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div id="bom-header-root"></div>
             <div id="bom-product-root"></div>
+            <div id="bom-style-formulas-root"></div>
             <div id="bom-materials-root"></div>
             <div id="bom-services-root"></div>
           </div>
@@ -3513,6 +3843,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderFinishedGoodSelector();
       renderBOMHeader();
       renderProductInformation();
+      renderStyleFormulasSection();
       renderMaterialSection();
       renderServiceSection();
       renderCostSummary();
@@ -3557,6 +3888,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.currentBOM = null;
       state.bomMaterials = [];
       state.bomServices = [];
+      state.bomStyleResults = [];
       state.totalMaterialCost = 0;
       state.totalServiceCost = 0;
       state.finalCostPerPiece = 0;
@@ -3761,10 +4093,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div class="field-value">${escapeHtml(fg.style)}</div>
                   </div>
                   <div>
-                    <div class="field-label">Material</div>
-                    <div class="field-value">${escapeHtml(fg.material || "—")}</div>
-                  </div>
-                  <div>
                     <div class="field-label">Ply</div>
                     <div class="field-value">${escapeHtml(fg.ply)} Ply</div>
                   </div>
@@ -3777,25 +4105,56 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div class="field-value">${escapeHtml(formatDimensions(fg))}</div>
                   </div>
                 </div>
-                <div class="dim-grid">
-                  <div class="dim-box">
-                    <div class="field-label">Length</div>
-                    <strong>${escapeHtml(formatDecimal(fg.dimensions.L, 2, false))} ${escapeHtml(fg.dimensionUOM)}</strong>
-                  </div>
-                  <div class="dim-box">
-                    <div class="field-label">Width</div>
-                    <strong>${escapeHtml(formatDecimal(fg.dimensions.W, 2, false))} ${escapeHtml(fg.dimensionUOM)}</strong>
-                  </div>
-                  <div class="dim-box">
-                    <div class="field-label">Height</div>
-                    <strong>${escapeHtml(formatDecimal(fg.dimensions.H, 2, false))} ${escapeHtml(fg.dimensionUOM)}</strong>
-                  </div>
-                </div>
               </div>
               <div>
                 <div class="section-kicker" style="margin-bottom:8px;">${escapeHtml(fg.ply)} Ply Structure</div>
                 ${renderPlyVisualization(fg.ply)}
               </div>
+            </div>
+            ${renderCalculatedDimensionsSection(fg)}
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStyleFormulasSection() {
+      const root = document.getElementById("bom-style-formulas-root");
+      if (!root) return;
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
+        root.innerHTML = "";
+        return;
+      }
+      const rows = Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [];
+      if (!rows.length) {
+        root.innerHTML = "";
+        return;
+      }
+      root.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <div class="section-head">
+              <div>
+                <div class="section-kicker">Style formulas</div>
+                <div class="section-title">Style Formulas (Auto-calculated)</div>
+              </div>
+              <span class="badge badge-muted">Read-only</span>
+            </div>
+            <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg.style)}</strong>. Values update when the finished good or style variables change.</p>
+            <div class="style-formula-results">
+              ${rows.map((row) => `
+                <div class="style-formula-row">
+                  <div>
+                    <div><span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.name)}</div>
+                    <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
+                  </div>
+                  <div class="style-formula-value">
+                    ${row.success
+                      ? `<strong>= ${escapeHtml(formatFormulaResult(row.result))}</strong>`
+                      : `<div class="field-error">${escapeHtml(row.error || "Could not evaluate")}</div>`}
+                  </div>
+                </div>
+              `).join("")}
             </div>
           </div>
         </div>
@@ -4115,6 +4474,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <select id="fb-type" class="full-select ${errors.type ? "input-invalid" : ""}">
                   <option value="Material" ${draft.type === "Material" ? "selected" : ""}>Material</option>
                   <option value="Service" ${draft.type === "Service" ? "selected" : ""}>Service</option>
+                  <option value="Style" ${draft.type === "Style" ? "selected" : ""}>Style</option>
                 </select>
                 ${errors.type ? `<div class="field-error">${escapeHtml(errors.type)}</div>` : ""}
               </div>
@@ -4273,6 +4633,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const codeError = validateFormulaCode(String(draft.code || "").trim().toUpperCase());
       if (codeError) errors.code = codeError;
       if (!draft.type) errors.type = "Type is required.";
+      else if (!FORMULA_TYPES.includes(draft.type)) errors.type = "Type must be Material, Service, or Style.";
       if (!draft.expression || !String(draft.expression).trim()) errors.expression = "Expression is required.";
 
       const code = String(draft.code || "").trim().toUpperCase();
@@ -4309,7 +4670,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderFormulas();
       refreshIcons();
       afterDataChange("formulas");
-      if (state.selectedFinishedGoodId) recalculateBOMCosts();
+      refreshOpenBomCalculations();
     }
 
     function toggleFormulaActive(formulaId) {
@@ -4331,7 +4692,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderFormulas();
       refreshIcons();
       afterDataChange("formulas");
-      if (state.selectedFinishedGoodId) recalculateBOMCosts();
+      refreshOpenBomCalculations();
     }
 
     function closeModal() {
@@ -4360,7 +4721,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         product: "",
         style: styles[0] ? styles[0].name : "",
-        material: getFinishedGoodMaterialOptions()[0] || "",
         variant: "",
         ply: 3,
         L: "",
@@ -4376,7 +4736,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       if (!String(draft.product || "").trim()) errors.product = "Product Name is required.";
       if (!String(draft.style || "").trim()) errors.style = "Style is required.";
-      if (!String(draft.material || "").trim()) errors.material = "Material is required.";
       if (!String(draft.variant || "").trim()) errors.variant = "Variant is required.";
       if (![1, 2, 3].includes(Number(draft.ply))) errors.ply = "Ply must be 1, 2, or 3.";
       const L = parseByRule(draft.L, "dimension", { requiredError: "Length must be greater than 0.", minError: "Length must be at least 0.1." });
@@ -4394,7 +4753,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderFinishedGoodFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
-      const materialOptions = getFinishedGoodMaterialOptions();
       return `
         <div class="modal-header">
           <div>
@@ -4417,14 +4775,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${styles.map((item) => `<option value="${escapeHtml(item.name)}" ${draft.style === item.name ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
               </select>
               ${errors.style ? `<div class="field-error">${escapeHtml(errors.style)}</div>` : ""}
-            </div>
-            <div>
-              <label class="form-label" for="fg-material">Material</label>
-              <select id="fg-material" class="full-select ${errors.material ? "input-invalid" : ""}">
-                <option value="">Select a material...</option>
-                ${materialOptions.map((name) => `<option value="${escapeHtml(name)}" ${draft.material === name ? "selected" : ""}>${escapeHtml(name)}</option>`).join("")}
-              </select>
-              ${errors.material ? `<div class="field-error">${escapeHtml(errors.material)}</div>` : ""}
             </div>
             <div>
               <label class="form-label" for="fg-variant">Variant</label>
@@ -4488,7 +4838,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: item.id,
         product: item.product,
         style: item.style,
-        material: item.material || "",
         variant: item.variant,
         ply: item.ply,
         L: formatDecimal(item.dimensions.L, 2, false),
@@ -4528,7 +4877,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const payload = {
         product: String(draft.product).trim(),
         style: String(draft.style).trim(),
-        material: String(draft.material).trim(),
         variant: String(draft.variant).trim(),
         ply: Number(draft.ply),
         dimensions: { L: parsedL.value, W: parsedW.value, H: parsedH.value },
@@ -4539,7 +4887,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       payload.displayName = formatFinishedGoodDisplayName(payload);
       if (state.modal.mode === "edit" && draft.id) {
         const index = finishedGoods.findIndex((row) => row.id === draft.id);
-        if (index >= 0) finishedGoods[index] = { ...finishedGoods[index], ...payload };
+        if (index >= 0) {
+          finishedGoods[index] = { ...finishedGoods[index], ...payload };
+          delete finishedGoods[index].material;
+        }
         showNotification("Product updated successfully");
       } else {
         const item = { id: nextMasterId(finishedGoods), ...payload };
@@ -4565,6 +4916,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderFinishedGoods();
       refreshIcons();
       afterDataChange("finishedGoods", "dimensions");
+      refreshOpenBomCalculations();
     }
 
     function updateFinishedGoodDraftFromEvent(target) {
@@ -4572,7 +4924,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       if (target.id === "fg-product") draft.product = target.value;
       else if (target.id === "fg-style") draft.style = target.value;
-      else if (target.id === "fg-material") draft.material = target.value;
       else if (target.id === "fg-variant") draft.variant = target.value;
       else if (target.id === "fg-ply") draft.ply = Number(target.value);
       else if (target.id === "fg-dim-l") draft.L = target.value;
@@ -5091,6 +5442,63 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             `;
           }).join("")
         : emptyRow(5, "No variables added to this style yet.");
+      const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
+      const linkedIds = new Set(linkedFormulas.map((row) => Number(row.formulaId)));
+      const availableFormulas = getStyleTypeFormulas().filter((item) => !linkedIds.has(item.id));
+      const formulaRows = linkedFormulas.length
+        ? linkedFormulas.map((row) => {
+            const formula = getFormula(row.formulaId);
+            return `
+              <tr>
+                <td class="mono">${escapeHtml(formula ? formula.code : "—")}</td>
+                <td>${escapeHtml(formula ? formula.name : "Missing formula")}</td>
+                <td class="mono">${escapeHtml(formula ? formula.expression : "—")}</td>
+                <td>
+                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Remove formula">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                </td>
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(4, "No formulas linked to this style yet.");
+      const formulasForm = `
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Style formulas</div>
+            <p class="stat-hint" style="margin:4px 0 0;">Optional. Link Style-type formulas. They auto-calculate in the BOM when a finished good uses this style.</p>
+          </div>
+        </div>
+        <div class="form-grid two" style="margin-bottom:12px;">
+          <div>
+            <label class="form-label" for="style-formula-select">Add Formula</label>
+            <select id="style-formula-select" class="full-select" ${availableFormulas.length ? "" : "disabled"}>
+              <option value="">${availableFormulas.length ? "Select a Style formula..." : "No unused Style formulas"}</option>
+              ${availableFormulas.map((item) => `
+                <option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+              `).join("")}
+            </select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button type="button" class="btn btn-primary" id="btn-add-style-formula" ${availableFormulas.length ? "" : "disabled"}>
+              <i data-lucide="plus"></i> Add Formula
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:640px;">
+            <thead>
+              <tr>
+                <th>Formula Code</th>
+                <th>Name</th>
+                <th>Expression</th>
+                <th>Delete</th>
+              </tr>
+            </thead>
+            <tbody>${formulaRows}</tbody>
+          </table>
+        </div>
+      `;
       const variablesForm = `
         <div class="section-head">
           <div class="section-kicker">Style variables</div>
@@ -5126,8 +5534,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="section-tabs">
               <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-style-tab="info">Style Info</button>
               <button type="button" class="section-tab ${tab === "variables" ? "active" : ""}" data-style-tab="variables">Variables</button>
+              <button type="button" class="section-tab ${tab === "formulas" ? "active" : ""}" data-style-tab="formulas">Style Formulas</button>
             </div>
-            ${tab === "variables" ? variablesForm : infoForm}
+            ${tab === "variables" ? variablesForm : tab === "formulas" ? formulasForm : infoForm}
           ` : `${infoForm}${renderPendingStyleVariables()}`}
         </div>
         <div class="modal-footer">
@@ -5180,6 +5589,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         renderStyles();
         refreshIcons();
         afterDataChange("styles", "finishedGoods");
+        refreshOpenBomCalculations();
         return;
       }
       const pending = (draft.pendingVariables || []).filter((row) =>
@@ -5377,6 +5787,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderStyles();
       refreshIcons();
       afterDataChange("styleVariables");
+      refreshBomStyleFormulasIfNeeded(state.modal.draft && state.modal.draft.id);
     }
 
     function updateStyleVariableDraftFromEvent(target) {
@@ -5401,6 +5812,67 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.modal.styleTab = "variables";
       renderModal();
       refreshIcons();
+    }
+
+    function refreshBomStyleFormulasIfNeeded(styleId) {
+      const fg = getSelectedFinishedGood();
+      const style = fg ? findStyleByName(fg.style) : null;
+      if (styleId != null && (!style || style.id !== Number(styleId))) return;
+      if (!fg) return;
+      refreshOpenBomCalculations();
+    }
+
+    function refreshOpenBomCalculations() {
+      if (!state.selectedFinishedGoodId || !getSelectedFinishedGood()) return;
+      recalculateBOMCosts();
+      if (state.currentPage === "bom-costing") refreshBomViews();
+    }
+
+    function addStyleFormulaToStyle() {
+      if (state.modal.type !== "style-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
+      const select = document.getElementById("style-formula-select");
+      const formulaId = select && select.value ? Number(select.value) : null;
+      const formula = getFormula(formulaId);
+      if (!formula || formula.type !== "Style") {
+        showNotification("Select a Style formula to add.", "error");
+        return;
+      }
+      const styleId = Number(state.modal.draft.id);
+      if (styleFormulas.some((row) => row.styleId === styleId && Number(row.formulaId) === formula.id)) {
+        showNotification("This formula is already linked to the style.", "error");
+        return;
+      }
+      const order = getStyleFormulaLinks(styleId).reduce((max, row) => Math.max(max, Number(row.order) || 0), 0) + 1;
+      styleFormulas.push({
+        id: nextMasterId(styleFormulas),
+        styleId,
+        formulaId: formula.id,
+        order,
+        createdAt: new Date().toISOString()
+      });
+      showNotification("Formula linked to style");
+      state.modal.styleTab = "formulas";
+      renderModal();
+      renderStyles();
+      refreshIcons();
+      afterDataChange("styleFormulas");
+      refreshBomStyleFormulasIfNeeded(styleId);
+    }
+
+    function removeStyleFormulaFromStyle(linkId) {
+      const index = styleFormulas.findIndex((row) => row.id === Number(linkId));
+      if (index < 0) return;
+      const styleId = styleFormulas[index].styleId;
+      styleFormulas.splice(index, 1);
+      showNotification("Formula removed from style");
+      if (state.modal.type === "style-master") {
+        state.modal.styleTab = "formulas";
+        renderModal();
+      }
+      renderStyles();
+      refreshIcons();
+      afterDataChange("styleFormulas");
+      refreshBomStyleFormulasIfNeeded(styleId);
     }
 
     function defaultDimensionDraft() {
@@ -5830,10 +6302,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         for (let i = styleVariables.length - 1; i >= 0; i -= 1) {
           if (styleVariables[i].styleId === id) styleVariables.splice(i, 1);
         }
+        for (let i = styleFormulas.length - 1; i >= 0; i -= 1) {
+          if (styleFormulas[i].styleId === id) styleFormulas.splice(i, 1);
+        }
         closeModal();
         renderStyles();
         showNotification("Style deleted successfully");
-        afterDataChange("styles", "styleVariables");
+        afterDataChange("styles", "styleVariables", "styleFormulas");
       } else if (entity === "dimension") {
         const index = dimensions.findIndex((item) => item.id === id);
         if (index >= 0) dimensions.splice(index, 1);
@@ -5856,6 +6331,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         afterDataChange("formulaVariables");
       } else if (entity === "style-variable") {
         const parent = state.modal.parentStyle;
+        const row = styleVariables.find((item) => item.id === id);
+        const styleId = row ? row.styleId : (parent && parent.draft && parent.draft.id);
         const index = styleVariables.findIndex((item) => item.id === id);
         if (index >= 0) styleVariables.splice(index, 1);
         showNotification("Variable removed");
@@ -5870,6 +6347,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         renderStyles();
         refreshIcons();
+        refreshBomStyleFormulasIfNeeded(styleId);
         return;
       }
       refreshIcons();
@@ -7260,6 +7738,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-add-style-variable")) {
           openStyleVariableModal();
+          return;
+        }
+        if (event.target.closest("#btn-add-style-formula")) {
+          addStyleFormulaToStyle();
+          return;
+        }
+        const deleteStyleFormula = event.target.closest("[data-delete-style-formula]");
+        if (deleteStyleFormula) {
+          removeStyleFormulaFromStyle(deleteStyleFormula.dataset.deleteStyleFormula);
           return;
         }
         if (event.target.closest("#btn-add-pending-style-variable")) {
