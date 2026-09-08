@@ -511,6 +511,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       CONVERSION_FACTOR: 1 / (SQ_IN_TO_SQ_M * GRAM_TO_KG)
     };
 
+    const ENGINE_CONSTANT_LABELS = {
+      SQ_IN_TO_SQ_M: "sq in → sq m conversion",
+      GRAM_TO_KG: "grams → kilograms conversion",
+      CONVERSION_FACTOR: "unit conversion factor"
+    };
+
     const DEFAULT_TEST_VALUES = {
       L: 7,
       W: 7,
@@ -3868,7 +3874,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             return `
               <div class="cc-service-row">
                 <div class="cc-layer-title">${escapeHtml(service ? service.name : "Service")}</div>
-                <div>${!calc.error ? formatQty(calc.qty) : "—"}</div>
+                <div>
+                  <span class="formula-cell">
+                    ${!calc.error ? formatQty(calc.qty) : "—"}
+                    ${formulaHelpButton("cc-service", row.key, "Explain quantity")}
+                  </span>
+                </div>
                 <div>${!calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM)) : "—"}</div>
                 <div>${!calc.error ? formatRupees(calc.cost) : "Error"}</div>
                 <div>
@@ -4123,7 +4134,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </select>
             ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
             <div class="cc-metrics">
-              <div><span>Qty</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
+              <div><span>Qty</span><strong class="formula-cell">${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}${row.rawMaterialId ? formulaHelpButton("cc-material", row.layer, "Explain quantity") : ""}</strong></div>
               <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM)) : "—"}</strong></div>
               <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.rawMaterialId && calc.error ? "Error" : "—")}</strong></div>
               <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
@@ -6123,9 +6134,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
                   </div>
                   <div class="style-formula-value">
-                    ${row.success
-                      ? `<strong>= ${escapeHtml(formatFormulaResult(row.result))}</strong>`
-                      : `<div class="field-error">${escapeHtml(row.error || "Could not evaluate")}</div>`}
+                    <span class="formula-cell">
+                      ${row.success
+                        ? `<strong>= ${escapeHtml(formatFormulaResult(row.result))}</strong>`
+                        : `<span class="field-error">${escapeHtml(row.error || "Could not evaluate")}</span>`}
+                      ${formulaHelpButton("style", row.code, "Explain style formula")}
+                    </span>
                   </div>
                 </div>
               `).join("")}
@@ -6159,7 +6173,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </td>
                   <td>${escapeHtml(line.layer)}</td>
                   <td>${escapeHtml(methodLabel)}</td>
-                  <td>${escapeHtml(formulaLabel)}</td>
+                  <td>
+                    <span class="formula-cell">
+                      ${escapeHtml(formulaLabel)}
+                      ${formulaHelpButton("material", line.id, "Explain quantity")}
+                    </span>
+                  </td>
                   <td>${formatQty(line.netQty)}</td>
                   <td>
                     <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" />
@@ -6167,7 +6186,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <td>${formatQty(line.grossQty)}</td>
                   <td>
                     ${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}
-                    <div class="stat-hint">Raw Material Master</div>
+                    <div class="stat-hint">Material Rates</div>
                   </td>
                   <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
@@ -6248,7 +6267,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     ${line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
                   </td>
                   <td>${escapeHtml(methodLabel)}</td>
-                  <td>${escapeHtml(formulaLabel)}</td>
+                  <td>
+                    <span class="formula-cell">
+                      ${escapeHtml(formulaLabel)}
+                      ${formulaHelpButton("service", line.id, "Explain quantity")}
+                    </span>
+                  </td>
                   <td>${formatQty(line.quantity)}</td>
                   <td>
                     ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
@@ -6685,6 +6709,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (dialog) {
         dialog.classList.remove("wide");
         dialog.classList.remove("wide-form");
+        dialog.classList.remove("formula-explainer");
         dialog.innerHTML = "";
       }
     }
@@ -9273,6 +9298,525 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function formatExplainNumber(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return "—";
+      const abs = Math.abs(n);
+      if (abs !== 0 && abs < 0.001) return formatDecimal(n, 8, false);
+      if (abs !== 0 && abs < 1) return formatDecimal(n, 6, false);
+      return formatDecimal(n, 4, false);
+    }
+
+    function collectNestedFormulas(formula) {
+      const ordered = [];
+      const seen = new Set();
+      function visit(item) {
+        if (!item || !item.expression || seen.has(item.id)) return;
+        seen.add(item.id);
+        extractIdentifiers(item.expression).forEach((id) => {
+          const dep = getFormulaByCode(id);
+          if (dep && dep.id !== item.id) visit(dep);
+        });
+        ordered.push(item);
+      }
+      visit(formula);
+      return ordered;
+    }
+
+    function resolveExplainIdentifier(id, variables, computed) {
+      if (computed && Object.prototype.hasOwnProperty.call(computed, id) && computed[id] != null) {
+        return computed[id];
+      }
+      const provided = numericOrNull(variables ? variables[id] : null);
+      if (provided !== null) return provided;
+      if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id)) return ENGINE_CONSTANTS[id];
+      const dep = getFormulaByCode(id);
+      if (dep) {
+        const evaluated = evaluateFormula(dep.expression, variables, [dep.code]);
+        if (evaluated.success) return evaluated.result;
+      }
+      return null;
+    }
+
+    function classifyExplainIdentifier(id, computed, tagHints) {
+      if (computed && Object.prototype.hasOwnProperty.call(computed, id) && computed[id] != null) return "step";
+      if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id)) return "hardcoded";
+      if (tagHints && tagHints[id]) return tagHints[id];
+      return "input";
+    }
+
+    function explainTaggedValueHtml(shown, tag, extraTitle) {
+      const labels = {
+        hardcoded: "fixed constant",
+        manual: "manual entry",
+        input: "formula input"
+      };
+      const titleAttr = extraTitle ? ` title="${escapeHtml(extraTitle)}"` : "";
+      const val = `<strong class="formula-val"${titleAttr}>${escapeHtml(shown)}</strong>`;
+      const label = labels[tag];
+      if (!label) return val;
+      return `${val} <span class="formula-src">(${escapeHtml(label)})</span>`;
+    }
+
+    function expressionToExplainHtml(expression, variables, computed, tagHints) {
+      let tokens;
+      try {
+        tokens = tokenizeExpression(expression);
+      } catch (error) {
+        return `<span class="mono">${escapeHtml(expression || "—")}</span>`;
+      }
+      return tokens.map((token) => {
+        if (token.type === "id") {
+          const value = resolveExplainIdentifier(token.value, variables, computed);
+          const shown = value == null ? token.value : formatExplainNumber(value);
+          const tag = classifyExplainIdentifier(token.value, computed, tagHints);
+          const extra = tag === "hardcoded" ? (ENGINE_CONSTANT_LABELS[token.value] || "") : "";
+          return explainTaggedValueHtml(shown, tag, extra);
+        }
+        if (token.type === "num") {
+          return explainTaggedValueHtml(formatExplainNumber(token.value), "hardcoded");
+        }
+        if (token.type === "*") return " × ";
+        if (token.type === "/") return " / ";
+        if (token.type === "+") return " + ";
+        if (token.type === "-") return " − ";
+        if (token.type === "(") return "(";
+        if (token.type === ")") return ")";
+        return escapeHtml(token.value || token.type);
+      }).join("");
+    }
+
+    function prettyExpressionText(expression) {
+      return String(expression || "")
+        .replace(/\*/g, " × ")
+        .replace(/\//g, " / ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    function formulaHasVariableInputs(formula) {
+      if (!formula || !formula.expression) return false;
+      return collectNestedFormulas(formula).some((item) =>
+        extractIdentifiers(item.expression).some((id) =>
+          !Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id) && !getFormulaByCode(id)
+        )
+      );
+    }
+
+    function inferExplainSourceType(formula, explicit) {
+      if (explicit) return explicit;
+      if (!formula) return "manual";
+      return formulaHasVariableInputs(formula) ? "formula" : "formula-flat";
+    }
+
+    function buildGrossQtyExplainSteps(variables, computed, netQty, wastagePercent, grossQty, tagHints, startIndex) {
+      const steps = [];
+      const grossFormula = getFormulaByCode("GROSS_QTY");
+      const wastage = Number(wastagePercent);
+      const net = Number(netQty);
+      const wastageTag = (tagHints && tagHints.WASTAGE) || "input";
+      if (grossFormula && grossFormula.isActive) {
+        const grossVars = { ...variables, NET_QTY: net, WASTAGE: wastage };
+        const grossComputed = { ...computed, NET_QTY: net };
+        const grossEval = evaluateFormula(grossFormula.expression, grossVars, [grossFormula.code]);
+        steps.push({
+          index: startIndex + 1,
+          heading: (grossFormula.name || "Gross Quantity") + " (" + grossFormula.code + ")",
+          expression: prettyExpressionText(grossFormula.expression),
+          pluggedHtml: "= " + expressionToExplainHtml(grossFormula.expression, grossVars, grossComputed, { ...tagHints, NET_QTY: "step", WASTAGE: wastageTag }) +
+            " = <strong class=\"formula-val\">" + escapeHtml(formatExplainNumber(grossEval.success ? grossEval.result : grossQty)) + "</strong>"
+        });
+      } else {
+        steps.push({
+          index: startIndex + 1,
+          heading: "Gross Quantity",
+          expression: "NET_QTY × (1 + WASTAGE / 100)",
+          pluggedHtml: `= ${explainTaggedValueHtml(formatExplainNumber(net), "step")} × (${explainTaggedValueHtml("1", "hardcoded")} + ${explainTaggedValueHtml(formatExplainNumber(wastage), wastageTag)} / ${explainTaggedValueHtml("100", "hardcoded")}) = <strong class="formula-val">${escapeHtml(formatQty(grossQty))}</strong>`
+        });
+      }
+      return steps;
+    }
+
+    function buildFormulaExplainCore(opts) {
+      const formula = opts.formula || null;
+      const variables = opts.variables || {};
+      const tagHints = opts.tagHints || {};
+      const uom = opts.uom || "";
+      const title = opts.title || "Quantity";
+      const sourceType = inferExplainSourceType(formula, opts.sourceType);
+      const includeGrossQty = Boolean(opts.includeGrossQty) && !(formula && formula.code === "GROSS_QTY");
+      const resultValue = opts.resultValue != null ? opts.resultValue : (opts.netQty != null ? opts.netQty : null);
+      const formulaName = sourceType === "manual"
+        ? "Manual entry"
+        : sourceType === "hardcoded"
+          ? (opts.hardcodedLabel || "Fixed constant")
+          : (formula ? (formula.name || formula.code) : "Formula");
+
+      const defaultFinal = includeGrossQty
+        ? `Net Qty: <strong>${escapeHtml(formatQty(opts.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(opts.grossQty))} ${escapeHtml(uom)}</strong>`
+        : (opts.resultLabel || "Qty") + `: <strong>${escapeHtml(opts.resultDisplay != null ? String(opts.resultDisplay) : formatQty(resultValue))} ${escapeHtml(uom)}</strong>`.trim();
+      const finalHtml = opts.finalHtml || defaultFinal;
+
+      if (sourceType === "manual") {
+        const typed = opts.manualQty != null ? opts.manualQty : resultValue;
+        const shown = formatQty(typed);
+        const steps = includeGrossQty
+          ? buildGrossQtyExplainSteps(variables, { NET_QTY: Number(opts.netQty) }, opts.netQty, opts.wastagePercent, opts.grossQty, tagHints, 0)
+          : [];
+        return {
+          title,
+          subtitle: opts.subtitle || "",
+          formulaName,
+          sourceType,
+          summaryHtml: `This value was entered manually: <strong class="formula-val">${escapeHtml(shown)}</strong> <span class="formula-src">(manual entry)</span>${uom ? " " + escapeHtml(uom) : ""}. It is not calculated from a formula.`,
+          steps,
+          finalHtml
+        };
+      }
+
+      if (sourceType === "hardcoded") {
+        const shown = opts.resultDisplay != null ? String(opts.resultDisplay) : formatExplainNumber(resultValue);
+        const represents = opts.hardcodedLabel ? ` (${escapeHtml(opts.hardcodedLabel)})` : "";
+        return {
+          title,
+          subtitle: opts.subtitle || "",
+          formulaName,
+          sourceType,
+          summaryHtml: `This value is a fixed constant in the system: <strong class="formula-val">${escapeHtml(shown)}</strong>${represents}. It is not user-editable and does not change per item.`,
+          steps: [],
+          finalHtml
+        };
+      }
+
+      if (!formula) {
+        return { error: "Calculation details are unavailable." };
+      }
+
+      if (sourceType === "formula-flat") {
+        const evaluated = evaluateFormula(formula.expression, variables, [formula.code]);
+        const value = evaluated.success ? evaluated.result : resultValue;
+        const shown = formatExplainNumber(value);
+        const extraSteps = [];
+        if (opts.coveredArea != null && Number.isFinite(Number(opts.coveredArea))) {
+          extraSteps.push(...buildCoveredAreaExplainStep(variables, tagHints, opts.coveredArea, extraSteps.length));
+        }
+        if (includeGrossQty) {
+          extraSteps.push(...buildGrossQtyExplainSteps(
+            variables,
+            { [formula.code]: value },
+            opts.netQty != null ? opts.netQty : value,
+            opts.wastagePercent,
+            opts.grossQty,
+            tagHints,
+            extraSteps.length
+          ));
+        }
+        return {
+          title,
+          subtitle: opts.subtitle || "",
+          formulaName,
+          sourceType,
+          formulaCode: formula.code,
+          expression: prettyExpressionText(formula.expression),
+          summaryHtml: `This uses the formula <strong>${escapeHtml(formula.name || formula.code)}</strong>, which is fixed at <strong class="formula-val">${escapeHtml(shown)}</strong> — it does not depend on size, GSM, or other inputs.`,
+          steps: extraSteps,
+          finalHtml
+        };
+      }
+
+      const nested = collectNestedFormulas(formula);
+      const computed = {};
+      const steps = [];
+      nested.forEach((itemFormula) => {
+        const evaluated = evaluateFormula(itemFormula.expression, variables, [itemFormula.code]);
+        const result = evaluated.success ? evaluated.result : null;
+        computed[itemFormula.code] = result;
+        steps.push({
+          index: steps.length + 1,
+          heading: (itemFormula.name || itemFormula.code) + " (" + itemFormula.code + ")",
+          expression: prettyExpressionText(itemFormula.expression),
+          pluggedHtml: "= " + expressionToExplainHtml(itemFormula.expression, variables, computed, tagHints) +
+            " = <strong class=\"formula-val\">" + escapeHtml(result == null ? (evaluated.error || "Error") : formatExplainNumber(result)) + "</strong>",
+          result
+        });
+      });
+
+      if (opts.coveredArea != null && Number.isFinite(Number(opts.coveredArea)) && !nested.some((item) => item.code === "COVERED_AREA")) {
+        steps.push(...buildCoveredAreaExplainStep(variables, tagHints, opts.coveredArea, steps.length));
+      }
+
+      if (includeGrossQty) {
+        steps.push(...buildGrossQtyExplainSteps(variables, computed, opts.netQty, opts.wastagePercent, opts.grossQty, tagHints, steps.length));
+      }
+
+      return {
+        title,
+        subtitle: opts.subtitle || "",
+        formulaName,
+        sourceType: "formula",
+        steps,
+        finalHtml
+      };
+    }
+
+    function buildCoveredAreaExplainStep(variables, tagHints, coveredArea, startIndex) {
+      const areaFormula = getFormulaByCode("COVERED_AREA");
+      if (!areaFormula || !areaFormula.isActive) {
+        return [{
+          index: startIndex + 1,
+          heading: "Covered Area",
+          expression: "Displayed separately from quantity",
+          pluggedHtml: `= ${explainTaggedValueHtml(formatExplainNumber(coveredArea), "input")} sq.inch`
+        }];
+      }
+      const nested = collectNestedFormulas(areaFormula);
+      const computed = {};
+      const steps = [];
+      nested.forEach((itemFormula) => {
+        const evaluated = evaluateFormula(itemFormula.expression, variables, [itemFormula.code]);
+        const result = evaluated.success ? evaluated.result : null;
+        computed[itemFormula.code] = result;
+        steps.push({
+          index: startIndex + steps.length + 1,
+          heading: (itemFormula.name || itemFormula.code) + " (" + itemFormula.code + ")",
+          expression: prettyExpressionText(itemFormula.expression),
+          pluggedHtml: "= " + expressionToExplainHtml(itemFormula.expression, variables, computed, tagHints) +
+            " = <strong class=\"formula-val\">" + escapeHtml(result == null ? (evaluated.error || "Error") : formatExplainNumber(result)) + "</strong>",
+          result
+        });
+      });
+      return steps;
+    }
+
+    function buildFormulaExplainModel_BOMLine(kind, lineId) {
+      const fg = getSelectedFinishedGood();
+      const isService = kind === "service";
+      const line = isService
+        ? state.bomServices.find((item) => item.id === Number(lineId))
+        : state.bomMaterials.find((item) => item.id === Number(lineId));
+      if (!line || !fg) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const item = isService ? getService(line.serviceId) : getRawMaterial(line.rawMaterialId);
+      const formula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
+      const uom = isService ? (item && item.uom) || "" : (item && item.uom) || "";
+      const title = item ? item.name + " — " + item.code : (isService ? "Service" : "Material");
+      const variables = item
+        ? (isService
+          ? buildServiceFormulaVariables(fg, item, line.dimensionId)
+          : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId))
+        : {};
+      const isManual = line.calculationMethod === "manual";
+      if (!isManual && !formula) {
+        return { error: line.error || "A valid formula is required." };
+      }
+      return buildFormulaExplainCore({
+        formula: isManual ? null : formula,
+        variables,
+        netQty: isService ? line.quantity : line.netQty,
+        grossQty: line.grossQty,
+        wastagePercent: line.wastagePercent,
+        manualQty: line.manualQty,
+        resultValue: isService ? line.quantity : line.netQty,
+        uom,
+        title,
+        sourceType: isManual ? "manual" : inferExplainSourceType(formula),
+        includeGrossQty: !isService,
+        tagHints: { WASTAGE: "manual" },
+        finalHtml: isService
+          ? `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong>`
+          : `Net Qty: <strong>${escapeHtml(formatQty(line.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(line.grossQty))} ${escapeHtml(uom)}</strong>`
+      });
+    }
+
+    function buildFormulaExplainModel_CostCalcMaterial(rowId) {
+      const layer = String(rowId || "");
+      const fg = getCostCalculatorFinishedGood();
+      const layerRow = (state.costCalculator.layers || []).find((row) => row.layer === layer);
+      if (!fg || !layerRow || !layerRow.rawMaterialId) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const calc = calculateCostCalculatorMaterial(layerRow);
+      const material = getRawMaterial(layerRow.rawMaterialId);
+      const formula = getFormula(calc.formulaId);
+      if (!formula) {
+        return { error: calc.error || "Formula not configured for this material." };
+      }
+      const uom = calc.uom || (material && material.uom) || "";
+      const title = material ? material.name + " — " + material.code : layer;
+      const variables = material
+        ? buildFormulaVariables(fg, material, Number(calc.wastagePercent) || 0, null)
+        : {};
+      const coveredInQty = collectNestedFormulas(formula).some((item) => item.code === "COVERED_AREA");
+      const finalCovered = Number.isFinite(Number(calc.coveredArea))
+        ? `<br>Covered Area: <strong>${escapeHtml(formatQty(calc.coveredArea))} sq.inch</strong> <span class="formula-src">(entered L / W / H)</span>`
+        : "";
+      return buildFormulaExplainCore({
+        formula,
+        variables,
+        netQty: calc.netQty,
+        grossQty: calc.grossQty,
+        wastagePercent: calc.wastagePercent,
+        resultValue: calc.netQty,
+        uom,
+        title,
+        subtitle: layer + " · dimensions typed in Cost Calculator",
+        sourceType: inferExplainSourceType(formula),
+        includeGrossQty: true,
+        tagHints: { L: "manual", W: "manual", H: "manual" },
+        coveredArea: coveredInQty ? null : calc.coveredArea,
+        finalHtml: `Net Qty: <strong>${escapeHtml(formatQty(calc.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(calc.grossQty))} ${escapeHtml(uom)}</strong>${finalCovered}`
+      });
+    }
+
+    function buildFormulaExplainModel_CostCalcService(rowId) {
+      const fg = getCostCalculatorFinishedGood();
+      const row = (state.costCalculator.services || []).find((item) => Number(item.key) === Number(rowId));
+      if (!fg || !row || !row.serviceId) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const calc = calculateCostCalculatorService(row);
+      const service = getService(row.serviceId);
+      const formula = getFormula(calc.formulaId);
+      if (!formula) {
+        return { error: calc.error || "Formula not configured for this service." };
+      }
+      const uom = calc.uom || (service && service.uom) || "";
+      const title = service ? service.name + " — " + service.code : "Service";
+      const variables = service
+        ? buildServiceFormulaVariables(fg, service, null)
+        : {};
+      return buildFormulaExplainCore({
+        formula,
+        variables,
+        netQty: calc.qty,
+        resultValue: calc.qty,
+        uom,
+        title,
+        subtitle: "Dimensions typed in Cost Calculator",
+        sourceType: inferExplainSourceType(formula),
+        includeGrossQty: false,
+        tagHints: { L: "manual", W: "manual", H: "manual" },
+        finalHtml: `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong>`
+      });
+    }
+
+    function buildFormulaExplainModel_StyleFormula(formulaCode) {
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const rows = Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [];
+      const row = rows.find((item) => item.code === formulaCode || String(item.formulaId) === String(formulaCode));
+      const formula = getFormulaByCode(formulaCode) || (row ? getFormula(row.formulaId) : null);
+      if (!formula) {
+        return { error: "This style formula is no longer available." };
+      }
+      const variables = buildStyleFormulaVariables(fg);
+      const result = row && row.success ? row.result : null;
+      return buildFormulaExplainCore({
+        formula,
+        variables,
+        resultValue: result,
+        resultDisplay: result == null ? "—" : formatFormulaResult(result),
+        uom: "",
+        title: (formula.name || formula.code) + " — " + (fg.style || "Style"),
+        sourceType: inferExplainSourceType(formula),
+        includeGrossQty: false,
+        tagHints: {},
+        resultLabel: "Result",
+        finalHtml: `Result: <strong>${escapeHtml(result == null ? (row && row.error ? row.error : "—") : formatFormulaResult(result))}</strong>`
+      });
+    }
+
+    function buildFormulaExplainModel(kind, lineId) {
+      if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
+      if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
+      if (kind === "style") return buildFormulaExplainModel_StyleFormula(lineId);
+      return buildFormulaExplainModel_BOMLine(kind, lineId);
+    }
+
+    function formulaExplainKicker(model) {
+      if (model.sourceType === "manual") return "Manual quantity";
+      if (model.sourceType === "hardcoded") return "Fixed constant";
+      if (model.sourceType === "formula-flat") return "Formula (fixed value): " + (model.formulaName || "");
+      return "Formula: " + (model.formulaName || "");
+    }
+
+    function renderFormulaExplainerModal() {
+      const model = buildFormulaExplainModel(state.modal.kind, state.modal.lineId);
+      if (model.error) {
+        return `
+          <div class="modal-header">
+            <div>
+              <div class="section-kicker">Formula</div>
+              <strong>How this quantity was calculated</strong>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" data-modal-close aria-label="Close">X</button>
+          </div>
+          <div class="modal-body"><p>${escapeHtml(model.error)}</p></div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-modal-close>Got it</button>
+          </div>
+        `;
+      }
+      const steps = Array.isArray(model.steps) ? model.steps : [];
+      const stepsHtml = steps.map((step) => `
+        <li class="formula-explain-step">
+          <div class="formula-explain-step-title">Step ${step.index}: ${escapeHtml(step.heading)}</div>
+          <div class="formula-explain-expr">${escapeHtml(step.expression)}</div>
+          <div class="formula-explain-plug">${step.pluggedHtml}</div>
+        </li>
+      `).join("");
+      const showLegend = model.sourceType === "formula" || steps.length > 0;
+      const flatMeta = model.sourceType === "formula-flat" && (model.formulaCode || model.expression)
+        ? `<div class="formula-explain-step">
+            <div class="formula-explain-step-title">${escapeHtml(model.formulaCode || model.formulaName || "Formula")}</div>
+            <div class="formula-explain-expr">${escapeHtml(model.expression || "—")}</div>
+          </div>`
+        : "";
+      return `
+        <div class="modal-header">
+          <div>
+            <strong>${escapeHtml(model.title)}</strong>
+            <div class="section-kicker" style="margin-top:4px;">${escapeHtml(formulaExplainKicker(model))}</div>
+            ${model.subtitle ? `<div class="stat-hint" style="margin-top:4px;">${escapeHtml(model.subtitle)}</div>` : ""}
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close aria-label="Close">X</button>
+        </div>
+        <div class="modal-body">
+          ${showLegend ? `<p class="stat-hint formula-explain-legend">Each number is tagged as formula input, manual entry, or fixed constant.</p>` : ""}
+          ${model.summaryHtml ? `<p class="formula-explain-note">${model.summaryHtml}</p>` : ""}
+          ${flatMeta}
+          ${steps.length ? `<ol class="formula-explain-steps">${stepsHtml}</ol>` : ""}
+          <div class="formula-explain-final">${model.finalHtml}</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-modal-close>Got it</button>
+        </div>
+      `;
+    }
+
+    function formulaHelpButton(kind, id, ariaLabel) {
+      return `<button type="button" class="formula-help-btn" data-explain-kind="${escapeHtml(String(kind))}" data-explain-line="${escapeHtml(String(id))}" title="How this value was calculated" aria-label="${escapeHtml(ariaLabel || "Explain value")}">?</button>`;
+    }
+
+    function openFormulaExplainerModal(kind, lineId) {
+      const allowed = ["material", "service", "cc-material", "cc-service", "style"];
+      const resolved = allowed.includes(kind) ? kind : "material";
+      const numericId = resolved === "material" || resolved === "service" || resolved === "cc-service";
+      state.modal = {
+        type: "formula-explainer",
+        kind: resolved,
+        selectedId: null,
+        mode: "view",
+        lineId: numericId ? Number(lineId) : lineId,
+        draft: null,
+        errors: {}
+      };
+      renderModal();
+    }
+
     function getPreviewDimensionContext(dimensionId) {
       const finishedGood = getSelectedFinishedGood();
       const dim = getDimension(dimensionId);
@@ -9593,7 +10137,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const material = getRawMaterial(line.rawMaterialId);
       const formula = getFormula(line.formulaId);
-      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent) : {};
+      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId) : {};
       return `
         <div class="modal-header">
           <div>
@@ -9670,7 +10214,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
-      dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
+      dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -9720,6 +10264,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         `;
       } else if (state.modal.type === "breakdown") {
         dialog.innerHTML = renderBreakdownModal();
+      } else if (state.modal.type === "formula-explainer") {
+        dialog.innerHTML = renderFormulaExplainerModal();
       } else if (state.modal.type === "confirm-delete") {
         dialog.innerHTML = renderConfirmDeleteModal();
       } else if (state.modal.type === "service") {
@@ -10761,6 +11307,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteBtn = event.target.closest("[data-delete-line]");
         if (deleteBtn) {
           openDeleteMaterialModal(deleteBtn.dataset.deleteLine);
+          return;
+        }
+
+        const explainBtn = event.target.closest("[data-explain-kind]");
+        if (explainBtn) {
+          openFormulaExplainerModal(explainBtn.dataset.explainKind, explainBtn.dataset.explainLine);
           return;
         }
 

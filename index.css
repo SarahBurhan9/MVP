@@ -971,6 +971,120 @@
     .modal-header { border-bottom: 1px solid var(--border); }
     .modal-footer { border-top: 1px solid var(--border); justify-content: flex-end; }
     .modal-body { padding: 16px; }
+
+    .formula-cell {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .formula-help-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+      padding: 0;
+      border: 1px solid #94a3b8;
+      border-radius: 50%;
+      background: #f1f5f9;
+      color: #64748b;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .formula-help-btn:hover,
+    .formula-help-btn:focus {
+      background: #e2e8f0;
+      color: #0f172a;
+      border-color: #475569;
+      outline: none;
+    }
+
+    .modal.formula-explainer {
+      width: min(640px, 100%);
+      max-height: min(90vh, 720px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal.formula-explainer .modal-body {
+      overflow: auto;
+      max-height: min(70vh, 560px);
+    }
+
+    .formula-explain-steps {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .formula-explain-step {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    .formula-explain-step-title {
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .formula-explain-expr,
+    .formula-explain-plug {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      color: #475569;
+    }
+
+    .formula-explain-plug { margin-top: 4px; }
+
+    .formula-val {
+      color: #0f766e;
+      font-weight: 700;
+    }
+
+    .formula-src {
+      color: var(--text-muted);
+      font-weight: 500;
+      font-size: 11px;
+      font-family: inherit;
+    }
+
+    .formula-explain-note {
+      margin: 0 0 12px;
+      line-height: 1.55;
+    }
+
+    .formula-explain-legend {
+      margin: 0 0 12px;
+      font-size: 12px;
+    }
+
+    .cc-metrics .formula-cell {
+      justify-content: flex-start;
+    }
+
+    .cc-service-row .formula-cell,
+    .style-formula-value .formula-cell {
+      justify-content: flex-end;
+    }
+
+    .formula-explain-final {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      background: #ecfdf5;
+      border: 1px solid #a7f3d0;
+      font-weight: 600;
+    }
     .modal-note {
       background: #fffbeb;
       border: 1px solid #fde68a;
@@ -1343,6 +1457,6 @@
       .style-var-row { grid-template-columns: 1fr; }
       .style-var-row-actions { justify-content: flex-start; min-height: auto; }
       .style-var-composer .section-head .btn { width: 100%; justify-content: center; }
-      .modal, .modal.wide, .modal.wide-form, .modal.split-form { width: 100%; }
+      .modal.formula-explainer { width: min(90vw, 640px); }
       .modal-footer { flex-wrap: wrap; }
     }
