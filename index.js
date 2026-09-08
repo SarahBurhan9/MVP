@@ -3569,13 +3569,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td>${escapeHtml(item.description || "—")}</td>
               <td>${escapeHtml(formatDecimal(item.L, 2, false))}</td>
               <td>${escapeHtml(formatDecimal(item.W, 2, false))}</td>
-              <td>${escapeHtml(formatDecimal(item.H, 2, false))}</td>
               <td>${escapeHtml(item.unit || item.uom)}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-dim", item.id, "data-delete-dim", item.id)}
             </tr>
           `).join("")
-        : emptyRow(8, "No dimensions match this search.");
+        : emptyRow(7, "No dimensions match this search.");
 
       document.getElementById("page-dimensions").innerHTML = `
         <div class="toolbar">
@@ -3598,7 +3597,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <th>Description</th>
                   <th>Length</th>
                   <th>Width</th>
-                  <th>Height</th>
                   <th>Unit</th>
                   <th>Status</th>
                   <th>Actions</th>
@@ -4897,25 +4895,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         finishedGoods.push(item);
         showNotification("Product added successfully");
       }
-      const dimCode = formatDimensionCode(payload.dimensions);
-      if (!dimensions.some((dim) => (dim.code === dimCode || dim.name === dimCode) && (dim.uom === payload.dimensionUOM || dim.unit === payload.dimensionUOM))) {
-        dimensions.push({
-          id: nextMasterId(dimensions),
-          name: dimCode,
-          description: "",
-          code: dimCode,
-          L: payload.dimensions.L,
-          W: payload.dimensions.W,
-          H: payload.dimensions.H,
-          uom: payload.dimensionUOM,
-          unit: payload.dimensionUOM,
-          status: "Active"
-        });
-      }
       closeModal();
       renderFinishedGoods();
       refreshIcons();
-      afterDataChange("finishedGoods", "dimensions");
+      afterDataChange("finishedGoods");
       refreshOpenBomCalculations();
     }
 
