@@ -4273,9 +4273,145 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       navigateTo("bom-costing");
     }
 
+    function costEstimatePdfFilename(styleName, date) {
+      const stamp = date instanceof Date ? date : new Date();
+      const style = String(styleName || "ESTIMATE")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "ESTIMATE";
+      const dd = String(stamp.getDate()).padStart(2, "0");
+      const mm = String(stamp.getMonth() + 1).padStart(2, "0");
+      const yyyy = stamp.getFullYear();
+      return "cost-estimate-" + style + "-" + dd + "-" + mm + "-" + yyyy + ".pdf";
+    }
+
+    function buildCostCalculatorPdfElement(summary, styleName, generatedAt) {
+      const steps = getCostCalculatorStepState();
+      const dims = steps.hasDims
+        ? steps.L + " × " + steps.W + " × " + steps.H + " inch"
+        : "—";
+      const plyLabel = steps.hasPly ? steps.ply + "-Ply" : "—";
+      const generated = generatedAt.toLocaleString();
+      const materialRows = (summary.layers || []).length
+        ? summary.layers.map((row) => {
+            const material = getRawMaterial(row.rawMaterialId);
+            const calc = row.calc || {};
+            const ok = row.rawMaterialId && !calc.error;
+            return `
+              <tr>
+                <td>${escapeHtml(row.layer)}</td>
+                <td>${escapeHtml(material ? material.name : (row.rawMaterialId ? "Missing material" : "—"))}</td>
+                <td class="num">${ok ? escapeHtml(formatQty(calc.qty) + (calc.uom ? " " + calc.uom : "")) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (material && material.rateUOM))) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : (calc.error ? "Error" : "—")}</td>
+              </tr>
+            `;
+          }).join("")
+        : `<tr><td colspan="5">No materials selected.</td></tr>`;
+      const serviceRows = (summary.services || []).length
+        ? summary.services.map((row) => {
+            const service = getService(row.serviceId);
+            const calc = row.calc || {};
+            const ok = !calc.error;
+            return `
+              <tr>
+                <td>${escapeHtml(service ? service.name : "Service")}</td>
+                <td class="num">${ok ? escapeHtml(formatQty(calc.qty)) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM))) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : "Error"}</td>
+              </tr>
+            `;
+          }).join("")
+        : `<tr><td colspan="4">No services selected.</td></tr>`;
+      const root = document.createElement("div");
+      root.className = "cc-pdf-root";
+      root.setAttribute("aria-hidden", "true");
+      root.innerHTML = `
+        <h1>Cost Calculator</h1>
+        <div class="cc-pdf-meta">Generated ${escapeHtml(generated)}</div>
+        <section class="cc-pdf-section">
+          <h2>Product details</h2>
+          <div class="cc-pdf-kv">
+            <div>Style</div><div>${escapeHtml(styleName || "—")}</div>
+            <div>Dimensions</div><div>${escapeHtml(dims)}</div>
+            <div>Ply</div><div>${escapeHtml(plyLabel)}</div>
+          </div>
+        </section>
+        <section class="cc-pdf-section">
+          <h2>Materials</h2>
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>Material</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Cost</th></tr>
+            </thead>
+            <tbody>${materialRows}</tbody>
+          </table>
+        </section>
+        <section class="cc-pdf-section">
+          <h2>Services</h2>
+          <table>
+            <thead>
+              <tr><th>Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Cost</th></tr>
+            </thead>
+            <tbody>${serviceRows}</tbody>
+          </table>
+        </section>
+        <section class="cc-pdf-section">
+          <h2>Cost summary</h2>
+          <table class="cc-pdf-totals">
+            <tbody>
+              <tr><td>Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.materialCost))}</td></tr>
+              <tr><td>Service Cost</td><td class="num">${escapeHtml(formatRupees(summary.serviceCost))}</td></tr>
+              <tr><td>Cost Per Piece</td><td class="num">${escapeHtml(formatRupees(summary.perPiece))}</td></tr>
+              <tr><td>Cost Per 100</td><td class="num">${escapeHtml(formatRupees(summary.per100))}</td></tr>
+              <tr><td>Cost Per 1000</td><td class="num">${escapeHtml(formatRupees(summary.per1000))}</td></tr>
+            </tbody>
+          </table>
+        </section>
+      `;
+      return root;
+    }
+
+    function exportCostCalculatorPDF() {
+      const html2pdfFn = window.html2pdf;
+      if (typeof html2pdfFn !== "function") {
+        showNotification("PDF library failed to load. Check your connection and try again.", "error");
+        return Promise.resolve();
+      }
+      const style = styles.find((item) => item.id === Number(state.costCalculator.styleId));
+      const styleName = (style && style.name) || "ESTIMATE";
+      const generatedAt = new Date();
+      const filename = costEstimatePdfFilename(styleName, generatedAt);
+      const summary = updateCostCalculatorSummary();
+      const source = buildCostCalculatorPdfElement(summary, styleName, generatedAt);
+      source.style.position = "fixed";
+      source.style.left = "0";
+      source.style.top = "0";
+      source.style.zIndex = "-1";
+      document.body.appendChild(source);
+      const options = {
+        margin: 10,
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["css", "legacy"] }
+      };
+      return html2pdfFn().set(options).from(source).save()
+        .then(() => {
+          showNotification("PDF exported successfully: " + filename);
+        })
+        .catch((error) => {
+          console.error("PDF export failed", error);
+          showNotification("PDF export failed. Please try again.", "error");
+        })
+        .finally(() => {
+          source.remove();
+        });
+    }
+
     function exportCostCalculatorPdf() {
-      showNotification("PDF export will be available in a later version. Use your browser print dialog for now.");
-      window.print();
+      return exportCostCalculatorPDF();
     }
 
     function loadSampleBomMaterials(finishedGoodId) {
@@ -10063,7 +10199,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (event.target.closest("#btn-cc-export-pdf")) {
-          exportCostCalculatorPdf();
+          exportCostCalculatorPDF();
           return;
         }
         const loadBom = event.target.closest("[data-load-bom]");
