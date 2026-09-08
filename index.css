@@ -230,6 +230,13 @@
       outline: none;
     }
 
+    label.radio-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 6px 0;
+    }
+
     .btn {
       display: inline-flex;
       align-items: center;
@@ -951,7 +958,7 @@
     textarea.full-search { min-height: 72px; resize: vertical; }
     .btn-icon { width: 30px; height: 30px; padding: 0; justify-content: center; }
 
-    .field-error { color: var(--danger); font-size: 12px; margin-top: 6px; }
+    .calc-error-cost { color: var(--danger); font-weight: 700; }
     .input-invalid { border-color: #fca5a5 !important; }
 
     .form-grid { display: grid; gap: 12px; }

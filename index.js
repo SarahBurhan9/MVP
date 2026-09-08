@@ -95,7 +95,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const styleVariables = [
       { id: 1, styleId: 101, variableCode: "GLUE_FLAP", ply: 1, value: 10, unit: "mm" },
-      { id: 2, styleId: 101, variableCode: "SHEET_WIDTH", ply: 3, value: 100, unit: "cm" },
+      { id: 2, styleId: 101, variableCode: "SHEET_WIDTH", ply: 1, value: 50, unit: "inch" },
       { id: 3, styleId: 102, variableCode: "GLUE_FLAP", ply: 1, value: 10.5, unit: "mm" },
       { id: 4, styleId: 102, variableCode: "SHEET_WIDTH", ply: 1, value: 95, unit: "cm" },
       { id: 5, styleId: 103, variableCode: "GLUE_FLAP", ply: 2, value: 15.0, unit: "mm" },
@@ -103,7 +103,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 7, styleId: 101, variableCode: "GLUE_FLAP", ply: 3, value: 15, unit: "mm" },
       { id: 8, styleId: 101, variableCode: "WASTAGE", ply: 1, value: 5, unit: "%" },
       { id: 9, styleId: 101, variableCode: "WASTAGE", ply: 2, value: 5, unit: "%" },
-      { id: 10, styleId: 101, variableCode: "WASTAGE", ply: 3, value: 5, unit: "%" }
+      { id: 10, styleId: 101, variableCode: "WASTAGE", ply: 3, value: 5, unit: "%" },
+      { id: 11, styleId: 101, variableCode: "SHEET_WIDTH", ply: 2, value: 50, unit: "inch" },
+      { id: 12, styleId: 101, variableCode: "SHEET_WIDTH", ply: 3, value: 50, unit: "inch" },
+      { id: 13, styleId: 101, variableCode: "SHEET_LENGTH", ply: 1, value: 50, unit: "inch" },
+      { id: 14, styleId: 101, variableCode: "SHEET_LENGTH", ply: 2, value: 50, unit: "inch" },
+      { id: 15, styleId: 101, variableCode: "SHEET_LENGTH", ply: 3, value: 50, unit: "inch" }
     ];
 
     const styleFormulas = [
@@ -166,7 +171,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 9, code: "SHEET_LENGTH", name: "Sheet Length", description: "Standard sheet length", dataType: "numeric", defaultValue: 48, unit: "inch", category: "Sheet", isActive: true },
       { id: 10, code: "ORDER_QTY", name: "Order Quantity", description: "Pieces to manufacture", dataType: "numeric", defaultValue: 1, unit: "pieces", category: "Costing", isActive: true },
       { id: 11, code: "NET_QTY", name: "Net Quantity", description: "Net quantity before wastage", dataType: "numeric", defaultValue: 1, unit: "", category: "Costing", isActive: true },
-      { id: 12, code: "SHEET_AREA", name: "Sheet Area", description: "Standard sheet area", dataType: "numeric", defaultValue: 1920, unit: "sq.inch", category: "Sheet", isActive: true },
+      { id: 12, code: "SHEET_AREA", name: "Sheet Area", description: "Calculated as SHEET_WIDTH × SHEET_LENGTH", dataType: "numeric", defaultValue: null, unit: "sq.inch", category: "Sheet", isActive: true },
       { id: 13, code: "PIECE_AREA", name: "Piece Area", description: "Finished piece area", dataType: "numeric", defaultValue: 435, unit: "sq.inch", category: "Area", isActive: true },
       { id: 14, code: "MATERIAL_RATE", name: "Material Rate", description: "Purchasing rate from material master", dataType: "numeric", defaultValue: 150, unit: "Rs./kg", category: "Costing", isActive: true },
       { id: 15, code: "SERVICE_RATE", name: "Service Rate", description: "Rate from service master", dataType: "numeric", defaultValue: 2.5, unit: "Rs./piece", category: "Service", isActive: true },
@@ -200,18 +205,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     ];
 
     const services = [
-      { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", serviceRate: 3.5, rateUOM: "piece", status: "Active", formulaId: 311, dimensionIds: [201, 202] },
-      { id: 202, code: "SRV-DIECUT", name: "Die Cutting", uom: "pieces", serviceRate: 2, rateUOM: "piece", status: "Active", formulaId: 312, dimensionIds: [201] },
-      { id: 203, code: "SRV-LAM", name: "Lamination", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 204, code: "SRV-PASTE", name: "Pasting", uom: "pieces", serviceRate: 1, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 205, code: "SRV-WINPASTE", name: "Window Pasting", uom: "pieces", serviceRate: 1.25, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 206, code: "SRV-STITCH", name: "Stitching", uom: "pieces", serviceRate: 0.85, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 207, code: "SRV-PLATE", name: "Plate", uom: "job", serviceRate: 1800, rateUOM: "job", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 208, code: "SRV-LABOUR", name: "Labour", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 401, code: "PRINT-4CLR", name: "4-Color Printing", uom: "piece", serviceRate: 3, rateUOM: "Rs./piece", status: "Active", formulaId: 311, dimensionIds: [201] },
-      { id: 402, code: "DIE-CUT", name: "Die Cutting", uom: "piece", serviceRate: 2, rateUOM: "Rs./piece", status: "Active", formulaId: 312, dimensionIds: [201] },
-      { id: 403, code: "LAMINATION", name: "Lamination", uom: "piece", serviceRate: 4.5, rateUOM: "Rs./piece", status: "Active", formulaId: 311, dimensionIds: [201] },
-      { id: 404, code: "PASTING", name: "Pasting", uom: "piece", serviceRate: 1, rateUOM: "Rs./piece", status: "Active", formulaId: 314, dimensionIds: [201] }
+      { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", status: "Active", dimensionIds: [201, 202] },
+      { id: 202, code: "SRV-DIECUT", name: "Die Cutting", uom: "pieces", status: "Active", dimensionIds: [201] },
+      { id: 203, code: "SRV-LAM", name: "Lamination", uom: "pieces", status: "Active", dimensionIds: [] },
+      { id: 204, code: "SRV-PASTE", name: "Pasting", uom: "pieces", status: "Active", dimensionIds: [] },
+      { id: 205, code: "SRV-WINPASTE", name: "Window Pasting", uom: "pieces", status: "Active", dimensionIds: [] },
+      { id: 206, code: "SRV-STITCH", name: "Stitching", uom: "pieces", status: "Active", dimensionIds: [] },
+      { id: 207, code: "SRV-PLATE", name: "Plate", uom: "job", status: "Active", dimensionIds: [] },
+      { id: 208, code: "SRV-LABOUR", name: "Labour", uom: "pieces", status: "Active", dimensionIds: [] },
+      { id: 401, code: "PRINT-4CLR", name: "4-Color Printing", uom: "piece", status: "Active", dimensionIds: [201] },
+      { id: 402, code: "DIE-CUT", name: "Die Cutting", uom: "piece", status: "Active", dimensionIds: [201] },
+      { id: 403, code: "LAMINATION", name: "Lamination", uom: "piece", status: "Active", dimensionIds: [201] },
+      { id: 404, code: "PASTING", name: "Pasting", uom: "piece", status: "Active", dimensionIds: [201] }
+    ];
+
+    const serviceRates = [
+      { id: 1, serviceId: 201, rate: 3.5, rateUOM: "Rs./piece", formulaId: 311, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 2, serviceId: 202, rate: 2, rateUOM: "Rs./piece", formulaId: 312, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 3, serviceId: 203, rate: 4.5, rateUOM: "Rs./piece", formulaId: null, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 4, serviceId: 204, rate: 1, rateUOM: "Rs./piece", formulaId: null, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 5, serviceId: 205, rate: 1.25, rateUOM: "Rs./piece", formulaId: null, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 6, serviceId: 206, rate: 0.85, rateUOM: "Rs./piece", formulaId: null, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 7, serviceId: 207, rate: 1800, rateUOM: "Rs./job", formulaId: null, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 8, serviceId: 208, rate: 4.5, rateUOM: "Rs./hour", formulaId: null, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 9, serviceId: 401, rate: 3, rateUOM: "Rs./piece", formulaId: 311, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 10, serviceId: 402, rate: 2, rateUOM: "Rs./piece", formulaId: 312, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 11, serviceId: 403, rate: 4.5, rateUOM: "Rs./piece", formulaId: 311, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 12, serviceId: 404, rate: 1, rateUOM: "Rs./piece", formulaId: 314, status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" }
     ];
 
     const formulas = [
@@ -365,7 +385,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const boms = [];
 
     const SQ_IN_TO_SQ_M = 0.00064516;
-    const DIMENSION_RATE_DIVISOR = 1000;
     const GRAM_TO_KG = 0.001;
     const DEFAULT_GLUE_FLAP = 1;
     const DEFAULT_WASTAGE_PERCENT = 5;
@@ -447,6 +466,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       finishedGoods: snapshotData(finishedGoods),
       rawMaterials: snapshotData(rawMaterials),
       services: snapshotData(services),
+      serviceRates: snapshotData(serviceRates),
       formulas: snapshotData(formulas),
       boms: snapshotData(boms),
       styles: snapshotData(styles),
@@ -483,9 +503,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       WASTAGE: 5,
       NET_QTY: 1,
       ORDER_QTY: 1,
-      SHEET_LENGTH: 40,
-      SHEET_WIDTH: 48,
-      SHEET_AREA: 1920,
+      SHEET_WIDTH: 40,
+      SHEET_LENGTH: 48,
       PIECE_AREA: 435,
       MATERIAL_RATE: 300,
       SERVICE_RATE: 2.5,
@@ -502,7 +521,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dashboard: { title: "Dashboard", subtitle: "Manufacturing overview" },
       "finished-goods": { title: "Finished Goods", subtitle: "Product master" },
       "raw-materials": { title: "Raw Materials", subtitle: "Purchasing master" },
-      services: { title: "Services", subtitle: "Conversion & process rates" },
+      services: { title: "Services", subtitle: "Conversion process master" },
+      "service-rates": { title: "Service Rates", subtitle: "Manage pricing and formulas for services" },
       style: { title: "Style", subtitle: "Style master and style variables" },
       "formula-variables": { title: "Formula Variables", subtitle: "Shared variables used by formulas" },
       dimensions: { title: "Dimensions", subtitle: "Dimension master" },
@@ -518,6 +538,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         finishedGoods: "",
         rawMaterials: "",
         services: "",
+        serviceRates: "",
         style: "",
         formulaVariables: "",
         dimensions: "",
@@ -526,6 +547,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         boms: ""
       },
       formulaFilter: "all",
+      serviceRateFilter: "all",
+      serviceRateSort: "name",
       bomListFilter: "all",
       workflowError: "",
       notification: null,
@@ -567,11 +590,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 4;
+    const IDB_VERSION = 5;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "rawMaterials",
       "services",
+      "serviceRates",
       "formulas",
       "boms",
       "styles",
@@ -629,6 +653,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (storeName === "finishedGoods") return finishedGoods;
       if (storeName === "rawMaterials") return rawMaterials;
       if (storeName === "services") return services;
+      if (storeName === "serviceRates") return serviceRates;
       if (storeName === "formulas") return formulas;
       if (storeName === "boms") return boms;
       if (storeName === "styles") return styles;
@@ -745,6 +770,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         currentPage: state.currentPage,
         searches: state.searches,
         formulaFilter: state.formulaFilter,
+        serviceRateFilter: state.serviceRateFilter,
+        serviceRateSort: state.serviceRateSort,
         bomListFilter: state.bomListFilter
       });
     }
@@ -865,6 +892,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         finishedGoods,
         rawMaterials,
         services,
+        serviceRates,
         formulas,
         formulaVariables,
         styles,
@@ -901,6 +929,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(finishedGoods, cloudData.finishedGoods || []);
       replaceArrayContents(rawMaterials, cloudData.rawMaterials || []);
       replaceArrayContents(services, cloudData.services || []);
+      replaceArrayContents(serviceRates, cloudData.serviceRates || []);
       replaceArrayContents(formulas, cloudData.formulas || []);
       replaceArrayContents(formulaVariables, cloudData.formulaVariables || []);
       replaceArrayContents(styles, cloudData.styles || []);
@@ -927,7 +956,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       ensureSeedServiceDimensions();
       ensureSeedMaterialDimensions();
       ensureSeedStyleWastageVariables();
+      ensureSeedWindowLidSheetVariables();
+      ensureCalculatedSheetAreaCatalog();
       ensureSeedCostCalculatorData();
+      ensureServiceRates();
       syncSequencesFromData();
       if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
         try {
@@ -1197,8 +1229,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const seededServiceDims = ensureSeedServiceDimensions();
           const seededMaterialDims = ensureSeedMaterialDimensions();
           const seededWastage = ensureSeedStyleWastageVariables();
+          const seededSheetVars = ensureSeedWindowLidSheetVariables();
+          const seededSheetArea = ensureCalculatedSheetAreaCatalog();
           const seededCalculator = ensureSeedCostCalculatorData();
-          if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededCalculator) {
+          const seededRates = ensureServiceRates();
+          if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededCalculator || seededRates) {
             syncSequencesFromData();
             await persistAllCollections();
             await persistSequencesNow();
@@ -1221,6 +1256,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (prefs) {
             if (prefs.searches) state.searches = { ...state.searches, ...prefs.searches };
             if (prefs.formulaFilter) state.formulaFilter = prefs.formulaFilter;
+            if (prefs.serviceRateFilter) state.serviceRateFilter = prefs.serviceRateFilter;
+            if (prefs.serviceRateSort) state.serviceRateSort = prefs.serviceRateSort;
             if (prefs.bomListFilter) state.bomListFilter = prefs.bomListFilter;
             if (prefs.currentPage && PAGE_META[prefs.currentPage]) state.currentPage = prefs.currentPage;
           }
@@ -1342,6 +1379,61 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function ensureSeedWindowLidSheetVariables() {
+      const style = styles.find((item) => item.id === 101) || findStyleByName("WINDOW LID");
+      if (!style) return false;
+      let added = false;
+      const catalogWidth = getFormulaVariableByCode("SHEET_WIDTH");
+      const catalogLength = getFormulaVariableByCode("SHEET_LENGTH");
+      [1, 2, 3].forEach((ply) => {
+        const widthRow = findStyleVariable(style.id, "SHEET_WIDTH", ply);
+        if (!widthRow) {
+          styleVariables.push({
+            id: nextMasterId(styleVariables),
+            styleId: style.id,
+            variableCode: "SHEET_WIDTH",
+            ply,
+            value: 50,
+            unit: (catalogWidth && catalogWidth.unit) || "inch"
+          });
+          added = true;
+        } else if (Number(widthRow.value) === 100 && String(widthRow.unit || "").toLowerCase() === "cm") {
+          widthRow.value = 50;
+          widthRow.unit = "inch";
+          added = true;
+        }
+        const lengthRow = findStyleVariable(style.id, "SHEET_LENGTH", ply);
+        if (!lengthRow) {
+          styleVariables.push({
+            id: nextMasterId(styleVariables),
+            styleId: style.id,
+            variableCode: "SHEET_LENGTH",
+            ply,
+            value: 50,
+            unit: (catalogLength && catalogLength.unit) || "inch"
+          });
+          added = true;
+        }
+      });
+      return added;
+    }
+
+    function ensureCalculatedSheetAreaCatalog() {
+      const item = getFormulaVariableByCode("SHEET_AREA");
+      if (!item) return false;
+      let changed = false;
+      if (item.defaultValue != null && item.defaultValue !== "") {
+        item.defaultValue = null;
+        changed = true;
+      }
+      const description = "Calculated as SHEET_WIDTH × SHEET_LENGTH";
+      if (item.description !== description) {
+        item.description = description;
+        changed = true;
+      }
+      return changed;
+    }
+
     function ensureSeedCostCalculatorData() {
       let added = false;
       const sheetWeight = getFormulaByCode("SHEET_WEIGHT");
@@ -1362,11 +1454,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (getService(seed.id)) return;
         if (services.some((item) => item.code === seed.code)) return;
         const copy = snapshotData(seed);
-        if (copy.code === "PRINT-4CLR" && printingQty) copy.formulaId = printingQty.id;
-        if (copy.code === "DIE-CUT" && dieQty) copy.formulaId = dieQty.id;
-        if (copy.code === "LAMINATION" && printingQty) copy.formulaId = printingQty.id;
-        if (copy.code === "PASTING" && pastingQty) copy.formulaId = pastingQty.id;
+        delete copy.serviceRate;
+        delete copy.rateUOM;
+        delete copy.formulaId;
         services.push(copy);
+        added = true;
+      });
+
+      (SEED_DATA.serviceRates || []).filter((item) => item.serviceId >= 401 && item.serviceId <= 404).forEach((seedRate) => {
+        if (getServiceRate(seedRate.serviceId)) return;
+        const service = getService(seedRate.serviceId);
+        if (!service) return;
+        const copy = snapshotData(seedRate);
+        if (service.code === "PRINT-4CLR" && printingQty) copy.formulaId = printingQty.id;
+        if (service.code === "DIE-CUT" && dieQty) copy.formulaId = dieQty.id;
+        if (service.code === "LAMINATION" && printingQty) copy.formulaId = printingQty.id;
+        if (service.code === "PASTING" && pastingQty) copy.formulaId = pastingQty.id;
+        copy.id = nextMasterId(serviceRates);
+        serviceRates.push(copy);
         added = true;
       });
 
@@ -1398,7 +1503,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           || (service.code === "DIE-CUT" ? dieQty : null)
           || (service.code === "PASTING" ? pastingQty : null)
           || printingQty
-          || getFormula(service.formulaId);
+          || getFormula(getServiceRate(service.id) && getServiceRate(service.id).formulaId);
         if (!formula) return;
         serviceDimensions.push({
           id: nextMasterId(serviceDimensions),
@@ -1418,10 +1523,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function ensureServiceRates() {
+      let added = false;
+      const now = "2026-01-01T00:00:00.000Z";
+      services.forEach((service) => {
+        if (getServiceRate(service.id)) {
+          delete service.serviceRate;
+          delete service.rateUOM;
+          delete service.formulaId;
+          return;
+        }
+        const seed = (SEED_DATA.serviceRates || []).find((row) => Number(row.serviceId) === service.id);
+        const rate = seed ? seed.rate : Number(service.serviceRate);
+        const rateUOM = seed ? seed.rateUOM : (service.rateUOM || "Rs./piece");
+        const formulaId = seed ? seed.formulaId : service.formulaId;
+        if (!Number.isFinite(Number(rate)) && !seed) {
+          delete service.serviceRate;
+          delete service.rateUOM;
+          delete service.formulaId;
+          return;
+        }
+        serviceRates.push({
+          id: nextMasterId(serviceRates),
+          serviceId: service.id,
+          rate: roundTo(Number(rate) || 0, 2),
+          rateUOM: normalizeServiceRateUom(rateUOM) || "Rs./piece",
+          formulaId: normalizeFormulaBinding(formulaId),
+          status: seed && seed.status ? seed.status : "Active",
+          createdAt: (seed && seed.createdAt) || now,
+          updatedAt: (seed && seed.updatedAt) || now
+        });
+        delete service.serviceRate;
+        delete service.rateUOM;
+        delete service.formulaId;
+        added = true;
+      });
+      return added;
+    }
+
     async function resetToSeedData() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
       replaceArrayContents(services, snapshotData(SEED_DATA.services));
+      replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
       replaceArrayContents(formulas, snapshotData(SEED_DATA.formulas));
       replaceArrayContents(boms, snapshotData(SEED_DATA.boms));
       replaceArrayContents(styles, snapshotData(SEED_DATA.styles));
@@ -1441,6 +1585,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         finishedGoods: "",
         rawMaterials: "",
         services: "",
+        serviceRates: "",
         style: "",
         formulaVariables: "",
         dimensions: "",
@@ -1449,6 +1594,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         boms: ""
       };
       state.formulaFilter = "all";
+      state.serviceRateFilter = "all";
+      state.serviceRateSort = "name";
       state.bomListFilter = "all";
       if (!idbReady) return;
       setSaveStatus("Saving...", "saving");
@@ -1588,9 +1735,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       finishedGoods.forEach((item) => {
         if (!item.dimensions) return;
-        item.dimensions.L = roundTo(item.dimensions.L, 2);
-        item.dimensions.W = roundTo(item.dimensions.W, 2);
-        item.dimensions.H = roundTo(item.dimensions.H, 2);
+        item.dimensions.L = roundTo(item.dimensions?.L, 2);
+        item.dimensions.W = roundTo(item.dimensions?.W, 2);
+        item.dimensions.H = roundTo(item.dimensions?.H, 2);
         delete item.material;
         item.displayName = formatFinishedGoodDisplayName(item);
       });
@@ -1602,9 +1749,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         delete item.rateFormulaId;
       });
       services.forEach((item) => {
-        item.serviceRate = roundTo(item.serviceRate, 2);
-        item.formulaId = normalizeFormulaBinding(item.formulaId);
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
+        delete item.serviceRate;
+        delete item.rateUOM;
+        delete item.formulaId;
+      });
+      serviceRates.forEach((item) => {
+        item.rate = roundTo(item.rate, 2);
+        item.formulaId = normalizeFormulaBinding(item.formulaId);
+        item.rateUOM = normalizeServiceRateUom(item.rateUOM) || item.rateUOM;
+        if (!item.status) item.status = "Active";
       });
       styleVariables.forEach((item) => {
         if (item.value != null && item.value !== "") item.value = roundTo(item.value, 4);
@@ -1612,11 +1766,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       materialDimensions.forEach((item) => {
         item.ply = normalizeStylePly(item.ply, 3);
+        delete item.rate;
+        delete item.purchasingRate;
+        delete item.serviceRate;
       });
       serviceDimensions.forEach((item) => {
         item.ply = normalizeStylePly(item.ply, 3);
+        delete item.rate;
+        delete item.purchasingRate;
+        delete item.serviceRate;
       });
       formulaVariables.forEach((item) => {
+        if (item.code === "SHEET_AREA") {
+          item.defaultValue = null;
+          item.description = item.description || "Calculated as SHEET_WIDTH × SHEET_LENGTH";
+          return;
+        }
         if (item.dataType === "numeric" && item.defaultValue != null && item.defaultValue !== "") {
           const n = Number(item.defaultValue);
           if (Number.isFinite(n)) item.defaultValue = roundTo(n, 4);
@@ -1642,16 +1807,61 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return String(rateUom || "").replace(/^Rs\.?\s*\/\s*/i, "").trim();
     }
 
+    const SERVICE_RATE_UOMS = ["Rs./piece", "Rs./sq.inch", "Rs./sq.meter", "Rs./meter", "Rs./kg", "Rs./hour", "Rs./job"];
+
+    function normalizeServiceRateUom(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      const labeled = raw.replace(/^rs\.?\s*\/\s*/i, "Rs./");
+      if (SERVICE_RATE_UOMS.includes(labeled)) return labeled;
+      const unit = formatRateUnit(raw) || normalizeUnit(raw);
+      const mapped = {
+        piece: "Rs./piece",
+        pieces: "Rs./piece",
+        sqin: "Rs./sq.inch",
+        "sq.inch": "Rs./sq.inch",
+        sqm: "Rs./sq.meter",
+        "sq.meter": "Rs./sq.meter",
+        m: "Rs./meter",
+        meter: "Rs./meter",
+        kg: "Rs./kg",
+        hour: "Rs./hour",
+        job: "Rs./job"
+      };
+      return mapped[unit] || (unit ? "Rs./" + unit : "");
+    }
+
+    function getServiceRate(serviceId) {
+      const id = Number(serviceId);
+      const matches = serviceRates.filter((row) => Number(row.serviceId) === id);
+      return matches.find((row) => row.status !== "Inactive") || matches[0] || null;
+    }
+
+    function getServiceDefaultFormulaId(serviceId) {
+      const rate = getServiceRate(serviceId);
+      return rate && rate.formulaId ? Number(rate.formulaId) : null;
+    }
+
     function formatRatePkr(rate, rateUom) {
       if (rate === null || rate === undefined || Number.isNaN(Number(rate))) return "—";
       const unit = formatRateUnit(rateUom) || "unit";
       return `${formatCurrency(rate)}/${unit}`;
     }
 
+    function getItemDimensions(item, fallback) {
+      const fb = fallback || { L: 0, W: 0, H: 0 };
+      const dims = item?.dimensions ?? {};
+      return {
+        L: numericOrNull(dims?.L) ?? fb.L ?? 0,
+        W: numericOrNull(dims?.W) ?? fb.W ?? 0,
+        H: numericOrNull(dims?.H) ?? fb.H ?? 0
+      };
+    }
+
     function formatDimensions(item) {
-      const dims = item.dimensions || item;
+      const dims = item?.dimensions ?? item ?? {};
       const code = formatFinishedGoodSizeCode(dims).replace(/x/g, " × ");
-      return `${code} ${item.dimensionUOM || item.uom || ""}`.trim();
+      return `${code} ${item?.dimensionUOM || item?.uom || ""}`.trim();
     }
 
     function formatRupees(value) {
@@ -1659,14 +1869,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function formatFinishedGoodDisplayName(item) {
-      const dims = formatFinishedGoodSizeCode(item.dimensions);
-      return [item.product, item.style, item.variant, dims]
+      if (!item) return "missing data";
+      const dims = formatFinishedGoodSizeCode(item?.dimensions);
+      return [item?.product, item?.style, item?.variant, dims]
         .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
-        .join(" ");
+        .join(" ") || "missing data";
     }
 
     function formatFinishedGoodOption(item) {
-      return `${formatFinishedGoodDisplayName(item)} — ${item.ply} Ply`;
+      if (!item) return "missing data";
+      return `${formatFinishedGoodDisplayName(item)} — ${item?.ply ?? "?"} Ply`;
     }
 
     function nextMasterId(items) {
@@ -1702,9 +1914,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const values = { ...DEFAULT_TEST_VALUES };
       formulaVariables.forEach((item) => {
         if (!item.isActive) return;
+        if (item.code === "SHEET_AREA") return;
         const numeric = numericOrNull(item.defaultValue);
         if (numeric !== null) values[item.code] = numeric;
       });
+      const width = Number(values.SHEET_WIDTH);
+      const length = Number(values.SHEET_LENGTH);
+      if (Number.isFinite(width) && Number.isFinite(length)) {
+        values.SHEET_AREA = roundTo(width * length, 4);
+      }
       return values;
     }
 
@@ -1761,7 +1979,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { code: "AREA", name: "Covered Area", kind: "derived" },
       { code: "PERIMETER", name: "Perimeter", kind: "derived" },
       { code: "GLUE_FLAP", name: "Glue Flap", kind: "variable" },
-      { code: "SHEET_WIDTH", name: "Sheet Width", kind: "variable" }
+      { code: "SHEET_WIDTH", name: "Sheet Width", kind: "variable" },
+      { code: "SHEET_LENGTH", name: "Sheet Length", kind: "variable" }
     ];
 
     function squaredDimensionUnit(uom) {
@@ -1797,7 +2016,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         units[item.code] = item.unit || "";
         sources[item.code] = "formula";
       });
-      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
         getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
@@ -1809,10 +2028,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       }
       const dimUnit = String((finishedGood && finishedGood.dimensionUOM) || "").trim();
-      const dims = finishedGood && finishedGood.dimensions ? finishedGood.dimensions : {};
-      const L = numericOrNull(dims.L);
-      const W = numericOrNull(dims.W);
-      const H = numericOrNull(dims.H);
+      const dims = finishedGood?.dimensions ?? {};
+      const L = numericOrNull(dims?.L);
+      const W = numericOrNull(dims?.W);
+      const H = numericOrNull(dims?.H);
       if (L !== null) {
         context.L = L;
         units.L = dimUnit || units.L || "";
@@ -1925,7 +2144,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function buildStyleFormulaVariables(finishedGood) {
       const vars = buildFormulaVariables(finishedGood, null, DEFAULT_WASTAGE_PERCENT);
-      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
         getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
@@ -1986,7 +2205,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function resolveVariableValue(code, finishedGood, fallback) {
-      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
         const styled = getStyleVariableValue(style.id, code, getFinishedGoodPly(finishedGood));
         if (styled !== null) return styled;
@@ -1997,6 +2216,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (def !== null) return def;
       }
       return fallback;
+    }
+
+    function getSheetDimensions(finishedGood) {
+      const catalogWidth = getFormulaVariableByCode("SHEET_WIDTH");
+      const catalogLength = getFormulaVariableByCode("SHEET_LENGTH");
+      const defaultWidth = numericOrNull(catalogWidth && catalogWidth.defaultValue);
+      const defaultLength = numericOrNull(catalogLength && catalogLength.defaultValue);
+      const widthRaw = resolveVariableValue("SHEET_WIDTH", finishedGood, defaultWidth !== null ? defaultWidth : 40);
+      const lengthRaw = resolveVariableValue("SHEET_LENGTH", finishedGood, defaultLength !== null ? defaultLength : 48);
+      const width = Number(widthRaw);
+      const length = Number(lengthRaw);
+      const sheetWidth = Number.isFinite(width) && width > 0 ? width : 40;
+      const sheetLength = Number.isFinite(length) && length > 0 ? length : 48;
+      return {
+        width: sheetWidth,
+        length: sheetLength,
+        area: roundTo(sheetWidth * sheetLength, 4)
+      };
     }
 
     function formulasUsingVariable(code) {
@@ -2064,29 +2301,55 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function convertQuantity(qty, fromUnit, toUnit, extras) {
       const n = Number(qty);
-      if (!Number.isFinite(n)) return n;
+      if (!Number.isFinite(n)) {
+        throw new Error("Invalid quantity: " + qty);
+      }
+      const fromLabel = String(fromUnit || "").trim();
+      const toLabel = String(toUnit || "").trim();
+      if (!fromLabel || !toLabel) {
+        throw new Error("Quantity units not specified");
+      }
       const from = normalizeUnit(fromUnit);
       const to = normalizeUnit(toUnit);
-      if (!from || !to || from === to) return n;
+      if (from === to) return n;
+      if ((from === "sheet" && to === "piece") || (from === "piece" && to === "sheet")) return n;
 
       const meta = extras || {};
       const gsm = meta.gsm != null && meta.gsm !== "" ? Number(meta.gsm) : null;
-      const sheetAreaSqIn = Number(meta.sheetArea != null ? meta.sheetArea : DEFAULT_TEST_VALUES.SHEET_AREA);
+      const sheetAreaSqIn = Number(meta.sheetArea != null ? meta.sheetArea : getSheetDimensions(getSelectedFinishedGood()).area);
       const sheetAreaSqM = sheetAreaSqIn * SQ_IN_TO_SQ_M;
+
+      function requireGsm(unitLabel) {
+        if (!Number.isFinite(gsm) || gsm <= 0) {
+          throw new Error("Cannot convert " + unitLabel + " without GSM");
+        }
+      }
 
       function toKg(value, unit) {
         if (unit === "kg") return value;
         if (unit === "gm") return value / 1000;
-        if (unit === "sqm" && gsm) return value * gsm / 1000;
-        if (unit === "sheet" && gsm) return value * sheetAreaSqM * gsm / 1000;
+        if (unit === "sqm") {
+          requireGsm("sq.meter");
+          return value * gsm / 1000;
+        }
+        if (unit === "sheet") {
+          requireGsm("sheet");
+          return value * sheetAreaSqM * gsm / 1000;
+        }
         return null;
       }
 
       function fromKg(value, unit) {
         if (unit === "kg") return value;
         if (unit === "gm") return value * 1000;
-        if (unit === "sqm" && gsm) return value * 1000 / gsm;
-        if (unit === "sheet" && gsm) return value / (sheetAreaSqM * gsm / 1000);
+        if (unit === "sqm") {
+          requireGsm("sq.meter");
+          return value * 1000 / gsm;
+        }
+        if (unit === "sheet") {
+          requireGsm("sheet");
+          return value / (sheetAreaSqM * gsm / 1000);
+        }
         return null;
       }
 
@@ -2101,16 +2364,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (from === "sqin" && to === "sqm") return roundTo(n * SQ_IN_TO_SQ_M, 8);
       if (from === "sqm" && to === "sqin") return roundTo(n / SQ_IN_TO_SQ_M, 8);
       if (from === "sqin" && to === "m") return roundTo(n * SQ_IN_TO_SQ_M, 8);
-      return n;
+
+      throw new Error("Unsupported unit conversion: " + fromLabel + " to " + toLabel);
     }
 
     function convertRate(rate, fromUnit, toUnit, gsm = null) {
       const n = Number(rate);
-      if (!Number.isFinite(n)) return n;
+      if (!Number.isFinite(n) || n <= 0) {
+        throw new Error("Invalid rate: " + rate + ". Rate must be > 0.");
+      }
+      if (!String(fromUnit || "").trim() || !String(toUnit || "").trim()) {
+        throw new Error("Rate units not specified");
+      }
       const from = normalizeUnit(fromUnit);
       const to = normalizeUnit(toUnit);
       if (from === to) return roundTo(n, 6);
-      return roundTo(n * convertQuantity(1, to, from, { gsm }), 6);
+      const converted = roundTo(n * convertQuantity(1, toUnit, fromUnit, { gsm }), 6);
+      if (!Number.isFinite(converted) || converted <= 0) {
+        throw new Error("Conversion resulted in invalid rate: " + converted);
+      }
+      return converted;
     }
 
     function getSelectedFinishedGood() {
@@ -2119,10 +2392,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function generateBomNo(item) {
-      const family = item.product.replace(/\s*Box$/i, "").trim().toUpperCase().replace(/\s+/g, "-");
-      const siblings = finishedGoods.filter((fg) => fg.product === item.product);
-      const sequence = siblings.findIndex((fg) => fg.id === item.id) + 1;
-      return `BOM-${family}-${String(sequence).padStart(3, "0")}`;
+      const family = String(item?.product ?? "ITEM").replace(/\s*Box$/i, "").trim().toUpperCase().replace(/\s+/g, "-") || "ITEM";
+      const siblings = finishedGoods.filter((fg) => fg?.product === item?.product);
+      const sequence = siblings.findIndex((fg) => fg?.id === item?.id) + 1;
+      return `BOM-${family}-${String(Math.max(sequence, 1)).padStart(3, "0")}`;
     }
 
     function nextBomId() {
@@ -2149,6 +2422,58 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getBomsForFinishedGood(finishedGoodId) {
       return boms.filter((item) => item.finishedGoodId === Number(finishedGoodId));
+    }
+
+    function uniqueBomNumbers(records) {
+      const seen = new Set();
+      const list = [];
+      (records || []).forEach((bom) => {
+        const no = String(bom && bom.bomNo ? bom.bomNo : (bom && bom.id != null ? "BOM-" + bom.id : "")).trim();
+        if (!no || seen.has(no)) return;
+        seen.add(no);
+        list.push(no);
+      });
+      return list;
+    }
+
+    function getBomsUsingMaterial(rawMaterialId) {
+      const id = Number(rawMaterialId);
+      return boms.filter((bom) => (bom.materials || []).some((line) => Number(line.rawMaterialId) === id));
+    }
+
+    function isMaterialUsedInBoms(rawMaterialId) {
+      return getBomsUsingMaterial(rawMaterialId).length > 0;
+    }
+
+    function getBomsUsingService(serviceId) {
+      const id = Number(serviceId);
+      return boms.filter((bom) => (bom.services || []).some((line) => Number(line.serviceId) === id));
+    }
+
+    function isServiceUsedInBoms(serviceId) {
+      return getBomsUsingService(serviceId).length > 0;
+    }
+
+    function isFGUsedInBoms(finishedGoodId) {
+      return getBomsForFinishedGood(finishedGoodId).length > 0;
+    }
+
+    function materialBomUsageMessage(rawMaterialId) {
+      const nos = uniqueBomNumbers(getBomsUsingMaterial(rawMaterialId));
+      if (!nos.length) return "";
+      return "Cannot delete. Used in " + nos.length + " BOM" + (nos.length === 1 ? "" : "s") + ": " + nos.join(", ");
+    }
+
+    function serviceBomUsageMessage(serviceId) {
+      const nos = uniqueBomNumbers(getBomsUsingService(serviceId));
+      if (!nos.length) return "";
+      return "Cannot delete. Used in " + nos.length + " BOM" + (nos.length === 1 ? "" : "s") + ": " + nos.join(", ");
+    }
+
+    function finishedGoodBomUsageMessage(finishedGoodId) {
+      const n = getBomsForFinishedGood(finishedGoodId).length;
+      if (!n) return "";
+      return "Cannot delete. Has " + n + " BOM" + (n === 1 ? "" : "s") + ". Delete BOMs first.";
     }
 
     function getBomNoForFinishedGood(item) {
@@ -2236,7 +2561,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function filterBomFinishedGoods(query) {
       return finishedGoods.filter((item) =>
         matchesQuery(
-          [item.product, item.variant, item.style, item.ply, item.dimensions.L, item.dimensions.W, item.dimensions.H, formatDimensions(item), formatFinishedGoodDisplayName(item)],
+          [item?.product, item?.variant, item?.style, item?.ply, item?.dimensions?.L, item?.dimensions?.W, item?.dimensions?.H, formatDimensions(item), formatFinishedGoodDisplayName(item)],
           query
         )
       );
@@ -2498,10 +2823,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!linked.length) return null;
       const current = Number(currentId);
       if (linked.includes(current)) return current;
-      if (finishedGood && finishedGood.dimensions) {
-        const L = roundTo(finishedGood.dimensions.L, 2);
-        const W = roundTo(finishedGood.dimensions.W, 2);
-        const H = roundTo(finishedGood.dimensions.H, 2);
+      if (finishedGood?.dimensions) {
+        const L = roundTo(finishedGood.dimensions?.L ?? 0, 2);
+        const W = roundTo(finishedGood.dimensions?.W ?? 0, 2);
+        const H = roundTo(finishedGood.dimensions?.H ?? 0, 2);
         const match = linked.find((id) => {
           const dim = getDimension(id);
           return dim && roundTo(dim.L, 2) === L && roundTo(dim.W, 2) === W && roundTo(dim.H, 2) === H;
@@ -2509,33 +2834,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (match) return match;
       }
       return linked.length === 1 ? linked[0] : null;
-    }
-
-    function applyDimensionBasedRate(baseRate, dimensionId, linkedIds) {
-      const linked = normalizeDimensionIds(linkedIds);
-      if (!linked.length || dimensionId == null || dimensionId === "") {
-        return { rate: roundTo(baseRate, 2), source: "master", dimension: null, volume: null };
-      }
-      const dim = getDimension(dimensionId);
-      if (!dim) {
-        return { error: "Select a dimension for rate calculation." };
-      }
-      if (!linked.includes(dim.id)) {
-        return { error: "Selected dimension is not linked to this item." };
-      }
-      const L = Number(dim.L);
-      const W = Number(dim.W);
-      const H = Number(dim.H);
-      if (!Number.isFinite(L) || !Number.isFinite(W) || !Number.isFinite(H)) {
-        return { error: "Linked dimension is missing L, W, or H." };
-      }
-      const volume = L * W * H;
-      return {
-        rate: roundTo(baseRate * volume / DIMENSION_RATE_DIVISOR, 2),
-        source: "dimension",
-        dimension: dim,
-        volume
-      };
     }
 
     function renderLinkedDimensionPicker(selectedIds, selectId) {
@@ -2559,8 +2857,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="${item.id}">${escapeHtml(formatDimensionChipLabel(item))}</option>
             `).join("")}
           </select>
-          <div class="dim-chip-wrap">${chips || `<span class="stat-hint">No dimensions linked. Rate will use the base rate only.</span>`}</div>
-          <p class="stat-hint">Optional. Select dimensions to use for rate calculation (rate = base × L × W × H / ${DIMENSION_RATE_DIVISOR}).</p>
+          <div class="dim-chip-wrap">${chips || `<span class="stat-hint">No dimensions linked. Quantity formulas will use finished-good L, W, H.</span>`}</div>
+          <p class="stat-hint">Optional. Linked dimensions select which size a quantity formula uses. Rates always come from the material or service master.</p>
         </div>
       `;
     }
@@ -2635,7 +2933,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.dimensionId) {
         applyServiceDimensionFormula(draft);
       } else if (draft.calculationMethod === "formula") {
-        draft.formulaId = service.formulaId ? Number(service.formulaId) : null;
+        draft.formulaId = getServiceDefaultFormulaId(service.id);
       }
     }
 
@@ -2819,6 +3117,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function resolveIdentifier(id, provided, stack) {
+      if (id === "SHEET_AREA") {
+        const width = numericOrNull(provided ? provided.SHEET_WIDTH : null);
+        const length = numericOrNull(provided ? provided.SHEET_LENGTH : null);
+        if (width !== null && length !== null) return { success: true, value: roundTo(width * length, 4) };
+        return { success: true, value: getSheetDimensions(getSelectedFinishedGood()).area };
+      }
+
       const providedValue = numericOrNull(provided ? provided[id] : null);
       if (providedValue !== null) return { success: true, value: providedValue };
 
@@ -2942,7 +3247,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
       const styleVals = {};
-      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
         getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
@@ -2950,29 +3255,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       }
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
-      const sheetLength = resolveVariableValue("SHEET_LENGTH", finishedGood, defaults.SHEET_LENGTH ?? DEFAULT_TEST_VALUES.SHEET_LENGTH);
-      const sheetWidth = resolveVariableValue("SHEET_WIDTH", finishedGood, defaults.SHEET_WIDTH ?? DEFAULT_TEST_VALUES.SHEET_WIDTH);
-      const sheetArea = resolveVariableValue("SHEET_AREA", finishedGood, Number(sheetLength) * Number(sheetWidth));
+      const sheet = getSheetDimensions(finishedGood);
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
-      const L = roundTo(dim ? dim.L : (finishedGood && finishedGood.dimensions ? finishedGood.dimensions.L : defaults.L), 2);
-      const W = roundTo(dim ? dim.W : (finishedGood && finishedGood.dimensions ? finishedGood.dimensions.W : defaults.W), 2);
-      const H = roundTo(dim ? dim.H : (finishedGood && finishedGood.dimensions ? finishedGood.dimensions.H : defaults.H), 2);
+      const fgDims = finishedGood?.dimensions ?? {};
+      const L = roundTo(dim?.L ?? fgDims.L ?? defaults.L, 2);
+      const W = roundTo(dim?.W ?? fgDims.W ?? defaults.W, 2);
+      const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       return {
         ...defaults,
         ...styleVals,
         L,
         W,
         H,
-        PLY: Number(finishedGood && finishedGood.ply != null ? finishedGood.ply : defaults.PLY),
-        GSM: material && material.gsm != null ? roundTo(material.gsm, 1) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
+        PLY: Number(finishedGood?.ply ?? defaults.PLY),
+        GSM: material?.gsm != null ? roundTo(material.gsm, 1) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
         GLUE_FLAP: glueFlap,
         WASTAGE: roundTo(wastagePercent, 2),
-        MATERIAL_RATE: material ? roundTo(material.purchasingRate, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
+        MATERIAL_RATE: material ? roundTo(material?.purchasingRate ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
-        SHEET_LENGTH: sheetLength,
-        SHEET_WIDTH: sheetWidth,
-        SHEET_AREA: sheetArea,
+        SHEET_LENGTH: sheet.length,
+        SHEET_WIDTH: sheet.width,
+        SHEET_AREA: sheet.area,
         PIECE_AREA: pieceArea,
         SQ_IN_TO_SQ_M,
         GRAM_TO_KG,
@@ -3004,9 +3308,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return line;
       }
 
-      const masterRate = Number(material.purchasingRate);
-      if (!Number.isFinite(masterRate) || masterRate < 0) {
-        line.error = "Purchasing rate from the Raw Material Master is not valid.";
+      const masterRate = Number(material?.purchasingRate);
+      if (!Number.isFinite(masterRate) || masterRate <= 0) {
+        line.error = "Invalid rate: " + (material?.purchasingRate ?? "missing") + ". Rate must be > 0.";
         line.netQty = 0;
         line.grossQty = 0;
         line.rate = 0;
@@ -3081,33 +3385,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       line.netQty = roundTo(netQty, 4);
       line.grossQty = roundTo(grossQty, 4);
       delete line.rateFormulaId;
-      if (context && context.useMasterRate) {
-        line.rate = roundTo(masterRate, 2);
-        line.rateSource = "master";
-        line.dimensionVolume = null;
-      } else {
-        const rateResult = applyDimensionBasedRate(masterRate, line.dimensionId, getMaterialLinkedDimensionIds(material, getFinishedGoodPly(finishedGood)));
-        if (rateResult.error) {
-          line.error = rateResult.error;
-          line.costPerPiece = 0;
-          return line;
+      line.rate = roundTo(masterRate, 2);
+      line.rateSource = "master";
+      line.dimensionVolume = null;
+      try {
+        const qtyForRate = convertQuantity(grossQty, material?.uom, formatRateUnit(material?.rateUOM) || material?.uom, {
+          gsm: material?.gsm,
+          sheetArea: getSheetDimensions(finishedGood).area
+        });
+        if (!Number.isFinite(qtyForRate) || qtyForRate < 0) {
+          throw new Error("Quantity could not be converted to the purchasing rate unit.");
         }
-        line.rate = rateResult.rate;
-        line.rateSource = rateResult.source;
-        line.dimensionId = rateResult.dimension ? rateResult.dimension.id : null;
-        line.dimensionVolume = rateResult.volume;
-      }
-      const qtyForRate = convertQuantity(grossQty, material.uom, formatRateUnit(material.rateUOM), {
-        gsm: material.gsm,
-        sheetArea: DEFAULT_TEST_VALUES.SHEET_AREA
-      });
-      if (!Number.isFinite(qtyForRate)) {
-        line.error = "Quantity could not be converted to the purchasing rate unit.";
+        line.qtyForRate = roundTo(qtyForRate, 4);
+        line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
+      } catch (error) {
+        line.error = error && error.message ? error.message : "Unsupported unit conversion";
         line.costPerPiece = 0;
         return line;
       }
-      line.qtyForRate = roundTo(qtyForRate, 4);
-      line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
       return line;
     }
 
@@ -3119,16 +3414,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
       const styleVals = {};
-      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
         getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
           if (n !== null) styleVals[row.variableCode] = n;
         });
       }
-      const L = roundTo(dim ? dim.L : (finishedGood && finishedGood.dimensions ? finishedGood.dimensions.L : defaults.L), 2);
-      const W = roundTo(dim ? dim.W : (finishedGood && finishedGood.dimensions ? finishedGood.dimensions.W : defaults.W), 2);
-      const H = roundTo(dim ? dim.H : (finishedGood && finishedGood.dimensions ? finishedGood.dimensions.H : defaults.H), 2);
+      const fgDims = finishedGood?.dimensions ?? {};
+      const L = roundTo(dim?.L ?? fgDims.L ?? defaults.L, 2);
+      const W = roundTo(dim?.W ?? fgDims.W ?? defaults.W, 2);
+      const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
       const area = evaluateFormula("COVERED_AREA", {
         ...defaults,
@@ -3136,7 +3432,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         L,
         W,
         H,
-        PLY: Number(finishedGood && finishedGood.ply != null ? finishedGood.ply : defaults.PLY),
+        PLY: Number(finishedGood?.ply ?? defaults.PLY),
         GLUE_FLAP: glueFlap
       });
       return {
@@ -3145,10 +3441,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         L,
         W,
         H,
-        PLY: Number(finishedGood && finishedGood.ply != null ? finishedGood.ply : defaults.PLY),
+        PLY: Number(finishedGood?.ply ?? defaults.PLY),
         GLUE_FLAP: glueFlap,
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
-        SERVICE_RATE: roundTo(service.serviceRate, 2),
+        SERVICE_RATE: roundTo((getServiceRate(service && service.id)?.rate) ?? 0, 2),
         PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, defaults.PRINT_AREA),
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
         SERVICE_COST: 0
@@ -3176,9 +3472,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return line;
       }
 
-      const rate = Number(service.serviceRate);
-      if (!Number.isFinite(rate) || rate < 0) {
-        line.error = "Service rate from the Service Master is not valid.";
+      const rateRow = getServiceRate(service.id);
+      if (!rateRow) {
+        line.error = "No rate configured for service " + (service.code || service.id);
+        line.quantity = 0;
+        line.rate = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+      const rate = Number(rateRow?.rate);
+      if (!Number.isFinite(rate) || rate <= 0) {
+        line.error = "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0.";
         line.quantity = 0;
         line.rate = 0;
         line.costPerPiece = 0;
@@ -3187,22 +3491,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       line.rate = roundTo(rate, 2);
       line.rateSource = "master";
+      line.dimensionVolume = null;
       const serviceDimensionId = (context && context.useEnteredDimensions) ? null : line.dimensionId;
-      if ((context && context.useMasterRate) || !line.dimensionId) {
-        line.dimensionVolume = null;
-      } else {
-        const rateResult = applyDimensionBasedRate(rate, line.dimensionId, getServiceLinkedDimensionIds(service, getFinishedGoodPly(finishedGood)));
-        if (rateResult.error) {
-          line.error = rateResult.error;
-          line.quantity = 0;
-          line.costPerPiece = 0;
-          return line;
-        }
-        line.rate = rateResult.rate;
-        line.rateSource = rateResult.source;
-        line.dimensionId = rateResult.dimension ? rateResult.dimension.id : null;
-        line.dimensionVolume = rateResult.volume;
-      }
       let quantity = 0;
 
       if (line.calculationMethod === "manual") {
@@ -3244,14 +3534,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       line.quantity = roundTo(quantity, 4);
-      const qtyForRate = convertQuantity(quantity, service.uom, formatRateUnit(service.rateUOM), {});
-      if (!Number.isFinite(qtyForRate)) {
-        line.error = "Quantity could not be converted to the service rate unit.";
+      try {
+        const qtyForRate = convertQuantity(quantity, service?.uom, formatRateUnit(rateRow?.rateUOM) || service?.uom, {});
+        if (!Number.isFinite(qtyForRate) || qtyForRate < 0) {
+          throw new Error("Quantity could not be converted to the service rate unit.");
+        }
+        line.qtyForRate = roundTo(qtyForRate, 4);
+        line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
+      } catch (error) {
+        line.error = error && error.message ? error.message : "Unsupported unit conversion";
         line.costPerPiece = 0;
         return line;
       }
-      line.qtyForRate = roundTo(qtyForRate, 4);
-      line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
       return line;
     }
 
@@ -3340,9 +3634,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: 0,
         product: "Cost Estimate",
         variant: "",
-        style: style.name,
+        style: style?.name ?? "",
         ply: steps.ply,
-        dimensions: { L: steps.L, W: steps.W, H: steps.H },
+        dimensions: { L: steps.L ?? 0, W: steps.W ?? 0, H: steps.H ?? 0 },
         dimensionUOM: "inch",
         uom: "pieces",
         status: "Active"
@@ -3452,8 +3746,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="cc-service-row">
                 <div class="cc-layer-title">${escapeHtml(service ? service.name : "Service")}</div>
                 <div>${!calc.error ? formatQty(calc.qty) : "—"}</div>
-                <div>${!calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (service && service.rateUOM)) : "—"}</div>
-                <div>${!calc.error ? formatRupees(calc.cost) : "—"}</div>
+                <div>${!calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM)) : "—"}</div>
+                <div>${!calc.error ? formatRupees(calc.cost) : "Error"}</div>
                 <div>
                   <button type="button" class="btn btn-sm btn-ghost" data-cc-remove-service="${row.key}" aria-label="Remove ${escapeHtml(service ? service.name : "service")}">× Remove</button>
                 </div>
@@ -3523,7 +3817,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!fg || !layerRow) return empty;
       if (!layerRow.rawMaterialId) return empty;
       const material = getRawMaterial(layerRow.rawMaterialId);
-      const ply = Number(fg.ply);
+      const ply = Number(fg?.ply);
       if (!material) {
         return { ...empty, error: "This material does not exist in the Raw Material Master." };
       }
@@ -3538,13 +3832,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!formula || !formula.isActive) {
         return { ...empty, error: "Formula not configured for " + material.name + " in " + ply + "-ply" };
       }
-      const masterRate = Number(material.purchasingRate);
-      if (!Number.isFinite(masterRate) || masterRate < 0) {
-        return { ...empty, error: "Rate not found for " + material.name };
+      const masterRate = Number(material?.purchasingRate);
+      if (!Number.isFinite(masterRate) || masterRate <= 0) {
+        return { ...empty, error: "Invalid rate: " + (material?.purchasingRate ?? "missing") + ". Rate must be > 0." };
       }
       const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
       const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
-      const calcContext = { finishedGood: fg, useEnteredDimensions: true, useMasterRate: true };
+      const calcContext = { finishedGood: fg, useEnteredDimensions: true };
       const line = calculateMaterialCost({
         rawMaterialId: material.id,
         layer: layerRow.layer,
@@ -3599,20 +3893,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getCostCalculatorFinishedGood();
       if (!fg || !serviceRow || !serviceRow.serviceId) return empty;
       const service = getService(serviceRow.serviceId);
-      const ply = Number(fg.ply);
+      const ply = Number(fg?.ply);
       if (!service) {
         return { ...empty, error: "This service does not exist in the Service Master." };
       }
-      const masterRate = Number(service.serviceRate);
-      if (!Number.isFinite(masterRate) || masterRate < 0) {
-        return { ...empty, error: "Rate not found for " + service.name };
+      const rateRow = getServiceRate(service.id);
+      const masterRate = Number(rateRow?.rate);
+      if (!rateRow) {
+        return { ...empty, error: "No rate configured for service " + (service.code || service.id) };
+      }
+      if (!Number.isFinite(masterRate) || masterRate <= 0) {
+        return { ...empty, error: "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0." };
       }
       const link = findCostCalculatorServiceLink(service.id, ply, fg);
-      const formula = getFormula(link && link.formulaId) || getFormula(service.formulaId);
+      const formula = getFormula(link && link.formulaId) || getFormula(rateRow?.formulaId);
       if (!formula || !formula.isActive || formula.type !== "Service") {
         return { ...empty, error: "Formula not configured for " + service.name + " in " + ply + "-ply" };
       }
-      const calcContext = { finishedGood: fg, useEnteredDimensions: true, useMasterRate: true };
+      const calcContext = { finishedGood: fg, useEnteredDimensions: true };
       const line = calculateServiceCost({
         serviceId: service.id,
         calculationMethod: "formula",
@@ -3638,7 +3936,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         error: null,
         formulaId: formula.id,
         dimensionId: link ? link.dimensionId : null,
-        rateUOM: service.rateUOM,
+        rateUOM: rateRow?.rateUOM || "",
         uom: service.uom
       };
     }
@@ -3700,7 +3998,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-metrics">
               <div><span>Qty</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
               <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (material && material.rateUOM)) : "—"}</strong></div>
-              <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : "—"}</strong></div>
+              <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.rawMaterialId && calc.error ? "Error" : "—")}</strong></div>
               <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
             </div>
           </div>
@@ -3796,6 +4094,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <aside class="card cc-card cost-calc-summary" id="cost-calc-print">
             <div class="card-body">
               <div class="cc-step">Step 6: Final Cost Summary</div>
+              ${summary.layers.some((row) => row.calc.error) || summary.services.some((row) => row.calc.error)
+                ? `<div class="field-error" style="margin-bottom:8px;">⚠ Error calculating cost</div>`
+                : ""}
               <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
               <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
               <div class="cc-summary-line cc-summary-total"><span>Cost Per Piece</span><strong>${formatRupees(summary.perPiece)}</strong></div>
@@ -3869,7 +4170,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <label class="form-label" for="cc-modal-service-id">Service</label>
           <select id="cc-modal-service-id" class="full-select ${errors.serviceId ? "input-invalid" : ""}">
             <option value="">Select a service...</option>
-            ${options.map((item) => `<option value="${item.id}" ${Number(draft.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(formatRatePkr(item.serviceRate, item.rateUOM))})</option>`).join("")}
+            ${options.map((item) => {
+              const rateRow = getServiceRate(item.id);
+              return `<option value="${item.id}" ${Number(draft.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(formatRatePkr(rateRow?.rate, rateRow?.rateUOM))})</option>`;
+            }).join("")}
           </select>
           ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">Quantity is calculated from the formula linked to this service, ply, and size.</p>`}
         </div>
@@ -3922,7 +4226,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         variant: formatFinishedGoodSizeCode(fgTemplate.dimensions) + " " + fgTemplate.ply + "-Ply",
         style: fgTemplate.style,
         ply: fgTemplate.ply,
-        dimensions: { L: fgTemplate.dimensions.L, W: fgTemplate.dimensions.W, H: fgTemplate.dimensions.H },
+        dimensions: {
+          L: fgTemplate?.dimensions?.L ?? 0,
+          W: fgTemplate?.dimensions?.W ?? 0,
+          H: fgTemplate?.dimensions?.H ?? 0
+        },
         dimensionUOM: "inch",
         uom: "pieces",
         status: "Active"
@@ -3985,7 +4293,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const link = getServiceDimensionLink(service && service.id, dimensionId, ply);
       const boundFormula = formula
         || getFormula(link && link.formulaId)
-        || getFormula(service && service.formulaId);
+        || getFormula(getServiceDefaultFormulaId(service && service.id));
       return calculateServiceCost({
         id: nextBomLineId(),
         serviceId: config.serviceId,
@@ -4016,30 +4324,51 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       );
     }
 
-    function validateCurrentBom(requirePositiveCost) {
+    function getMissingStructuralLayerError(finishedGood, materials) {
+      const fg = finishedGood || getSelectedFinishedGood();
+      if (!fg) return "";
+      const ply = Number(fg?.ply);
+      const required = getStructuralLayers(ply) || [];
+      if (!required.length) return "";
+      const used = new Set((materials || state.bomMaterials || []).map((line) => line.layer));
+      const missing = required.filter((layer) => !used.has(layer));
+      if (!missing.length) return "";
+      if (ply === 1) return "1-ply requires material on Single Layer";
+      if (ply === 2) return "2-ply requires materials on Top Liner and Bottom Liner";
+      if (ply === 3) {
+        return "3-ply requires materials on Top Liner, Fluting, and Bottom Liner. Missing: " + missing.join(", ");
+      }
+      return "BOM is missing required layers: " + missing.join(", ");
+    }
+
+    function currentBomHasCalculationErrors() {
+      return (state.bomMaterials || []).some((line) => line.error)
+        || (state.bomServices || []).some((line) => line.error);
+    }
+
+    function validateCurrentBom(requirePositiveCost, options) {
       const fg = getSelectedFinishedGood();
       if (!fg) return "Select a Finished Good before saving the BOM.";
       if (!state.bomMaterials.length) return "Add at least one raw material before saving the BOM.";
 
-      const usedLayers = state.bomMaterials.map((line) => line.layer);
-      const ply = Number(fg.ply);
-      if (ply === 1 && !usedLayers.includes("Single Layer")) {
-        return "A 1-ply BOM needs at least one material on Single Layer.";
-      }
-      if (ply === 2 && (!usedLayers.includes("Top Liner") || !usedLayers.includes("Bottom Liner"))) {
-        return "A 2-ply BOM needs materials on both Top Liner and Bottom Liner.";
+      const requireLayers = !options || options.requireStructuralLayers !== false;
+      if (requireLayers) {
+        const layerError = getMissingStructuralLayerError(fg, state.bomMaterials);
+        if (layerError) return layerError;
       }
 
       for (const line of state.bomMaterials) {
         if (!getRawMaterial(line.rawMaterialId)) return "A BOM material does not reference a valid raw material master record.";
         if (line.calculationMethod === "formula" && !getFormula(line.formulaId)) return "A BOM material formula is missing or invalid.";
-        if (line.error) return "Resolve material calculation errors before saving: " + line.error;
       }
 
       for (const line of state.bomServices) {
         if (!getService(line.serviceId)) return "A BOM service does not reference a valid service master record.";
         if (line.calculationMethod === "formula" && !getFormula(line.formulaId)) return "A BOM service formula is missing or invalid.";
-        if (line.error) return "Resolve service calculation errors before saving: " + line.error;
+      }
+
+      if (currentBomHasCalculationErrors()) {
+        return "Fix calculation errors before saving";
       }
 
       if (requirePositiveCost) {
@@ -4056,14 +4385,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return cloneData({
         id: state.currentBOM.id || nextBomId(),
         bomNo: state.currentBOM.bomNo,
-        finishedGoodId: fg.id,
-        finishedGoodName: fg.product,
-        variant: fg.variant,
-        style: fg.style,
-        ply: fg.ply,
-        uom: fg.uom,
-        dimensions: { L: fg.dimensions.L, W: fg.dimensions.W, H: fg.dimensions.H },
-        dimensionUOM: fg.dimensionUOM,
+        finishedGoodId: fg?.id,
+        finishedGoodName: fg?.product ?? "missing data",
+        variant: fg?.variant ?? "",
+        style: fg?.style ?? "",
+        ply: fg?.ply,
+        uom: fg?.uom,
+        dimensions: getItemDimensions(fg),
+        dimensionUOM: fg?.dimensionUOM,
         version: state.currentBOM.version,
         status,
         materials: state.bomMaterials,
@@ -4139,13 +4468,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: nextBomId(),
         bomNo: original.bomNo,
         finishedGoodId: original.finishedGoodId,
-        finishedGoodName: original.finishedGoodName || fg.product,
-        variant: original.variant || fg.variant,
-        style: original.style || fg.style,
-        ply: original.ply || fg.ply,
-        uom: original.uom || fg.uom,
-        dimensions: original.dimensions || { L: fg.dimensions.L, W: fg.dimensions.W, H: fg.dimensions.H },
-        dimensionUOM: original.dimensionUOM || fg.dimensionUOM,
+        finishedGoodName: original.finishedGoodName || fg?.product,
+        variant: original.variant || fg?.variant,
+        style: original.style || fg?.style,
+        ply: original.ply || fg?.ply,
+        uom: original.uom || fg?.uom,
+        dimensions: original.dimensions || getItemDimensions(fg),
+        dimensionUOM: original.dimensionUOM || fg?.dimensionUOM,
         version: nextVersionForBomNo(original.bomNo),
         status: "Draft",
         materials: state.bomMaterials,
@@ -4165,9 +4494,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return record;
     }
 
+    function notifyDraftBomSaved(message) {
+      const layerError = getMissingStructuralLayerError();
+      if (layerError) {
+        state.workflowError = layerError;
+        showNotification(message + " " + layerError, "error");
+        renderBOMHeader();
+        return;
+      }
+      state.workflowError = "";
+      showNotification(message);
+    }
+
     function saveDraftBom() {
       recalculateBOMCosts();
-      const error = validateCurrentBom(false);
+      const error = validateCurrentBom(false, { requireStructuralLayers: false });
       if (error) {
         setWorkflowError(error);
         return;
@@ -4180,8 +4521,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const stored = state.currentBOM.id ? getStoredBom(state.currentBOM.id) : null;
       if (stored && stored.status === "Active") {
         const draft = persistNewDraftFromEditor(stored.bomNo, stored.finishedGoodId);
-        state.workflowError = "";
-        showNotification("Active BOM was not changed. Saved as Draft version " + draft.version + ".");
+        notifyDraftBomSaved("Active BOM was not changed. Saved as Draft version " + draft.version + ".");
         refreshBomViews();
         return;
       }
@@ -4189,13 +4529,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const record = snapshotCurrentBom("Draft");
       if (!upsertDraftRecord(record)) {
         const draft = persistNewDraftFromEditor(state.currentBOM.bomNo, state.currentBOM.finishedGoodId);
-        showNotification("Active BOM was not changed. Saved as Draft version " + draft.version + ".");
+        notifyDraftBomSaved("Active BOM was not changed. Saved as Draft version " + draft.version + ".");
         refreshBomViews();
         return;
       }
 
-      state.workflowError = "";
-      showNotification("Draft saved: " + record.bomNo + " version " + record.version);
+      notifyDraftBomSaved("Draft saved: " + record.bomNo + " version " + record.version);
       refreshBomViews();
     }
 
@@ -4357,7 +4696,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const q = state.searches.finishedGoods;
       return finishedGoods.filter((item) =>
         matchesQuery(
-          [item.product, item.variant, item.style, item.uom, item.ply, formatDimensions(item), item.status, formatFinishedGoodDisplayName(item)],
+          [item?.product, item?.variant, item?.style, item?.uom, item?.ply, formatDimensions(item), item?.status, formatFinishedGoodDisplayName(item)],
           q
         )
       );
@@ -4388,10 +4727,45 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const q = state.searches.services;
       return services.filter((item) =>
         matchesQuery(
-          [item.code, item.name, item.uom, item.rateUOM, item.serviceRate, item.status, formatBoundFormulaCode(item.formulaId), formatServiceDimensionSummary(item)],
+          [item.code, item.name, item.uom, item.status, formatServiceDimensionSummary(item)],
           q
         )
       );
+    }
+
+    function getServiceRateRecord(serviceId) {
+      const id = Number(serviceId);
+      return serviceRates.find((row) => Number(row.serviceId) === id) || null;
+    }
+
+    function serviceRateTableRows() {
+      const q = state.searches.serviceRates;
+      const statusFilter = state.serviceRateFilter;
+      const sort = state.serviceRateSort;
+      const rows = services.map((service) => {
+        const rateRow = getServiceRateRecord(service.id);
+        return { service, rateRow };
+      }).filter(({ service, rateRow }) => {
+        const formula = getFormula(rateRow && rateRow.formulaId);
+        const status = rateRow ? rateRow.status : "";
+        if (statusFilter === "active" && status !== "Active") return false;
+        if (statusFilter === "inactive" && status !== "Inactive") return false;
+        return matchesQuery(
+          [service.code, service.name, rateRow && rateRow.rate, rateRow && rateRow.rateUOM, formula && formula.code, status],
+          q
+        );
+      });
+      rows.sort((a, b) => {
+        if (sort === "rate") {
+          const ar = Number(a.rateRow && a.rateRow.rate);
+          const br = Number(b.rateRow && b.rateRow.rate);
+          const av = Number.isFinite(ar) ? ar : Number.POSITIVE_INFINITY;
+          const bv = Number.isFinite(br) ? br : Number.POSITIVE_INFINITY;
+          if (av !== bv) return av - bv;
+        }
+        return String(a.service.name || "").localeCompare(String(b.service.name || ""), undefined, { sensitivity: "base" });
+      });
+      return rows;
     }
 
     function filterStyles() {
@@ -4542,14 +4916,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const body = rows.length
         ? rows.map((item) => `
             <tr>
-              <td>${escapeHtml(item.product)}</td>
-              <td>${escapeHtml(item.style)}</td>
-              <td>${escapeHtml(item.variant)}</td>
-              <td>${escapeHtml(formatDimensions(item))}</td>
-              <td>${escapeHtml(item.ply)}</td>
-              <td>${escapeHtml(item.uom)}</td>
-              <td>${statusBadge(item.status)}</td>
-              ${masterRowActions("data-edit-fg", item.id, "data-delete-fg", item.id)}
+              <td>${escapeHtml(item?.product ?? "missing data")}</td>
+              <td>${escapeHtml(item?.style ?? "—")}</td>
+              <td>${escapeHtml(item?.variant ?? "—")}</td>
+              <td>${escapeHtml(formatDimensions(item) || "missing data")}</td>
+              <td>${escapeHtml(item?.ply ?? "—")}</td>
+              <td>${escapeHtml(item?.uom ?? "—")}</td>
+              <td>${statusBadge(item?.status)}</td>
+              ${masterRowActions("data-edit-fg", item?.id, "data-delete-fg", item?.id)}
             </tr>
           `).join("")
         : emptyRow(8, "No finished goods match this search.");
@@ -4598,8 +4972,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
               <td>${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</td>
               <td>${escapeHtml(item.uom)}</td>
-              <td>${formatCurrency(item.purchasingRate)}</td>
-              <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
+              <td>${formatCurrency(item?.purchasingRate ?? 0)}</td>
+              <td>Rs./${escapeHtml(formatRateUnit(item?.rateUOM) || item?.rateUOM || "—")}</td>
               <td class="mono">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</td>
               <td>${escapeHtml(formatMaterialDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
@@ -4653,15 +5027,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td class="mono">${escapeHtml(item.code)}</td>
               <td>${escapeHtml(item.name)}</td>
               <td>${escapeHtml(item.uom)}</td>
-              <td>${formatCurrency(item.serviceRate)}</td>
-              <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
-              <td class="mono">${escapeHtml(formatBoundFormulaCode(item.formulaId))}</td>
               <td>${escapeHtml(formatServiceDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
           `).join("")
-        : emptyRow(9, "No services match this search.");
+        : emptyRow(6, "No services match this search.");
 
       document.getElementById("page-services").innerHTML = `
         <div class="toolbar">
@@ -4683,10 +5054,72 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <th>Code</th>
                   <th>Service</th>
                   <th>UOM</th>
-                  <th>Service Rate</th>
+                  <th>Dimensions</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderServiceRates() {
+      const page = document.getElementById("page-service-rates");
+      if (!page) return;
+      const rows = serviceRateTableRows();
+      const body = rows.length
+        ? rows.map(({ service, rateRow }) => {
+            const formula = getFormula(rateRow && rateRow.formulaId);
+            const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
+              ? formatNumber(rateRow.rate, 2)
+              : "—";
+            return `
+            <tr>
+              <td class="mono">${escapeHtml(service.code)}</td>
+              <td>${escapeHtml(service.name)}</td>
+              <td>${rateText}</td>
+              <td>${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</td>
+              <td class="mono">${escapeHtml(formula ? formula.code : "—")}</td>
+              <td>${rateRow ? statusBadge(rateRow.status) : '<span class="badge badge-muted">Unset</span>'}</td>
+              <td>
+                <button type="button" class="btn btn-sm" data-edit-service-rate="${service.id}">Update</button>
+              </td>
+            </tr>
+          `;
+          }).join("")
+        : emptyRow(7, "No service rates match this search.");
+
+      page.innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-left">
+            ${toolbarSearch("srate-search", state.searches.serviceRates, "Search service name, code...")}
+            <select class="filter-select" id="srate-status-filter">
+              <option value="all" ${state.serviceRateFilter === "all" ? "selected" : ""}>All statuses</option>
+              <option value="active" ${state.serviceRateFilter === "active" ? "selected" : ""}>Active</option>
+              <option value="inactive" ${state.serviceRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
+            </select>
+            <select class="filter-select" id="srate-sort">
+              <option value="name" ${state.serviceRateSort === "name" ? "selected" : ""}>Sort by service name</option>
+              <option value="rate" ${state.serviceRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Service Code</th>
+                  <th>Service Name</th>
+                  <th>Rate (PKR)</th>
                   <th>Rate UOM</th>
                   <th>Formula</th>
-                  <th>Dimensions</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -5149,6 +5582,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
 
+      const hasCalcErrors = currentBomHasCalculationErrors();
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
@@ -5168,8 +5602,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             </div>
             <div class="workflow-actions">
-              <button type="button" class="btn btn-primary" id="btn-save-draft">Save Draft</button>
-              <button type="button" class="btn btn-activate" id="btn-activate-bom">Activate BOM</button>
+              <button type="button" class="btn btn-primary" id="btn-save-draft" ${hasCalcErrors ? "disabled" : ""} title="${hasCalcErrors ? "Fix calculation errors before saving" : ""}">Save Draft</button>
+              <button type="button" class="btn btn-activate" id="btn-activate-bom" ${hasCalcErrors ? "disabled" : ""} title="${hasCalcErrors ? "Fix calculation errors before saving" : ""}">Activate BOM</button>
               <button type="button" class="btn btn-duplicate" id="btn-duplicate-bom">Duplicate BOM</button>
             </div>
             ${activeSibling ? `<div class="modal-note" style="margin-top:12px;margin-bottom:0;">You are editing Draft version ${escapeHtml(bom.version)}. Active version ${escapeHtml(activeSibling.version)} is locked and will not change until you activate this Draft.</div>` : ""}
@@ -5268,32 +5702,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>
                 <div class="section-kicker">Finished Good</div>
                 <div class="pi-fields">
-                  <div class="product-name">${escapeHtml(fg.product)}</div>
+                  <div class="product-name">${escapeHtml(fg?.product ?? "missing data")}</div>
                   <div>
                     <div class="field-label">Variant</div>
-                    <div class="field-value">${escapeHtml(fg.variant)}</div>
+                    <div class="field-value">${escapeHtml(fg?.variant ?? "—")}</div>
                   </div>
                   <div>
                     <div class="field-label">Style</div>
-                    <div class="field-value">${escapeHtml(fg.style)}</div>
+                    <div class="field-value">${escapeHtml(fg?.style ?? "—")}</div>
                   </div>
                   <div>
                     <div class="field-label">Ply</div>
-                    <div class="field-value">${escapeHtml(fg.ply)} Ply</div>
+                    <div class="field-value">${escapeHtml(fg?.ply ?? "—")} Ply</div>
                   </div>
                   <div>
                     <div class="field-label">UOM</div>
-                    <div class="field-value">${escapeHtml(fg.uom)}</div>
+                    <div class="field-value">${escapeHtml(fg?.uom ?? "—")}</div>
                   </div>
                   <div>
                     <div class="field-label">Dimensions</div>
-                    <div class="field-value">${escapeHtml(formatDimensions(fg))}</div>
+                    <div class="field-value">${escapeHtml(formatDimensions(fg) || "missing data")}</div>
                   </div>
                 </div>
               </div>
               <div>
-                <div class="section-kicker" style="margin-bottom:8px;">${escapeHtml(fg.ply)} Ply Structure</div>
-                ${renderPlyVisualization(fg.ply)}
+                <div class="section-kicker" style="margin-bottom:8px;">${escapeHtml(fg?.ply ?? "—")} Ply Structure</div>
+                ${renderPlyVisualization(fg?.ply)}
               </div>
             </div>
             ${renderCalculatedDimensionsSection(fg)}
@@ -5325,7 +5759,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
               <span class="badge badge-muted">Read-only</span>
             </div>
-            <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg.style)}</strong>. Values update when the finished good or style variables change.</p>
+            <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
             <div class="style-formula-results">
               ${rows.map((row) => `
                 <div class="style-formula-row">
@@ -5366,7 +5800,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <td>
                     <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
                     <div class="stat-hint">${escapeHtml(material ? material.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
-                    ${line.error ? `<div class="field-error">${escapeHtml(line.error)}</div>` : ""}
+                    ${line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
                   </td>
                   <td>${escapeHtml(line.layer)}</td>
                   <td>${escapeHtml(methodLabel)}</td>
@@ -5378,9 +5812,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <td>${formatQty(line.grossQty)}</td>
                   <td>
                     ${material ? formatRatePkr(line.rate, material.rateUOM) : "—"}
-                    ${line.rateSource === "dimension" ? `<div class="stat-hint">Dimension rate</div>` : ""}
+                    <div class="stat-hint">Raw Material Master</div>
                   </td>
-                  <td>${formatRupees(line.costPerPiece)}</td>
+                  <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
@@ -5456,20 +5890,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <td>
                     <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                     <div class="stat-hint">${escapeHtml(service ? service.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
-                    ${line.error ? `<div class="field-error">${escapeHtml(line.error)}</div>` : ""}
+                    ${line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
                   </td>
                   <td>${escapeHtml(methodLabel)}</td>
                   <td>${escapeHtml(formulaLabel)}</td>
                   <td>${formatQty(line.quantity)}</td>
                   <td>
-                    ${service ? formatRatePkr(line.rate, service.rateUOM) : "—"}
-                    <div class="stat-hint">${line.rateSource === "dimension"
-                      ? "Dimension rate"
-                      : service && service.formulaId
-                        ? "Bound formula: " + escapeHtml(formatBoundFormulaCode(service.formulaId))
-                        : "Rate Source: Service Master (PKR)"}</div>
+                    ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
+                    <div class="stat-hint">Service Rates</div>
                   </td>
-                  <td>${formatRupees(line.costPerPiece)}</td>
+                  <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-service="${line.id}" title="Calculation breakdown">
@@ -5525,6 +5955,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCostSummary() {
       const root = document.getElementById("bom-cost-root");
       if (!root) return;
+      const hasCalcErrors = currentBomHasCalculationErrors();
       const total = Number(state.finalCostPerPiece) || 0;
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
@@ -5533,17 +5964,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-kicker">Cost Summary (PKR)</div>
             <div class="section-title" style="margin-bottom:12px;">Per piece roll-up</div>
+            ${hasCalcErrors ? `<div class="field-error" style="margin-bottom:12px;">⚠ Error calculating cost</div>` : ""}
             <div class="cost-row">
               <span>Material Cost</span>
-              <strong>${formatCurrency(state.totalMaterialCost)}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
             </div>
             <div class="cost-row">
               <span>Service Cost</span>
-              <strong>${formatCurrency(state.totalServiceCost)}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
             </div>
             <div class="cost-row cost-final">
               <span>Final Cost/Piece</span>
-              <strong>${formatCurrency(state.finalCostPerPiece)}</strong>
+              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.finalCostPerPiece)}</strong>
             </div>
             <div class="cost-row">
               <span>Cost per 100</span>
@@ -6019,18 +6451,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function finishedGoodToDraft(item) {
+      const dims = getItemDimensions(item);
       return {
-        id: item.id,
-        product: item.product,
-        style: item.style,
-        variant: item.variant,
-        ply: item.ply,
-        L: formatDecimal(item.dimensions.L, 2, false),
-        W: formatDecimal(item.dimensions.W, 2, false),
-        H: formatDecimal(item.dimensions.H, 2, false),
-        dimensionUOM: item.dimensionUOM,
-        uom: item.uom,
-        status: item.status
+        id: item?.id,
+        product: item?.product ?? "",
+        style: item?.style ?? "",
+        variant: item?.variant ?? "",
+        ply: item?.ply,
+        L: formatDecimal(dims.L, 2, false),
+        W: formatDecimal(dims.W, 2, false),
+        H: formatDecimal(dims.H, 2, false),
+        dimensionUOM: item?.dimensionUOM,
+        uom: item?.uom,
+        status: item?.status
       };
     }
 
@@ -6471,10 +6904,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const index = materialDimensions.findIndex((row) => row.id === Number(draft.id));
         if (index >= 0) {
           materialDimensions[index] = {
-            ...materialDimensions[index],
+            id: materialDimensions[index].id,
+            rawMaterialId: materialDimensions[index].rawMaterialId,
             dimensionId,
             ply,
-            formulaId
+            formulaId,
+            createdAt: materialDimensions[index].createdAt
           };
         }
         showNotification("Dimension link updated");
@@ -6539,10 +6974,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         code: "",
         name: "",
-        uom: "pieces",
-        serviceRate: "",
-        rateUOM: "piece",
-        formulaId: null,
+        uom: "piece",
         dimensionIds: [],
         status: "Active"
       };
@@ -6555,9 +6987,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (services.some((item) => item.code.toUpperCase() === code && item.id !== draft.id)) errors.code = "Code must be unique.";
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
-      const rate = parseByRule(draft.serviceRate, "rate", { requiredError: "Service rate must be greater than 0." });
-      if (!rate.ok) errors.serviceRate = rate.error;
-      if (!draft.rateUOM) errors.rateUOM = "Rate UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
       return errors;
     }
@@ -6582,28 +7011,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="srv-uom">UOM</label>
               <select id="srv-uom" class="full-select">
-                ${["pieces", "sq.inch", "meter"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+                ${["piece", "sq.inch", "sq.meter", "meter", "kg", "hour", "pieces", "job"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
               </select>
-            </div>
-            <div>
-              <label class="form-label" for="srv-rate">Service Rate (PKR)</label>
-              <input id="srv-rate" class="full-search ${errors.serviceRate ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.serviceRate === "" || draft.serviceRate == null ? "" : formatDecimal(draft.serviceRate, 2, true))}" placeholder="2.50" />
-              ${errors.serviceRate ? `<div class="field-error">${escapeHtml(errors.serviceRate)}</div>` : ""}
-            </div>
-            <div>
-              <label class="form-label" for="srv-rate-uom">Rate UOM</label>
-              <select id="srv-rate-uom" class="full-select">
-                ${[["piece", "Rs./piece"], ["sq.inch", "Rs./sq.inch"], ["meter", "Rs./meter"]].map(([value, label]) => `
-                  <option value="${value}" ${draft.rateUOM === value ? "selected" : ""}>${label}</option>
-                `).join("")}
-              </select>
-            </div>
-            <div>
-              <label class="form-label" for="srv-formula">Default Formula</label>
-              <select id="srv-formula" class="full-select">
-                ${renderBoundFormulaOptions("Service", draft.formulaId)}
-              </select>
-              <p class="stat-hint" style="margin-top:6px;">Optional fallback when a dimension has no linked qty formula.</p>
             </div>
             <div>
               <label class="form-label" for="srv-status">Status</label>
@@ -6611,6 +7020,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
                 <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
               </select>
+            </div>
+            <div class="form-span-2">
+              <p class="stat-hint">Rates managed in Service Rates page</p>
             </div>
           </div>
       `;
@@ -6686,9 +7098,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: item.code,
         name: item.name,
         uom: item.uom,
-        serviceRate: formatDecimal(item.serviceRate, 2, true),
-        rateUOM: item.rateUOM,
-        formulaId: normalizeFormulaBinding(item.formulaId),
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
         status: item.status
       };
@@ -6718,14 +7127,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         renderModal();
         return;
       }
-      const parsedRate = parseByRule(draft.serviceRate, "rate");
       const payload = {
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         uom: draft.uom,
-        serviceRate: parsedRate.value,
-        rateUOM: draft.rateUOM,
-        formulaId: normalizeFormulaBinding(draft.formulaId),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -6758,10 +7163,178 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (target.id === "srv-code") draft.code = target.value.toUpperCase();
       else if (target.id === "srv-name") draft.name = target.value;
       else if (target.id === "srv-uom") draft.uom = target.value;
-      else if (target.id === "srv-rate") draft.serviceRate = target.value;
-      else if (target.id === "srv-rate-uom") draft.rateUOM = target.value;
-      else if (target.id === "srv-formula") draft.formulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "srv-status") draft.status = target.value;
+      else return false;
+      return true;
+    }
+
+    function defaultServiceRateDraft(service, rateRow) {
+      const inferredUom = normalizeServiceRateUom(service && service.uom) || "Rs./piece";
+      return {
+        serviceId: service ? service.id : null,
+        rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
+        rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        formulaId: rateRow && rateRow.formulaId ? Number(rateRow.formulaId) : "",
+        status: (rateRow && rateRow.status) || "Active"
+      };
+    }
+
+    function serviceRateUomOptions(selected) {
+      const labels = {
+        "Rs./piece": "Rs./piece",
+        "Rs./sq.inch": "Rs./sq.inch",
+        "Rs./sq.meter": "Rs./sq.meter",
+        "Rs./meter": "Rs./meter",
+        "Rs./kg": "Rs./kg",
+        "Rs./hour": "Rs./hour (Labour)",
+        "Rs./job": "Rs./job"
+      };
+      const values = SERVICE_RATE_UOMS.slice();
+      if (selected && !values.includes(selected)) values.push(selected);
+      return `<option value="">Select rate UOM</option>` + values.map((value) => `
+        <option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(labels[value] || value)}</option>
+      `).join("");
+    }
+
+    function renderServiceRateFormModal() {
+      const draft = state.modal.draft || {};
+      const errors = state.modal.errors || {};
+      const service = getService(draft.serviceId);
+      const formulaOptions = renderBoundFormulaOptions("Service", draft.formulaId);
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Pricing</div>
+            <strong>Update Service Rate</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-body">
+              <div class="section-kicker">Service (Read-only)</div>
+              <div><strong>Service:</strong> ${escapeHtml(service ? service.name : "Service not found")}</div>
+              <div><strong>Code:</strong> ${escapeHtml(service ? service.code : "—")}</div>
+              <div><strong>UOM:</strong> ${escapeHtml(service ? service.uom : "—")}</div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="srate-rate">Rate (PKR)</label>
+              <input id="srate-rate" class="full-search ${errors.rate ? "input-invalid" : ""}" type="number" min="0.01" max="99999.99" step="0.01" value="${escapeHtml(draft.rate === "" || draft.rate == null ? "" : formatDecimal(draft.rate, 2, true))}" placeholder="3.00" />
+              ${errors.rate ? `<div class="field-error">${escapeHtml(errors.rate)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="srate-uom">Rate UOM</label>
+              <select id="srate-uom" class="full-select ${errors.rateUOM ? "input-invalid" : ""}">
+                ${serviceRateUomOptions(draft.rateUOM)}
+              </select>
+              ${errors.rateUOM ? `<div class="field-error">${escapeHtml(errors.rateUOM)}</div>` : ""}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label" for="srate-formula">Formula</label>
+              <select id="srate-formula" class="full-select">
+                ${formulaOptions}
+              </select>
+              <p class="stat-hint">Leave blank if manual qty only</p>
+            </div>
+            <div class="form-span-2">
+              <div class="section-kicker">Status</div>
+              <label class="radio-row"><input type="radio" name="srate-status" value="Active" ${draft.status === "Active" ? "checked" : ""} /> Active</label>
+              <label class="radio-row"><input type="radio" name="srate-status" value="Inactive" ${draft.status === "Inactive" ? "checked" : ""} /> Inactive</label>
+              ${errors.status ? `<div class="field-error">${escapeHtml(errors.status)}</div>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-service-rate">Update Service Rate</button>
+        </div>
+      `;
+    }
+
+    function openServiceRateModal(serviceId) {
+      const service = getService(serviceId);
+      if (!service) {
+        showNotification("Service not found", "error");
+        return;
+      }
+      const rateRow = getServiceRateRecord(service.id);
+      state.modal = {
+        type: "service-rate",
+        selectedId: service.id,
+        mode: "edit",
+        lineId: null,
+        draft: defaultServiceRateDraft(service, rateRow),
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function validateServiceRateDraft(draft) {
+      const errors = {};
+      const service = getService(draft.serviceId);
+      if (!service) {
+        errors.serviceId = "Service not found";
+        return errors;
+      }
+      if (service.status === "Inactive") {
+        errors.status = "Cannot update rate if service inactive";
+      }
+      const rate = Number(draft.rate);
+      if (!Number.isFinite(rate) || rate <= 0) errors.rate = "Rate must be positive number";
+      else if (rate > 99999.99) errors.rate = "Rate must be 99999.99 or less.";
+      if (!draft.rateUOM) errors.rateUOM = "Rate UOM must be selected";
+      return errors;
+    }
+
+    function saveServiceRateFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateServiceRateDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const service = getService(draft.serviceId);
+      const now = new Date().toISOString();
+      const existing = getServiceRateRecord(draft.serviceId);
+      const payload = {
+        serviceId: Number(draft.serviceId),
+        rate: roundTo(Number(draft.rate), 2),
+        rateUOM: normalizeServiceRateUom(draft.rateUOM) || draft.rateUOM,
+        formulaId: draft.formulaId ? Number(draft.formulaId) : null,
+        status: draft.status || "Active",
+        updatedAt: now
+      };
+      if (existing) {
+        const index = serviceRates.findIndex((row) => row.id === existing.id);
+        serviceRates[index] = { ...existing, ...payload };
+      } else {
+        serviceRates.push({
+          id: nextMasterId(serviceRates),
+          ...payload,
+          createdAt: now
+        });
+      }
+      const unit = formatRateUnit(payload.rateUOM) || "unit";
+      showNotification("Service rate updated: " + service.name + " - Rs. " + formatDecimal(payload.rate, 2, true) + "/" + unit);
+      closeModal();
+      renderServiceRates();
+      refreshIcons();
+      afterDataChange("serviceRates");
+      refreshOpenBomCalculations();
+      if (state.currentPage === "cost-calculator") renderCostCalculator();
+    }
+
+    function updateServiceRateDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "service-rate") return false;
+      const draft = state.modal.draft;
+      if (target.id === "srate-rate") draft.rate = target.value;
+      else if (target.id === "srate-uom") draft.rateUOM = target.value;
+      else if (target.id === "srate-formula") draft.formulaId = target.value ? Number(target.value) : "";
+      else if (target.name === "srate-status") draft.status = target.value;
       else return false;
       return true;
     }
@@ -6871,10 +7444,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const index = serviceDimensions.findIndex((row) => row.id === Number(draft.id));
         if (index >= 0) {
           serviceDimensions[index] = {
-            ...serviceDimensions[index],
+            id: serviceDimensions[index].id,
+            serviceId: serviceDimensions[index].serviceId,
             dimensionId,
             ply,
-            formulaId
+            formulaId,
+            createdAt: serviceDimensions[index].createdAt
           };
         }
         showNotification("Dimension link updated");
@@ -7212,7 +7787,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (index >= 0) styles[index] = { ...styles[index], ...payload };
         if (previous && previous !== payload.name) {
           finishedGoods.forEach((fg) => {
-            if (String(fg.style).toLowerCase() === String(previous).toLowerCase()) fg.style = payload.name;
+            if (String(fg?.style ?? "").toLowerCase() === String(previous).toLowerCase()) fg.style = payload.name;
           });
         }
         showNotification("Style updated successfully");
@@ -7800,8 +8375,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div>
               <label class="form-label" for="fvar-default">Default Value</label>
-              <input id="fvar-default" class="full-search ${errors.defaultValue ? "input-invalid" : ""}" value="${escapeHtml(draft.defaultValue)}" />
-              ${errors.defaultValue ? `<div class="field-error">${escapeHtml(errors.defaultValue)}</div>` : ""}
+              <input id="fvar-default" class="full-search ${errors.defaultValue ? "input-invalid" : ""}" value="${escapeHtml(draft.defaultValue)}" ${String(draft.code).toUpperCase() === "SHEET_AREA" ? "disabled" : ""} />
+              ${String(draft.code).toUpperCase() === "SHEET_AREA"
+                ? `<p class="stat-hint">Calculated as SHEET_WIDTH × SHEET_LENGTH.</p>`
+                : (errors.defaultValue ? `<div class="field-error">${escapeHtml(errors.defaultValue)}</div>` : "")}
             </div>
             <div>
               <label class="form-label" for="fvar-status">Status</label>
@@ -7844,6 +8421,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       let defaultValue = draft.defaultValue === "" ? null : draft.defaultValue;
+      if (String(draft.code).trim().toUpperCase() === "SHEET_AREA") defaultValue = null;
       if (draft.dataType === "numeric" && defaultValue != null) {
         const parsed = parseByRule(defaultValue, "variable");
         defaultValue = parsed.ok ? parsed.value : defaultValue;
@@ -7938,6 +8516,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       if (entity === "finished-good") {
+        const usage = finishedGoodBomUsageMessage(id);
+        if (usage) {
+          showNotification(usage, "error");
+          return;
+        }
         const index = finishedGoods.findIndex((item) => item.id === id);
         if (index >= 0) finishedGoods.splice(index, 1);
         closeModal();
@@ -7945,6 +8528,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         showNotification("Product deleted successfully");
         afterDataChange("finishedGoods");
       } else if (entity === "raw-material") {
+        const usage = materialBomUsageMessage(id);
+        if (usage) {
+          showNotification(usage, "error");
+          return;
+        }
         const index = rawMaterials.findIndex((item) => item.id === id);
         if (index >= 0) rawMaterials.splice(index, 1);
         for (let i = materialDimensions.length - 1; i >= 0; i -= 1) {
@@ -7955,15 +8543,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         showNotification("Material deleted successfully");
         afterDataChange("rawMaterials", "materialDimensions");
       } else if (entity === "service") {
+        const usage = serviceBomUsageMessage(id);
+        if (usage) {
+          showNotification(usage, "error");
+          return;
+        }
         const index = services.findIndex((item) => item.id === id);
         if (index >= 0) services.splice(index, 1);
         for (let i = serviceDimensions.length - 1; i >= 0; i -= 1) {
           if (serviceDimensions[i].serviceId === id) serviceDimensions.splice(i, 1);
         }
+        for (let i = serviceRates.length - 1; i >= 0; i -= 1) {
+          if (Number(serviceRates[i].serviceId) === id) serviceRates.splice(i, 1);
+        }
         closeModal();
         renderServices();
         showNotification("Service deleted successfully");
-        afterDataChange("services", "serviceDimensions");
+        afterDataChange("services", "serviceDimensions", "serviceRates");
       } else if (entity === "service-dimension") {
         const parent = state.modal.parentService;
         removeServiceDimensionLink(id);
@@ -8194,14 +8790,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           uom: dim.uom || dim.unit || (finishedGood && finishedGood.dimensionUOM) || ""
         };
       }
-      if (finishedGood && finishedGood.dimensions) {
+      if (finishedGood?.dimensions) {
+        const dims = getItemDimensions(finishedGood);
         return {
           source: "fg",
           label: formatDimensions(finishedGood),
-          L: Number(finishedGood.dimensions.L),
-          W: Number(finishedGood.dimensions.W),
-          H: Number(finishedGood.dimensions.H),
-          uom: finishedGood.dimensionUOM || ""
+          L: Number(dims.L),
+          W: Number(dims.W),
+          H: Number(dims.H),
+          uom: finishedGood?.dimensionUOM || ""
         };
       }
       return null;
@@ -8432,7 +9029,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("Code", `<span class="mono">${escapeHtml(material.code)}</span>`)}
           ${renderPreviewField("Name", escapeHtml(material.name))}
           ${renderPreviewField("UOM", escapeHtml(material.uom))}
-          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(material.purchasingRate, material.rateUOM)))}
+          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(material?.purchasingRate, material?.rateUOM)))}
         </section>
         <section class="preview-section" aria-label="Selected dimension">
           <h3 class="preview-heading">Selected dimension</h3>
@@ -8511,19 +9108,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="modal-body">
           <div class="detail-list">
             <div><span>Material</span><strong>${escapeHtml(material ? material.name : "—")}</strong></div>
-            <div><span>Finished Good</span><strong>${escapeHtml(fg.product)} — ${escapeHtml(fg.variant)}</strong></div>
-            <div><span>Dimensions</span><strong>L = ${escapeHtml(formatDecimal(fg.dimensions.L, 2, false))} &nbsp; W = ${escapeHtml(formatDecimal(fg.dimensions.W, 2, false))} &nbsp; H = ${escapeHtml(formatDecimal(fg.dimensions.H, 2, false))}</strong></div>
+            <div><span>Finished Good</span><strong>${escapeHtml(fg?.product ?? "missing data")} — ${escapeHtml(fg?.variant ?? "")}</strong></div>
+            <div><span>Dimensions</span><strong>L = ${escapeHtml(formatDecimal(fg?.dimensions?.L, 2, false))} &nbsp; W = ${escapeHtml(formatDecimal(fg?.dimensions?.W, 2, false))} &nbsp; H = ${escapeHtml(formatDecimal(fg?.dimensions?.H, 2, false))}</strong></div>
             <div><span>GSM</span><strong>${material && material.gsm != null ? escapeHtml(formatDecimal(material.gsm, 1, false)) : "—"}</strong></div>
             <div><span>Quantity Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "Manual"}</strong></div>
             <div><span>Quantity Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
-            <div><span>Rate Dimension</span><strong>${line.rateSource === "dimension" ? escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : "—"}</strong></div>
             <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
             <div><span>Wastage</span><strong>${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}%</strong></div>
             <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
             <div><span>Qty at rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(material.rateUOM) : "")}</strong></div>
-            <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(material.purchasingRate, material.rateUOM) : "—"}</strong></div>
-            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, material ? material.rateUOM : "")}${line.rateSource === "dimension" ? " (dimension)" : " (master)"}</strong></div>
-            ${material && normalizeUnit(material.uom) !== normalizeUnit(material.rateUOM) ? `<div><span>Equivalent rate in ${escapeHtml(material.uom)}</span><strong>${formatRatePkr(convertRate(material.purchasingRate, material.rateUOM, material.uom, material.gsm), material.uom)}</strong></div>` : ""}
+            <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(material?.purchasingRate, material?.rateUOM) : "—"}</strong></div>
+            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, material ? material.rateUOM : "")} (master)</strong></div>
+            ${material && normalizeUnit(material.uom) !== normalizeUnit(material.rateUOM)
+              ? `<div><span>Equivalent rate in ${escapeHtml(material.uom)}</span><strong>${(() => {
+                  try {
+                    return formatRatePkr(convertRate(material?.purchasingRate, material?.rateUOM, material?.uom, material?.gsm), material?.uom);
+                  } catch (error) {
+                    return escapeHtml(error.message || "Unsupported unit conversion");
+                  }
+                })()}</strong></div>`
+              : ""}
             <div><span>Material Cost</span><strong>${formatCurrency(line.costPerPiece)}</strong></div>
           </div>
           <div class="section-kicker" style="margin-top:14px;">Variables</div>
@@ -8567,7 +9171,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || (state.modal.type === "style-master" && state.modal.mode === "add"));
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
 
       if (state.modal.type === "finished-good") {
@@ -8580,6 +9184,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderServiceDimensionLinkModal();
       } else if (state.modal.type === "service-master") {
         dialog.innerHTML = renderServiceMasterFormModal();
+      } else if (state.modal.type === "service-rate") {
+        dialog.innerHTML = renderServiceRateFormModal();
       } else if (state.modal.type === "style-master" && state.modal.sub && state.modal.sub.type === "style-variable") {
         dialog.innerHTML = renderStyleVariableFormModal();
       } else if (state.modal.type === "style-master") {
@@ -8805,7 +9411,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!draft.serviceId) errors.serviceId = "Service is required.";
       const service = getService(draft.serviceId);
       if (draft.serviceId && !service) errors.serviceId = "Service must exist in the Service Master.";
-      if (service && !Number.isFinite(Number(service.serviceRate))) errors.rate = "Service rate from the Service Master is not valid.";
+      if (service && !getServiceRate(service.id)) errors.rate = "No rate configured for this service.";
+      else if (service && !Number.isFinite(Number(getServiceRate(service.id)?.rate))) errors.rate = "Service rate is not valid.";
       const linkedDims = service ? getServiceLinkedDimensionIds(service, ply) : [];
       if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
         errors.dimensionId = "Selected dimension is not linked to this service for this ply.";
@@ -8946,7 +9553,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("Code", `<span class="mono">${escapeHtml(service.code)}</span>`)}
           ${renderPreviewField("Name", escapeHtml(service.name))}
           ${renderPreviewField("UOM", escapeHtml(service.uom))}
-          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(service.serviceRate, service.rateUOM)))}
+          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM)))}
         </section>
         <section class="preview-section" aria-label="Selected dimension">
           <h3 class="preview-heading">Selected dimension</h3>
@@ -8978,7 +9585,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("Dimension", draftDim ? escapeHtml(formatDimensionChipLabel(draftDim)) : "Not selected")}
           ${preview && !preview.error ? `
             ${renderPreviewField("Qty", escapeHtml(formatQty(preview.quantity) + " " + service.uom))}
-            ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, service.rateUOM)))}
+            ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, getServiceRate(service.id)?.rateUOM)))}
             <div class="summary-highlight">
               <div class="preview-label">Total</div>
               <div class="preview-value cost-display">${escapeHtml(formatRupees(preview.costPerPiece))}</div>
@@ -9016,16 +9623,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="modal-body">
           <div class="detail-list">
             <div><span>Service</span><strong>${escapeHtml(service ? service.name : "—")}</strong></div>
-            <div><span>Finished Good</span><strong>${escapeHtml(fg.product)} — ${escapeHtml(fg.variant)}</strong></div>
+            <div><span>Finished Good</span><strong>${escapeHtml(fg?.product ?? "missing data")} — ${escapeHtml(fg?.variant ?? "")}</strong></div>
             <div><span>Dimensions</span><strong>${escapeHtml(formatDimensions(fg))}</strong></div>
             <div><span>Calculation Method</span><strong>${escapeHtml(line.calculationMethod === "manual" ? "Manual" : "Formula")}</strong></div>
             <div><span>Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "—"}</strong></div>
             <div><span>Formula Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
-            <div><span>Rate Dimension</span><strong>${line.rateSource === "dimension" ? escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : "—"}</strong></div>
             <div><span>Quantity / Piece</span><strong>${formatQty(line.quantity)}</strong></div>
-            <div><span>Service Rate</span><strong>${service ? formatRatePkr(service.serviceRate, service.rateUOM) : "—"}</strong></div>
-            <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(service && service.formulaId))}</strong></div>
-            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, service ? service.rateUOM : "")}${line.rateSource === "dimension" ? " (dimension)" : " (master)"}</strong></div>
+            <div><span>Service Rate</span><strong>${service ? formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM) : "—"}</strong></div>
+            <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(getServiceDefaultFormulaId(service && service.id)))}</strong></div>
+            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, getServiceRate(line.serviceId)?.rateUOM || "")} (master)</strong></div>
             <div><span>Service Cost / Piece</span><strong>${formatRupees(line.costPerPiece)}</strong></div>
           </div>
           <div class="section-kicker" style="margin-top:14px;">Variables</div>
@@ -9155,6 +9761,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (page === "finished-goods") renderFinishedGoods();
       if (page === "raw-materials") renderRawMaterials();
       if (page === "services") renderServices();
+      if (page === "service-rates") renderServiceRates();
       if (page === "style") renderStyles();
       if (page === "formula-variables") renderFormulaVariables();
       if (page === "dimensions") renderDimensions();
@@ -9258,6 +9865,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
+        } else if (id === "srate-search") {
+          state.searches.serviceRates = event.target.value;
+          renderServiceRates();
+          refreshIcons();
+          restoreFocus(id);
+          persistPrefs();
         } else if (id === "bom-list-search") {
           state.searches.boms = event.target.value;
           renderBomList();
@@ -9316,6 +9929,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "formula-filter") {
           state.formulaFilter = event.target.value;
           renderFormulas();
+          refreshIcons();
+          persistPrefs();
+        }
+        if (event.target.id === "srate-status-filter") {
+          state.serviceRateFilter = event.target.value;
+          renderServiceRates();
+          refreshIcons();
+          persistPrefs();
+        }
+        if (event.target.id === "srate-sort") {
+          state.serviceRateSort = event.target.value;
+          renderServiceRates();
           refreshIcons();
           persistPrefs();
         }
@@ -9480,6 +10105,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteFg = event.target.closest("[data-delete-fg]");
         if (deleteFg) {
           const item = finishedGoods.find((row) => row.id === Number(deleteFg.dataset.deleteFg));
+          const usage = finishedGoodBomUsageMessage(deleteFg.dataset.deleteFg);
+          if (usage) {
+            showNotification(usage, "error");
+            return;
+          }
           openMasterDeleteModal("finished-good", deleteFg.dataset.deleteFg, item ? item.product : "this product");
           return;
         }
@@ -9491,6 +10121,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteRm = event.target.closest("[data-delete-rm]");
         if (deleteRm) {
           const item = rawMaterials.find((row) => row.id === Number(deleteRm.dataset.deleteRm));
+          const usage = materialBomUsageMessage(deleteRm.dataset.deleteRm);
+          if (usage) {
+            showNotification(usage, "error");
+            return;
+          }
           openMasterDeleteModal("raw-material", deleteRm.dataset.deleteRm, item ? item.name : "this material");
           return;
         }
@@ -9502,7 +10137,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteSrv = event.target.closest("[data-delete-srv-master]");
         if (deleteSrv) {
           const item = services.find((row) => row.id === Number(deleteSrv.dataset.deleteSrvMaster));
+          const usage = serviceBomUsageMessage(deleteSrv.dataset.deleteSrvMaster);
+          if (usage) {
+            showNotification(usage, "error");
+            return;
+          }
           openMasterDeleteModal("service", deleteSrv.dataset.deleteSrvMaster, item ? item.name : "this service");
+          return;
+        }
+        const editServiceRate = event.target.closest("[data-edit-service-rate]");
+        if (editServiceRate) {
+          openServiceRateModal(editServiceRate.dataset.editServiceRate);
           return;
         }
         const editStyle = event.target.closest("[data-edit-style]");
@@ -9684,7 +10329,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (updateServiceMasterDraftFromEvent(event.target)) {
-          if (event.target.id === "srv-rate") normalizeDraftNumber(event.target, "serviceRate", "rate", true);
+          return;
+        }
+        if (updateServiceRateDraftFromEvent(event.target)) {
+          if (event.target.id === "srate-rate") normalizeDraftNumber(event.target, "rate", "rate", true);
           return;
         }
         const serviceDimChange = updateServiceDimensionLinkDraftFromEvent(event.target);
@@ -9755,6 +10403,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (updateServiceMasterDraftFromEvent(event.target)) {
           if (event.target.id === "srv-code") event.target.value = String(event.target.value || "").toUpperCase();
+          restoreFocus(event.target.id);
+        }
+        if (updateServiceRateDraftFromEvent(event.target)) {
           restoreFocus(event.target.id);
         }
         if (updateStyleDraftFromEvent(event.target)) {
@@ -9847,6 +10498,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-save-service-master")) {
           saveServiceMasterFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-service-rate")) {
+          saveServiceRateFromModal();
           return;
         }
         if (event.target.closest("#btn-add-service-dimension")) {
