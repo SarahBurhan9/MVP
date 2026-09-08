@@ -257,6 +257,163 @@
 
     .card-body { padding: 16px; }
 
+    .cost-calc {
+      display: grid;
+      gap: 16px;
+    }
+
+    .cost-calc-main {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-width: 0;
+    }
+
+    .cc-card { min-width: 0; }
+
+    .cc-step {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    .cc-step-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .cc-step-row .cc-step { margin-bottom: 0; }
+
+    .cc-dim-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .cc-input-unit {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cc-input-unit span {
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .cc-ply-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .cc-ply-btn {
+      flex: 1 1 90px;
+      min-height: 40px;
+      border: 1px solid var(--border);
+      background: #fff;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+
+    .cc-ply-btn.active {
+      background: var(--primary-soft);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+    .cc-ply-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .cc-layer {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--bg);
+    }
+
+    .cc-layer-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .cc-layer-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .cc-layer-head .cc-layer-title { margin-bottom: 0; }
+
+    .cc-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      margin-top: 12px;
+    }
+
+    .cc-metrics span {
+      display: block;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .cc-total-line,
+    .cc-summary-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 0;
+      border-top: 1px solid var(--border);
+      margin-top: 8px;
+    }
+
+    .cc-summary-total {
+      font-size: 16px;
+    }
+
+    .cc-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .cc-actions .btn { flex: 1 1 140px; }
+
+    @media (min-width: 720px) {
+      .cc-dim-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .cc-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+
+    @media (min-width: 960px) {
+      .cost-calc {
+        grid-template-columns: minmax(0, 1fr) minmax(280px, 340px);
+        align-items: start;
+      }
+      .cost-calc-summary { position: sticky; top: 12px; }
+    }
+
+    @media print {
+      .sidebar, .header, .menu-btn, .cc-actions, .toolbar { display: none !important; }
+      .app { display: block; }
+      .main { margin: 0; }
+      .cost-calc { display: block; }
+      .cost-calc-summary { position: static; box-shadow: none; }
+    }
+
     .stat-grid {
       display: grid;
       grid-template-columns: repeat(5, minmax(0, 1fr));

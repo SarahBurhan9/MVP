@@ -100,7 +100,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 4, styleId: 102, variableCode: "SHEET_WIDTH", ply: 1, value: 95, unit: "cm" },
       { id: 5, styleId: 103, variableCode: "GLUE_FLAP", ply: 2, value: 15.0, unit: "mm" },
       { id: 6, styleId: 101, variableCode: "GLUE_FLAP", ply: 2, value: 12, unit: "mm" },
-      { id: 7, styleId: 101, variableCode: "GLUE_FLAP", ply: 3, value: 15, unit: "mm" }
+      { id: 7, styleId: 101, variableCode: "GLUE_FLAP", ply: 3, value: 15, unit: "mm" },
+      { id: 8, styleId: 101, variableCode: "WASTAGE", ply: 1, value: 5, unit: "%" },
+      { id: 9, styleId: 101, variableCode: "WASTAGE", ply: 2, value: 5, unit: "%" },
+      { id: 10, styleId: 101, variableCode: "WASTAGE", ply: 3, value: 5, unit: "%" }
     ];
 
     const styleFormulas = [
@@ -116,7 +119,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 4, serviceId: 201, dimensionId: 201, ply: 1, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
       { id: 5, serviceId: 201, dimensionId: 201, ply: 2, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
       { id: 6, serviceId: 202, dimensionId: 201, ply: 1, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" },
-      { id: 7, serviceId: 202, dimensionId: 201, ply: 2, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" }
+      { id: 7, serviceId: 202, dimensionId: 201, ply: 2, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 8, serviceId: 401, dimensionId: 201, ply: 1, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 9, serviceId: 402, dimensionId: 201, ply: 1, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 10, serviceId: 401, dimensionId: 201, ply: 2, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 11, serviceId: 402, dimensionId: 201, ply: 2, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 12, serviceId: 403, dimensionId: 201, ply: 2, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 13, serviceId: 404, dimensionId: 201, ply: 2, formulaId: 314, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 14, serviceId: 401, dimensionId: 201, ply: 3, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 15, serviceId: 402, dimensionId: 201, ply: 3, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 16, serviceId: 403, dimensionId: 201, ply: 3, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 17, serviceId: 404, dimensionId: 201, ply: 3, formulaId: 314, createdAt: "2026-01-01T00:00:00.000Z" }
     ];
 
     const materialDimensions = [
@@ -129,7 +142,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 7, rawMaterialId: 102, dimensionId: 201, ply: 1, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
       { id: 8, rawMaterialId: 102, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
       { id: 9, rawMaterialId: 103, dimensionId: 201, ply: 1, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
-      { id: 10, rawMaterialId: 103, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" }
+      { id: 10, rawMaterialId: 103, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 11, rawMaterialId: 301, dimensionId: 201, ply: 1, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 12, rawMaterialId: 301, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 13, rawMaterialId: 302, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 14, rawMaterialId: 301, dimensionId: 201, ply: 3, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 15, rawMaterialId: 302, dimensionId: 201, ply: 3, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 16, rawMaterialId: 303, dimensionId: 201, ply: 3, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 17, rawMaterialId: 302, dimensionId: 201, ply: 1, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 18, rawMaterialId: 303, dimensionId: 201, ply: 1, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 19, rawMaterialId: 303, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" }
     ];
 
     const formulaVariables = [
@@ -171,7 +193,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 108, code: "RM-FILM-WIN", name: "Window Film", category: "Film", uom: "kg", purchasingRate: 300, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
       { id: 109, code: "RM-INK-PRINT", name: "Printing Ink", category: "Consumable", uom: "kg", purchasingRate: 800, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
       { id: 110, code: "RM-GLUE-ADH", name: "Glue / Adhesive", category: "Consumable", uom: "kg", purchasingRate: 600, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 111, code: "RM-BOARD-CORR", name: "Corrugated Board", category: "Board", uom: "sq.meter", purchasingRate: 150, rateUOM: "sq.meter", gsm: 180, status: "Active", qtyFormulaId: null, dimensionIds: [] }
+      { id: 111, code: "RM-BOARD-CORR", name: "Corrugated Board", category: "Board", uom: "sq.meter", purchasingRate: 150, rateUOM: "sq.meter", gsm: 180, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 301, code: "KRAFT-TOP", name: "Kraft Paper Top", category: "Paper", uom: "kg", purchasingRate: 150.5, rateUOM: "Rs./kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 302, code: "FLUTE-MID", name: "Corrugated Fluting", category: "Board", uom: "kg", purchasingRate: 120, rateUOM: "Rs./kg", gsm: 120, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 303, code: "KRAFT-BTM", name: "Kraft Paper Bottom", category: "Paper", uom: "kg", purchasingRate: 150.5, rateUOM: "Rs./kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] }
     ];
 
     const services = [
@@ -182,7 +207,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 205, code: "SRV-WINPASTE", name: "Window Pasting", uom: "pieces", serviceRate: 1.25, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
       { id: 206, code: "SRV-STITCH", name: "Stitching", uom: "pieces", serviceRate: 0.85, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
       { id: 207, code: "SRV-PLATE", name: "Plate", uom: "job", serviceRate: 1800, rateUOM: "job", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 208, code: "SRV-LABOUR", name: "Labour", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] }
+      { id: 208, code: "SRV-LABOUR", name: "Labour", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
+      { id: 401, code: "PRINT-4CLR", name: "4-Color Printing", uom: "piece", serviceRate: 3, rateUOM: "Rs./piece", status: "Active", formulaId: 311, dimensionIds: [201] },
+      { id: 402, code: "DIE-CUT", name: "Die Cutting", uom: "piece", serviceRate: 2, rateUOM: "Rs./piece", status: "Active", formulaId: 312, dimensionIds: [201] },
+      { id: 403, code: "LAMINATION", name: "Lamination", uom: "piece", serviceRate: 4.5, rateUOM: "Rs./piece", status: "Active", formulaId: 311, dimensionIds: [201] },
+      { id: 404, code: "PASTING", name: "Pasting", uom: "piece", serviceRate: 1, rateUOM: "Rs./piece", status: "Active", formulaId: 314, dimensionIds: [201] }
     ];
 
     const formulas = [
@@ -479,7 +508,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dimensions: { title: "Dimensions", subtitle: "Dimension master" },
       formulas: { title: "Formula Management", subtitle: "Definitions, builder, and validation" },
       "bom-costing": { title: "BOM & Costing", subtitle: "Select a finished good to begin" },
-      "bom-list": { title: "BOM List", subtitle: "Saved drafts and active versions" }
+      "bom-list": { title: "BOM List", subtitle: "Saved drafts and active versions" },
+      "cost-calculator": { title: "Cost Calculator", subtitle: "Quick cost estimate by style, size, ply, and materials" }
     };
 
     const state = {
@@ -518,6 +548,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         lineId: null,
         draft: null,
         errors: {}
+      },
+      costCalculator: {
+        styleId: "",
+        L: "",
+        W: "",
+        H: "",
+        ply: "",
+        layers: [],
+        services: [],
+        nextServiceKey: 1
       }
     };
 
@@ -885,6 +925,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       ensureSeedStyleFormulas();
       ensureSeedServiceDimensions();
       ensureSeedMaterialDimensions();
+      ensureSeedStyleWastageVariables();
+      ensureSeedCostCalculatorData();
       syncSequencesFromData();
       if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
         try {
@@ -1153,7 +1195,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const seededStyle = ensureSeedStyleFormulas();
           const seededServiceDims = ensureSeedServiceDimensions();
           const seededMaterialDims = ensureSeedMaterialDimensions();
-          if (seededStyle || seededServiceDims || seededMaterialDims) {
+          const seededWastage = ensureSeedStyleWastageVariables();
+          const seededCalculator = ensureSeedCostCalculatorData();
+          if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededCalculator) {
             syncSequencesFromData();
             await persistAllCollections();
             await persistSequencesNow();
@@ -1277,6 +1321,102 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function ensureSeedStyleWastageVariables() {
+      const style = styles.find((item) => item.id === 101) || findStyleByName("WINDOW LID");
+      if (!style) return false;
+      let added = false;
+      [1, 2, 3].forEach((ply) => {
+        if (findStyleVariable(style.id, "WASTAGE", ply)) return;
+        const catalog = getFormulaVariableByCode("WASTAGE");
+        styleVariables.push({
+          id: nextMasterId(styleVariables),
+          styleId: style.id,
+          variableCode: "WASTAGE",
+          ply,
+          value: 5,
+          unit: (catalog && catalog.unit) || "%"
+        });
+        added = true;
+      });
+      return added;
+    }
+
+    function ensureSeedCostCalculatorData() {
+      let added = false;
+      const sheetWeight = getFormulaByCode("SHEET_WEIGHT");
+      const printingQty = getFormulaByCode("PRINTING_QTY");
+      const dieQty = getFormulaByCode("DIE_CUTTING_QTY");
+      const pastingQty = getFormulaByCode("PASTING_QTY");
+
+      (SEED_DATA.rawMaterials || []).filter((item) => item.id >= 301 && item.id <= 303).forEach((seed) => {
+        if (getRawMaterial(seed.id)) return;
+        if (rawMaterials.some((item) => item.code === seed.code)) return;
+        const copy = snapshotData(seed);
+        if (sheetWeight) copy.qtyFormulaId = sheetWeight.id;
+        rawMaterials.push(copy);
+        added = true;
+      });
+
+      (SEED_DATA.services || []).filter((item) => item.id >= 401 && item.id <= 404).forEach((seed) => {
+        if (getService(seed.id)) return;
+        if (services.some((item) => item.code === seed.code)) return;
+        const copy = snapshotData(seed);
+        if (copy.code === "PRINT-4CLR" && printingQty) copy.formulaId = printingQty.id;
+        if (copy.code === "DIE-CUT" && dieQty) copy.formulaId = dieQty.id;
+        if (copy.code === "LAMINATION" && printingQty) copy.formulaId = printingQty.id;
+        if (copy.code === "PASTING" && pastingQty) copy.formulaId = pastingQty.id;
+        services.push(copy);
+        added = true;
+      });
+
+      (SEED_DATA.materialDimensions || []).filter((item) => item.rawMaterialId >= 301 && item.rawMaterialId <= 303).forEach((seedLink) => {
+        const material = getRawMaterial(seedLink.rawMaterialId);
+        const dimension = getDimension(seedLink.dimensionId);
+        const formula = sheetWeight || getFormula(seedLink.formulaId);
+        if (!material || !dimension || !formula) return;
+        const ply = normalizeStylePly(seedLink.ply, 3);
+        if (getMaterialDimensionLink(material.id, dimension.id, ply)) return;
+        materialDimensions.push({
+          id: nextMasterId(materialDimensions),
+          rawMaterialId: material.id,
+          dimensionId: dimension.id,
+          ply,
+          formulaId: formula.id,
+          createdAt: seedLink.createdAt || new Date().toISOString()
+        });
+        added = true;
+      });
+
+      (SEED_DATA.serviceDimensions || []).filter((item) => item.serviceId >= 401 && item.serviceId <= 404).forEach((seedLink) => {
+        const service = getService(seedLink.serviceId);
+        const dimension = getDimension(seedLink.dimensionId);
+        if (!service || !dimension) return;
+        const ply = normalizeStylePly(seedLink.ply, 3);
+        if (getServiceDimensionLink(service.id, dimension.id, ply)) return;
+        const formula = getFormula(seedLink.formulaId)
+          || (service.code === "DIE-CUT" ? dieQty : null)
+          || (service.code === "PASTING" ? pastingQty : null)
+          || printingQty
+          || getFormula(service.formulaId);
+        if (!formula) return;
+        serviceDimensions.push({
+          id: nextMasterId(serviceDimensions),
+          serviceId: service.id,
+          dimensionId: dimension.id,
+          ply,
+          formulaId: formula.id,
+          createdAt: seedLink.createdAt || new Date().toISOString()
+        });
+        added = true;
+      });
+
+      if (added) {
+        rawMaterials.forEach((item) => syncMaterialDimensionIds(item.id));
+        services.forEach((item) => syncServiceDimensionIds(item.id));
+      }
+      return added;
+    }
+
     async function resetToSeedData() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
@@ -1292,6 +1432,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
       sanitizeNumericMasters();
       resetBomEditor();
+      state.costCalculator = defaultCostCalculatorState();
       bomLineSeq = 1;
       bomSeq = 1;
       formulaSeq = formulas.reduce((max, item) => Math.max(max, item.id), 300) + 1;
@@ -2424,44 +2565,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBomDimensionSelect(linkedIds, selectedId, selectId, error, hint, options) {
+      const opts = options || {};
       const linked = normalizeDimensionIds(linkedIds);
-      const alwaysShow = options && options.alwaysShow;
-      if (!linked.length && !alwaysShow) return "";
-      if (!linked.length) {
-        return `
-          <div>
-            <label class="form-label" for="${selectId}">Select Dimension</label>
-            <select id="${selectId}" class="full-select ${error ? "input-invalid" : ""}" disabled>
-              <option value="">No dimensions for this ply</option>
-            </select>
-            ${error ? `<div class="field-error">${escapeHtml(error)}</div>` : `<p class="stat-hint" style="margin-top:6px;">${escapeHtml(hint || "No formula configured for this ply.")}</p>`}
-          </div>
-        `;
-      }
+      const locked = Boolean(opts.disabled);
+      const disabled = locked || !linked.length;
+      const placeholder = locked
+        ? (opts.lockedLabel || "Select an item first")
+        : (linked.length ? "Select a dimension..." : (opts.emptyLabel || "No dimensions for this ply"));
       return `
         <div>
-          <label class="form-label" for="${selectId}">Select Dimension</label>
-          <select id="${selectId}" class="full-select ${error ? "input-invalid" : ""}">
-            <option value="">Select a dimension...</option>
+          <label class="form-label" for="${selectId}">Dimension</label>
+          <select id="${selectId}" class="full-select ${error ? "input-invalid" : ""}" ${disabled ? "disabled" : ""} aria-invalid="${error ? "true" : "false"}">
+            <option value="">${escapeHtml(placeholder)}</option>
             ${linked.map((id) => {
               const dim = getDimension(id);
               return `<option value="${id}" ${Number(selectedId) === id ? "selected" : ""}>${escapeHtml(formatDimensionChipLabel(dim))}</option>`;
             }).join("")}
           </select>
-          ${error ? `<div class="field-error">${escapeHtml(error)}</div>` : ""}
-          <p class="stat-hint" style="margin-top:6px;">${escapeHtml(hint || "Rate uses L × W × H from the selected dimension.")}</p>
+          ${error ? `<div class="field-error">${escapeHtml(error)}</div>` : (hint ? `<p class="stat-hint" style="margin-top:6px;">${escapeHtml(hint)}</p>` : "")}
         </div>
       `;
     }
 
     function applyMaterialFormulaBindings(draft) {
       const material = getRawMaterial(draft.rawMaterialId);
-      if (!material) return;
+      if (!material) {
+        draft.dimensionId = null;
+        if (draft.calculationMethod === "formula") draft.formulaId = null;
+        return;
+      }
       const ply = getFinishedGoodPly(getSelectedFinishedGood());
       const linkedIds = getMaterialLinkedDimensionIds(material, ply);
       draft.dimensionId = pickBomDimensionId(linkedIds, draft.dimensionId, getSelectedFinishedGood());
       applyMaterialDimensionFormula(draft);
-      if (!draft.formulaId && material.qtyFormulaId && !materialHasDimensionLinks(material)) {
+      if (!draft.dimensionId && materialHasDimensionLinks(material) && draft.calculationMethod === "formula") {
+        draft.formulaId = null;
+      } else if (!materialHasDimensionLinks(material) && !draft.formulaId && material.qtyFormulaId) {
         draft.calculationMethod = "formula";
         draft.formulaId = Number(material.qtyFormulaId);
       }
@@ -2472,19 +2611,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!material || !draft.dimensionId) return;
       const ply = getFinishedGoodPly(getSelectedFinishedGood());
       const link = getMaterialDimensionLink(material.id, draft.dimensionId, ply);
-      if (!link || !link.formulaId) return;
+      if (!link || !link.formulaId) {
+        if (draft.calculationMethod === "formula") draft.formulaId = null;
+        return;
+      }
       draft.calculationMethod = "formula";
       draft.formulaId = Number(link.formulaId);
     }
 
     function applyServiceFormulaBinding(draft) {
       const service = getService(draft.serviceId);
-      if (!service) return;
+      if (!service) {
+        draft.dimensionId = null;
+        if (draft.calculationMethod === "formula") draft.formulaId = null;
+        return;
+      }
       const ply = getFinishedGoodPly(getSelectedFinishedGood());
       const linkedIds = getServiceLinkedDimensionIds(service, ply);
       draft.dimensionId = pickBomDimensionId(linkedIds, draft.dimensionId, getSelectedFinishedGood());
       applyServiceDimensionFormula(draft);
-      if (!draft.formulaId && service.formulaId && !serviceHasDimensionLinks(service)) {
+      if (!draft.dimensionId && serviceHasDimensionLinks(service) && draft.calculationMethod === "formula") {
+        draft.formulaId = null;
+      } else if (!serviceHasDimensionLinks(service) && !draft.formulaId && service.formulaId) {
         draft.calculationMethod = "formula";
         draft.formulaId = Number(service.formulaId);
       }
@@ -2495,7 +2643,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!service || !draft.dimensionId) return;
       const ply = getFinishedGoodPly(getSelectedFinishedGood());
       const link = getServiceDimensionLink(service.id, draft.dimensionId, ply);
-      if (!link || !link.formulaId) return;
+      if (!link || !link.formulaId) {
+        if (draft.calculationMethod === "formula") draft.formulaId = null;
+        return;
+      }
       draft.calculationMethod = "formula";
       draft.formulaId = Number(link.formulaId);
     }
@@ -2804,10 +2955,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function calculateMaterialCost(materialLine) {
+    function calculateMaterialCost(materialLine, context) {
       const line = { ...materialLine, error: null };
-      const finishedGood = getSelectedFinishedGood();
+      const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
       const material = getRawMaterial(line.rawMaterialId);
+      const formulaDimensionId = (context && context.useEnteredDimensions) ? null : line.dimensionId;
 
       if (!finishedGood) {
         line.error = "A finished good is required before materials can be calculated.";
@@ -2869,7 +3021,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           line.costPerPiece = 0;
           return line;
         }
-        const variables = buildFormulaVariables(finishedGood, material, wastage, line.dimensionId);
+        const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId);
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
         if (!calculated.success) {
           line.error = calculated.error;
@@ -2881,7 +3033,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         netQty = calculated.result;
       }
 
-      const variables = buildFormulaVariables(finishedGood, material, wastage, line.dimensionId);
+      const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
       if (grossFormula && grossFormula.isActive) {
@@ -2904,16 +3056,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       line.netQty = roundTo(netQty, 4);
       line.grossQty = roundTo(grossQty, 4);
       delete line.rateFormulaId;
-      const rateResult = applyDimensionBasedRate(masterRate, line.dimensionId, getMaterialLinkedDimensionIds(material, getFinishedGoodPly(finishedGood)));
-      if (rateResult.error) {
-        line.error = rateResult.error;
-        line.costPerPiece = 0;
-        return line;
+      if (context && context.useMasterRate) {
+        line.rate = roundTo(masterRate, 2);
+        line.rateSource = "master";
+        line.dimensionVolume = null;
+      } else {
+        const rateResult = applyDimensionBasedRate(masterRate, line.dimensionId, getMaterialLinkedDimensionIds(material, getFinishedGoodPly(finishedGood)));
+        if (rateResult.error) {
+          line.error = rateResult.error;
+          line.costPerPiece = 0;
+          return line;
+        }
+        line.rate = rateResult.rate;
+        line.rateSource = rateResult.source;
+        line.dimensionId = rateResult.dimension ? rateResult.dimension.id : null;
+        line.dimensionVolume = rateResult.volume;
       }
-      line.rate = rateResult.rate;
-      line.rateSource = rateResult.source;
-      line.dimensionId = rateResult.dimension ? rateResult.dimension.id : null;
-      line.dimensionVolume = rateResult.volume;
       const qtyForRate = convertQuantity(grossQty, material.uom, formatRateUnit(material.rateUOM), {
         gsm: material.gsm,
         sheetArea: DEFAULT_TEST_VALUES.SHEET_AREA
@@ -2959,9 +3117,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function calculateServiceCost(serviceLine) {
+    function calculateServiceCost(serviceLine, context) {
       const line = { ...serviceLine, error: null };
-      const finishedGood = getSelectedFinishedGood();
+      const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
       const service = getService(line.serviceId);
 
       if (!finishedGood) {
@@ -2991,17 +3149,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       line.rate = roundTo(rate, 2);
       line.rateSource = "master";
-      const rateResult = applyDimensionBasedRate(rate, line.dimensionId, getServiceLinkedDimensionIds(service, getFinishedGoodPly(finishedGood)));
-      if (rateResult.error) {
-        line.error = rateResult.error;
-        line.quantity = 0;
-        line.costPerPiece = 0;
-        return line;
+      const serviceDimensionId = (context && context.useEnteredDimensions) ? null : line.dimensionId;
+      if (context && context.useMasterRate) {
+        line.dimensionVolume = null;
+      } else {
+        const rateResult = applyDimensionBasedRate(rate, line.dimensionId, getServiceLinkedDimensionIds(service, getFinishedGoodPly(finishedGood)));
+        if (rateResult.error) {
+          line.error = rateResult.error;
+          line.quantity = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        line.rate = rateResult.rate;
+        line.rateSource = rateResult.source;
+        line.dimensionId = rateResult.dimension ? rateResult.dimension.id : null;
+        line.dimensionVolume = rateResult.volume;
       }
-      line.rate = rateResult.rate;
-      line.rateSource = rateResult.source;
-      line.dimensionId = rateResult.dimension ? rateResult.dimension.id : null;
-      line.dimensionVolume = rateResult.volume;
       let quantity = 0;
 
       if (line.calculationMethod === "manual") {
@@ -3024,7 +3187,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         const calculated = evaluateFormula(
           formula.expression,
-          buildServiceFormulaVariables(finishedGood, service, line.dimensionId),
+          buildServiceFormulaVariables(finishedGood, service, serviceDimensionId),
           [formula.code]
         );
         if (!calculated.success) {
@@ -3069,6 +3232,462 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomStyleResults = evaluateStyleFormulasForFinishedGood(getSelectedFinishedGood());
     }
 
+    function defaultCostCalculatorState() {
+      return {
+        styleId: "",
+        L: "",
+        W: "",
+        H: "",
+        ply: "",
+        layers: [],
+        services: [],
+        nextServiceKey: 1
+      };
+    }
+
+    function parseCostCalculatorDimension(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return null;
+      return n;
+    }
+
+    function applyCostCalculatorDimensionInput(input) {
+      const keyById = { "calc-length": "L", "calc-width": "W", "calc-height": "H" };
+      const key = keyById[input && input.id];
+      if (!key) return false;
+      const value = parseFloat(input.value);
+      const next = Number.isFinite(value) && value > 0 ? roundTo(value, 2) : "";
+      if (next === "") input.value = "";
+      else input.value = String(next);
+      if (state.costCalculator[key] === next) {
+        updateCostCalculatorPreview();
+        return true;
+      }
+      state.costCalculator[key] = next;
+      updateCostCalculatorPreview();
+      return true;
+    }
+
+    function updateCostCalculatorPreview() {
+      const steps = getCostCalculatorStepState();
+      document.querySelectorAll("[data-cc-ply]").forEach((btn) => {
+        btn.disabled = !steps.hasDims;
+      });
+      if (!steps.hasPly) return;
+      const focusId = document.activeElement && document.activeElement.id;
+      const dimFocused = focusId === "calc-length" || focusId === "calc-width" || focusId === "calc-height";
+      if (dimFocused) return;
+      renderCostCalculator();
+      refreshIcons();
+    }
+
+    function getCostCalculatorStepState() {
+      const cc = state.costCalculator;
+      const hasStyle = Boolean(styles.find((item) => item.id === Number(cc.styleId)));
+      const L = parseCostCalculatorDimension(cc.L);
+      const W = parseCostCalculatorDimension(cc.W);
+      const H = parseCostCalculatorDimension(cc.H);
+      const hasDims = hasStyle && L !== null && W !== null && H !== null;
+      const ply = Number(cc.ply);
+      const hasPly = hasDims && (ply === 1 || ply === 2 || ply === 3);
+      return { hasStyle, hasDims, hasPly, L, W, H, ply };
+    }
+
+    function getCostCalculatorFinishedGood() {
+      const steps = getCostCalculatorStepState();
+      if (!steps.hasPly) return null;
+      const style = styles.find((item) => item.id === Number(state.costCalculator.styleId));
+      return {
+        id: 0,
+        product: "Cost Estimate",
+        variant: "",
+        style: style.name,
+        ply: steps.ply,
+        dimensions: { L: steps.L, W: steps.W, H: steps.H },
+        dimensionUOM: "inch",
+        uom: "pieces",
+        status: "Active"
+      };
+    }
+
+    function getCostCalculatorMaterials(ply) {
+      const ids = new Set(
+        materialDimensions
+          .filter((row) => Number(row.ply) === Number(ply))
+          .map((row) => Number(row.rawMaterialId))
+      );
+      return rawMaterials.filter((item) => item.status !== "Inactive" && ids.has(item.id));
+    }
+
+    function getCostCalculatorServices(ply) {
+      const ids = new Set(
+        serviceDimensions
+          .filter((row) => Number(row.ply) === Number(ply))
+          .map((row) => Number(row.serviceId))
+      );
+      const linked = services.filter((item) => item.status !== "Inactive" && ids.has(item.id));
+      if (linked.length) return linked;
+      return services.filter((item) => item.status !== "Inactive");
+    }
+
+    function findCostCalculatorMaterialLink(rawMaterialId, ply, finishedGood) {
+      const links = getMaterialDimensionLinks(rawMaterialId).filter((row) => Number(row.ply) === Number(ply));
+      if (!links.length) return null;
+      const ids = links.map((row) => Number(row.dimensionId));
+      const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
+      return links.find((row) => Number(row.dimensionId) === Number(picked)) || links[0];
+    }
+
+    function findCostCalculatorServiceLink(serviceId, ply, finishedGood) {
+      const links = getServiceDimensionLinks(serviceId).filter((row) => Number(row.ply) === Number(ply));
+      if (!links.length) return null;
+      const ids = links.map((row) => Number(row.dimensionId));
+      const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
+      return links.find((row) => Number(row.dimensionId) === Number(picked)) || links[0];
+    }
+
+    function formatCostCalculatorFormulaError(error) {
+      const text = String(error || "");
+      const numeric = text.match(/Variable has no numeric value:\s*([A-Z0-9_]+)/i);
+      if (numeric) return "Variable " + numeric[1] + " not found in style or defaults";
+      const missing = text.match(/Variable\s+([A-Z0-9_]+)\s+not found/i);
+      if (missing) return "Variable " + missing[1] + " not found in style or defaults";
+      return text;
+    }
+
+    function loadCostCalculatorLayers(ply, options) {
+      const names = getStructuralLayers(ply);
+      const prev = Array.isArray(state.costCalculator.layers) ? state.costCalculator.layers : [];
+      state.costCalculator.layers = names.map((layer) => {
+        const existing = prev.find((row) => row.layer === layer);
+        return { layer, rawMaterialId: existing && existing.rawMaterialId ? existing.rawMaterialId : "" };
+      });
+      if (options && options.notify && !getCostCalculatorMaterials(ply).length) {
+        showNotification("No material configured for " + ply + "-ply " + names[0], "error");
+      }
+    }
+
+    function calculateCostCalculatorMaterial(layerRow) {
+      const empty = {
+        qty: 0,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        cost: 0,
+        coveredArea: 0,
+        error: null,
+        formulaId: null,
+        dimensionId: null,
+        wastagePercent: DEFAULT_WASTAGE_PERCENT,
+        rateUOM: "",
+        uom: ""
+      };
+      const fg = getCostCalculatorFinishedGood();
+      if (!fg || !layerRow) return empty;
+      if (!layerRow.rawMaterialId) return empty;
+      const material = getRawMaterial(layerRow.rawMaterialId);
+      const ply = Number(fg.ply);
+      if (!material) {
+        return { ...empty, error: "This material does not exist in the Raw Material Master." };
+      }
+      if (!getCostCalculatorMaterials(ply).length) {
+        return { ...empty, error: "No material configured for " + ply + "-ply " + layerRow.layer };
+      }
+      const link = findCostCalculatorMaterialLink(material.id, ply, fg);
+      if (!link) {
+        return { ...empty, error: "No material configured for " + ply + "-ply " + layerRow.layer };
+      }
+      const formula = getFormula(link.formulaId) || getFormula(material.qtyFormulaId);
+      if (!formula || !formula.isActive) {
+        return { ...empty, error: "Formula not configured for " + material.name + " in " + ply + "-ply" };
+      }
+      const masterRate = Number(material.purchasingRate);
+      if (!Number.isFinite(masterRate) || masterRate < 0) {
+        return { ...empty, error: "Rate not found for " + material.name };
+      }
+      const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
+      const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
+      const calcContext = { finishedGood: fg, useEnteredDimensions: true, useMasterRate: true };
+      const line = calculateMaterialCost({
+        rawMaterialId: material.id,
+        layer: layerRow.layer,
+        calculationMethod: "formula",
+        formulaId: formula.id,
+        dimensionId: link.dimensionId,
+        manualQty: null,
+        wastagePercent: wastage,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      }, calcContext);
+      if (line.error) {
+        return {
+          ...empty,
+          error: formatCostCalculatorFormulaError(line.error),
+          formulaId: formula.id,
+          dimensionId: link.dimensionId,
+          wastagePercent: wastage
+        };
+      }
+      const variables = buildFormulaVariables(fg, material, wastage, null);
+      const areaEval = evaluateFormula("COVERED_AREA", variables, ["COVERED_AREA"]);
+      return {
+        qty: line.grossQty,
+        netQty: line.netQty,
+        grossQty: line.grossQty,
+        rate: line.rate,
+        cost: line.costPerPiece,
+        coveredArea: areaEval.success ? roundTo(areaEval.result, 2) : 0,
+        error: null,
+        formulaId: formula.id,
+        dimensionId: link.dimensionId,
+        wastagePercent: wastage,
+        rateUOM: material.rateUOM,
+        uom: material.uom
+      };
+    }
+
+    function calculateCostCalculatorService(serviceRow) {
+      const empty = {
+        qty: 0,
+        rate: 0,
+        cost: 0,
+        error: null,
+        formulaId: null,
+        dimensionId: null,
+        rateUOM: "",
+        uom: ""
+      };
+      const fg = getCostCalculatorFinishedGood();
+      if (!fg || !serviceRow || !serviceRow.serviceId) return empty;
+      const service = getService(serviceRow.serviceId);
+      const ply = Number(fg.ply);
+      if (!service) {
+        return { ...empty, error: "This service does not exist in the Service Master." };
+      }
+      const masterRate = Number(service.serviceRate);
+      if (!Number.isFinite(masterRate) || masterRate < 0) {
+        return { ...empty, error: "Rate not found for " + service.name };
+      }
+      const link = findCostCalculatorServiceLink(service.id, ply, fg);
+      const formula = getFormula(link && link.formulaId) || getFormula(service.formulaId);
+      if (!formula || !formula.isActive || formula.type !== "Service") {
+        return { ...empty, error: "Formula not configured for " + service.name + " in " + ply + "-ply" };
+      }
+      const calcContext = { finishedGood: fg, useEnteredDimensions: true, useMasterRate: true };
+      const line = calculateServiceCost({
+        serviceId: service.id,
+        calculationMethod: "formula",
+        formulaId: formula.id,
+        dimensionId: link ? link.dimensionId : null,
+        manualQty: null,
+        quantity: 0,
+        rate: 0,
+        costPerPiece: 0
+      }, calcContext);
+      if (line.error) {
+        return {
+          ...empty,
+          error: formatCostCalculatorFormulaError(line.error),
+          formulaId: formula.id,
+          dimensionId: link ? link.dimensionId : null
+        };
+      }
+      return {
+        qty: line.quantity,
+        rate: line.rate,
+        cost: line.costPerPiece,
+        error: null,
+        formulaId: formula.id,
+        dimensionId: link ? link.dimensionId : null,
+        rateUOM: service.rateUOM,
+        uom: service.uom
+      };
+    }
+
+    function updateCostCalculatorSummary() {
+      const layers = (state.costCalculator.layers || []).map((row) => {
+        const calc = calculateCostCalculatorMaterial(row);
+        return { ...row, calc };
+      });
+      const services = (state.costCalculator.services || []).map((row) => {
+        const calc = calculateCostCalculatorService(row);
+        return { ...row, calc };
+      });
+      const materialCost = roundTo(layers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
+      const serviceCost = roundTo(services.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
+      const perPiece = roundTo(materialCost + serviceCost, 2);
+      const materialsComplete = layers.length > 0 && layers.every((row) => row.rawMaterialId && !row.calc.error);
+      const serviceError = services.find((row) => row.calc.error);
+      return {
+        layers,
+        services,
+        materialCost,
+        serviceCost,
+        perPiece,
+        per100: roundTo(perPiece * 100, 2),
+        per1000: roundTo(perPiece * 1000, 2),
+        materialsComplete,
+        canSave: materialsComplete && !serviceError,
+        saveError: !layers.length
+          ? "Select ply and materials before saving."
+          : (!materialsComplete ? "Select a valid material for each layer before saving." : (serviceError ? serviceError.calc.error : ""))
+      };
+    }
+
+    function renderCostCalculator() {
+      const page = document.getElementById("page-cost-calculator");
+      if (!page) return;
+      const cc = state.costCalculator;
+      const steps = getCostCalculatorStepState();
+      const summary = updateCostCalculatorSummary();
+      const styleOptions = styles.filter((item) => item.status !== "Inactive");
+      const materials = steps.hasPly ? getCostCalculatorMaterials(steps.ply) : [];
+
+      const layerRows = summary.layers.map((row, index) => {
+        const material = getRawMaterial(row.rawMaterialId);
+        const calc = row.calc;
+        return `
+          <div class="cc-layer">
+            <div class="cc-layer-title">${escapeHtml(row.layer)}</div>
+            <label class="form-label" for="cc-layer-mat-${index}">Material</label>
+            <select id="cc-layer-mat-${index}" class="full-select" data-cc-layer-material="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} material">
+              <option value="">Select Material</option>
+              ${materials.map((item) => `
+                <option value="${item.id}" ${Number(row.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+              `).join("")}
+            </select>
+            ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
+            <div class="cc-metrics">
+              <div><span>Qty</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
+              <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (material && material.rateUOM)) : "—"}</strong></div>
+              <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : "—"}</strong></div>
+              <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const serviceRows = summary.services.length
+        ? summary.services.map((row) => {
+          const service = getService(row.serviceId);
+          const calc = row.calc;
+          return `
+            <div class="cc-layer">
+              <div class="cc-layer-head">
+                <div class="cc-layer-title">${escapeHtml(service ? service.name : "Service")}</div>
+                <button type="button" class="btn btn-sm btn-ghost" data-cc-remove-service="${row.key}" aria-label="Remove service">× Remove</button>
+              </div>
+              ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
+              <div class="cc-metrics">
+                <div><span>Qty</span><strong>${!calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
+                <div><span>Rate</span><strong>${!calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (service && service.rateUOM)) : "—"}</strong></div>
+                <div><span>Cost</span><strong>${!calc.error ? formatRupees(calc.cost) : "—"}</strong></div>
+              </div>
+            </div>
+          `;
+        }).join("")
+        : `<p class="stat-hint">No services added. Optional — add printing, die cutting, or other processes.</p>`;
+
+      page.innerHTML = `
+        <div class="toolbar">
+          <div>
+            <div class="section-kicker">Estimate</div>
+            <div class="section-title">Cost Calculator</div>
+          </div>
+        </div>
+        <div class="cost-calc">
+          <div class="cost-calc-main">
+            <section class="card cc-card">
+              <div class="card-body">
+                <div class="cc-step">Step 1: Select Style</div>
+                <label class="form-label" for="cc-style">Style</label>
+                <select id="cc-style" class="full-select" aria-label="Select style">
+                  <option value="">Select Style</option>
+                  ${styleOptions.map((item) => `<option value="${item.id}" ${Number(cc.styleId) === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
+                </select>
+              </div>
+            </section>
+
+            <section class="card cc-card">
+              <div class="card-body">
+                <div class="cc-step">Step 2: Enter Dimensions</div>
+                <div class="cc-dim-grid">
+                  <div>
+                    <label class="form-label" for="calc-length">Length</label>
+                    <div class="cc-input-unit">
+                      <input type="number" id="calc-length" class="full-search" min="0.1" max="99999" step="0.01" placeholder="Enter length" value="${cc.L === "" || cc.L == null ? "" : escapeHtml(cc.L)}" ${steps.hasStyle ? "" : "disabled"} aria-label="Length in inches" />
+                      <span>inch</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="form-label" for="calc-width">Width</label>
+                    <div class="cc-input-unit">
+                      <input type="number" id="calc-width" class="full-search" min="0.1" max="99999" step="0.01" placeholder="Enter width" value="${cc.W === "" || cc.W == null ? "" : escapeHtml(cc.W)}" ${steps.hasStyle ? "" : "disabled"} aria-label="Width in inches" />
+                      <span>inch</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="form-label" for="calc-height">Height</label>
+                    <div class="cc-input-unit">
+                      <input type="number" id="calc-height" class="full-search" min="0.1" max="99999" step="0.01" placeholder="Enter height" value="${cc.H === "" || cc.H == null ? "" : escapeHtml(cc.H)}" ${steps.hasStyle ? "" : "disabled"} aria-label="Height in inches" />
+                      <span>inch</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="card cc-card">
+              <div class="card-body">
+                <div class="cc-step">Step 3: Select Ply</div>
+                <div class="cc-ply-tabs" role="radiogroup" aria-label="Ply count">
+                  ${[1, 2, 3].map((ply) => `
+                    <button type="button" class="cc-ply-btn ${Number(cc.ply) === ply ? "active" : ""}" role="radio" aria-checked="${Number(cc.ply) === ply ? "true" : "false"}" data-cc-ply="${ply}" ${steps.hasDims ? "" : "disabled"}>${ply}-Ply</button>
+                  `).join("")}
+                </div>
+              </div>
+            </section>
+
+            <section class="card cc-card">
+              <div class="card-body">
+                <div class="cc-step">Step 4: Select Raw Materials</div>
+                ${steps.hasPly ? (layerRows || `<p class="stat-hint">No layers for this ply.</p>`) : `<p class="stat-hint">Complete style, dimensions, and ply to load material layers.</p>`}
+                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>` : ""}
+              </div>
+            </section>
+
+            <section class="card cc-card">
+              <div class="card-body">
+                <div class="cc-step-row">
+                  <div class="cc-step">Step 5: Select Services</div>
+                  <button type="button" class="btn btn-sm btn-primary" id="btn-cc-add-service" ${steps.hasPly ? "" : "disabled"}>+ Add Service</button>
+                </div>
+                ${steps.hasPly ? serviceRows : `<p class="stat-hint">Complete previous steps to add services.</p>`}
+                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>` : ""}
+              </div>
+            </section>
+          </div>
+
+          <aside class="card cc-card cost-calc-summary" id="cost-calc-print">
+            <div class="card-body">
+              <div class="cc-step">Step 6: Final Cost Summary</div>
+              <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
+              <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
+              <div class="cc-summary-line cc-summary-total"><span>Cost Per Piece</span><strong>${formatRupees(summary.perPiece)}</strong></div>
+              <div class="cc-summary-line"><span>Cost Per 100</span><strong>${formatRupees(summary.per100)}</strong></div>
+              <div class="cc-summary-line"><span>Cost Per 1000</span><strong>${formatRupees(summary.per1000)}</strong></div>
+              <div class="cc-actions">
+                <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
+                <button type="button" class="btn" id="btn-cc-export-pdf">Export PDF</button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      `;
+    }
+
     function createMaterialLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
       const material = getRawMaterial(config.rawMaterialId);
@@ -3095,6 +3714,136 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rate: 0,
         costPerPiece: 0
       });
+    }
+
+    function openCostCalculatorServiceModal() {
+      if (!getCostCalculatorStepState().hasPly) return;
+      state.modal = {
+        type: "cost-calc-service",
+        selectedId: null,
+        mode: "add",
+        lineId: null,
+        draft: { serviceId: "" },
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function renderCostCalculatorServiceModal() {
+      const draft = state.modal.draft || { serviceId: "" };
+      const errors = state.modal.errors || {};
+      const ply = Number(state.costCalculator.ply);
+      const options = getCostCalculatorServices(ply);
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Cost Calculator</div>
+            <strong>Add Service</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <label class="form-label" for="cc-modal-service-id">Service</label>
+          <select id="cc-modal-service-id" class="full-select ${errors.serviceId ? "input-invalid" : ""}">
+            <option value="">Select a service...</option>
+            ${options.map((item) => `<option value="${item.id}" ${Number(draft.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(formatRatePkr(item.serviceRate, item.rateUOM))})</option>`).join("")}
+          </select>
+          ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">Quantity is calculated from the formula linked to this service, ply, and size.</p>`}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-cc-save-service">Add Service</button>
+        </div>
+      `;
+    }
+
+    function saveCostCalculatorServiceFromModal() {
+      const serviceId = Number(state.modal.draft && state.modal.draft.serviceId);
+      if (!serviceId) {
+        state.modal.errors = { serviceId: "Select a service." };
+        renderModal();
+        return;
+      }
+      if ((state.costCalculator.services || []).some((row) => Number(row.serviceId) === serviceId)) {
+        state.modal.errors = { serviceId: "This service is already added." };
+        renderModal();
+        return;
+      }
+      if (!state.costCalculator.nextServiceKey) state.costCalculator.nextServiceKey = 1;
+      state.costCalculator.services.push({
+        key: state.costCalculator.nextServiceKey,
+        serviceId
+      });
+      state.costCalculator.nextServiceKey += 1;
+      closeModal();
+      renderCostCalculator();
+      refreshIcons();
+      const service = getService(serviceId);
+      showNotification((service ? service.name : "Service") + " added");
+    }
+
+    function saveCostCalculatorAsBom() {
+      const summary = updateCostCalculatorSummary();
+      if (!summary.canSave) {
+        showNotification(summary.saveError || "Complete the calculator before saving.", "error");
+        return;
+      }
+      const fgTemplate = getCostCalculatorFinishedGood();
+      if (!fgTemplate) {
+        showNotification("Style, dimensions, and ply are required.", "error");
+        return;
+      }
+      const fg = {
+        id: nextMasterId(finishedGoods),
+        product: "Cost Estimate",
+        variant: formatFinishedGoodSizeCode(fgTemplate.dimensions) + " " + fgTemplate.ply + "-Ply",
+        style: fgTemplate.style,
+        ply: fgTemplate.ply,
+        dimensions: { L: fgTemplate.dimensions.L, W: fgTemplate.dimensions.W, H: fgTemplate.dimensions.H },
+        dimensionUOM: "inch",
+        uom: "pieces",
+        status: "Active"
+      };
+      fg.displayName = formatFinishedGoodDisplayName(fg);
+      finishedGoods.push(fg);
+      afterDataChange("finishedGoods");
+      state.selectedFinishedGoodId = fg.id;
+      state.searches.bomFinishedGood = "";
+      state.fgSelectorOpen = false;
+      state.bomMaterials = summary.layers.map((row) => calculateMaterialCost({
+        id: nextBomLineId(),
+        rawMaterialId: Number(row.rawMaterialId),
+        layer: row.layer,
+        calculationMethod: "formula",
+        formulaId: row.calc.formulaId,
+        dimensionId: row.calc.dimensionId,
+        manualQty: null,
+        wastagePercent: row.calc.wastagePercent,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      }));
+      state.bomServices = summary.services.map((row) => calculateServiceCost({
+        id: nextBomLineId(),
+        serviceId: Number(row.serviceId),
+        calculationMethod: "formula",
+        formulaId: row.calc.formulaId,
+        dimensionId: row.calc.dimensionId,
+        manualQty: null,
+        quantity: 0,
+        rate: 0,
+        costPerPiece: 0
+      }));
+      recalculateBOMCosts();
+      const record = persistNewDraftFromEditor(getBomNoForFinishedGood(fg), fg.id);
+      showNotification("BOM " + record.bomNo + " saved as draft from Cost Calculator");
+      navigateTo("bom-costing");
+    }
+
+    function exportCostCalculatorPdf() {
+      showNotification("PDF export will be available in a later version. Use your browser print dialog for now.");
+      window.print();
     }
 
     function loadSampleBomMaterials(finishedGoodId) {
@@ -7196,7 +7945,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rawMaterialId: null,
         layer: layers[0],
         calculationMethod: "formula",
-        formulaId: sheetWeight ? sheetWeight.id : null,
+        formulaId: null,
         dimensionId: null,
         manualQty: null,
         wastagePercent: DEFAULT_WASTAGE_PERCENT
@@ -7205,6 +7954,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function validateMaterialDraft(draft, lineId) {
       const errors = {};
+      const ply = getFinishedGoodPly(getSelectedFinishedGood());
       if (!getSelectedFinishedGood()) errors.finishedGood = "Select a Finished Good before adding materials.";
       if (!draft.rawMaterialId) errors.rawMaterialId = "Raw Material is required.";
       const material = getRawMaterial(draft.rawMaterialId);
@@ -7214,11 +7964,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.layer && !allowedLayers.includes(draft.layer)) {
         errors.layer = "Layer is not valid for this ply count.";
       }
+      if (material && !Number.isFinite(Number(material.purchasingRate))) {
+        errors.rate = "Purchasing rate from the Raw Material Master is not valid.";
+      }
+      const linkedDims = material ? getMaterialLinkedDimensionIds(material, ply) : [];
+      if (materialHasDimensionLinks(material) && !linkedDims.length) {
+        errors.dimensionId = "No dimension configured for this material in " + ply + "-ply";
+      } else if (linkedDims.length && !draft.dimensionId) {
+        errors.dimensionId = "Select a dimension.";
+      } else if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
+        errors.dimensionId = "Selected dimension is not linked to this material for this ply.";
+      }
       if (draft.calculationMethod === "formula") {
-        const ply = getFinishedGoodPly(getSelectedFinishedGood());
-        if (materialMissingPlyFormula(material, draft.dimensionId, ply)) {
-          errors.formulaId = "No formula configured for this material+ply";
-        } else {
+        if (!errors.dimensionId && material && draft.dimensionId && materialMissingPlyFormula(material, draft.dimensionId, ply)) {
+          errors.formulaId = "Formula not linked for this material+dimension+ply";
+        } else if (!errors.dimensionId) {
           const selectedFormula = getFormula(draft.formulaId);
           if (!draft.formulaId) errors.formulaId = "Formula is required when Formula method is selected.";
           else if (!selectedFormula || !selectedFormula.isActive) errors.formulaId = "Selected formula is not valid or is inactive.";
@@ -7226,18 +7986,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else {
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Manual quantity must be greater than 0." });
         if (!qty.ok) errors.manualQty = qty.error;
-      }
-      if (material && !Number.isFinite(Number(material.purchasingRate))) {
-        errors.rate = "Purchasing rate from the Raw Material Master is not valid.";
-      }
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const linkedDims = material ? getMaterialLinkedDimensionIds(material, ply) : [];
-      if (materialHasDimensionLinks(material) && !linkedDims.length) {
-        errors.dimensionId = "No formula configured for this material+ply";
-      } else if (linkedDims.length && !draft.dimensionId) {
-        errors.dimensionId = "Select a dimension for rate calculation.";
-      } else if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
-        errors.dimensionId = "Selected dimension is not linked to this material for this ply.";
       }
       const wastage = parseByRule(draft.wastagePercent, "wastage", { requiredError: "Wastage cannot be negative." });
       if (!wastage.ok) errors.wastagePercent = wastage.error;
@@ -7486,8 +8234,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               draft.dimensionId,
               "modal-line-dimension",
               errors.dimensionId,
-              "Qty formula is assigned from the material dimension and ply link. You can override the formula.",
-              { alwaysShow: materialHasDimensionLinks(material) }
+              material ? "Formula is assigned from this material, dimension, and ply." : "",
+              {
+                disabled: !material,
+                lockedLabel: "Select a raw material first",
+                emptyLabel: "No dimensions for this ply"
+              }
             )}
             <div>
               <label class="form-label" for="modal-method-select">Calculation Method</label>
@@ -7746,6 +8498,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderServiceFormModal();
       } else if (state.modal.type === "service-breakdown") {
         dialog.innerHTML = renderServiceBreakdownModal();
+      } else if (state.modal.type === "cost-calc-service") {
+        dialog.innerHTML = renderCostCalculatorServiceModal();
       } else if (state.modal.type === "confirm-delete-service") {
         dialog.innerHTML = `
           <div class="modal-header">
@@ -7876,7 +8630,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         applyMaterialFormulaBindings(draft);
       }
       else if (target.id === "modal-layer-select") draft.layer = target.value;
-      else if (target.id === "modal-method-select") draft.calculationMethod = target.value;
+      else if (target.id === "modal-method-select") {
+        draft.calculationMethod = target.value;
+        if (draft.calculationMethod === "formula") applyMaterialDimensionFormula(draft);
+      }
       else if (target.id === "modal-formula-select") draft.formulaId = target.value ? Number(target.value) : null;
       else if (target.id === "modal-line-dimension") {
         draft.dimensionId = target.value ? Number(target.value) : null;
@@ -7923,24 +8680,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function validateServiceDraft(draft, lineId) {
       const errors = {};
+      const ply = getFinishedGoodPly(getSelectedFinishedGood());
       if (!getSelectedFinishedGood()) errors.finishedGood = "Select a Finished Good before adding services.";
       if (!draft.serviceId) errors.serviceId = "Service is required.";
       const service = getService(draft.serviceId);
       if (draft.serviceId && !service) errors.serviceId = "Service must exist in the Service Master.";
       if (service && !Number.isFinite(Number(service.serviceRate))) errors.rate = "Service rate from the Service Master is not valid.";
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
       const linkedDims = service ? getServiceLinkedDimensionIds(service, ply) : [];
       if (serviceHasDimensionLinks(service) && !linkedDims.length) {
-        errors.dimensionId = "No formula configured for this service+ply";
+        errors.dimensionId = "No dimension configured for this service in " + ply + "-ply";
       } else if (linkedDims.length && !draft.dimensionId) {
-        errors.dimensionId = "Select a dimension for rate calculation.";
+        errors.dimensionId = "Select a dimension.";
       } else if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
         errors.dimensionId = "Selected dimension is not linked to this service for this ply.";
       }
       if (draft.calculationMethod === "formula") {
-        if (serviceMissingPlyFormula(service, draft.dimensionId, ply)) {
-          errors.formulaId = "No formula configured for this service+ply";
-        } else {
+        if (!errors.dimensionId && service && draft.dimensionId && serviceMissingPlyFormula(service, draft.dimensionId, ply)) {
+          errors.formulaId = "Formula not linked for this service+dimension+ply";
+        } else if (!errors.dimensionId) {
           const selectedFormula = getFormula(draft.formulaId);
           if (!draft.formulaId) errors.formulaId = "Formula is required when Formula method is selected.";
           else if (!selectedFormula || !selectedFormula.isActive || selectedFormula.type !== "Service") {
@@ -7996,8 +8753,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               draft.dimensionId,
               "modal-service-dimension",
               errors.dimensionId,
-              "Qty formula is assigned from the service dimension and ply link. You can override the formula.",
-              { alwaysShow: serviceHasDimensionLinks(service) }
+              service ? "Formula is assigned from this service, dimension, and ply." : "",
+              {
+                disabled: !service,
+                lockedLabel: "Select a service first",
+                emptyLabel: "No dimensions for this ply"
+              }
             )}
             <div>
               <label class="form-label" for="modal-service-method">Calculation Method</label>
@@ -8245,7 +9006,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         draft.serviceId = target.value ? Number(target.value) : null;
         applyServiceFormulaBinding(draft);
       }
-      else if (target.id === "modal-service-method") draft.calculationMethod = target.value;
+      else if (target.id === "modal-service-method") {
+        draft.calculationMethod = target.value;
+        if (draft.calculationMethod === "formula") applyServiceDimensionFormula(draft);
+      }
       else if (target.id === "modal-service-formula") draft.formulaId = target.value ? Number(target.value) : null;
       else if (target.id === "modal-service-dimension") {
         draft.dimensionId = target.value ? Number(target.value) : null;
@@ -8277,6 +9041,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (state.selectedFinishedGoodId) recalculateBOMCosts();
         renderBomList();
       }
+      if (page === "cost-calculator") renderCostCalculator();
       refreshIcons();
     }
 
@@ -8437,6 +9202,34 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           persistPrefs();
         }
+        if (event.target.id === "cc-style") {
+          state.costCalculator.styleId = event.target.value;
+          renderCostCalculator();
+          refreshIcons();
+        }
+        if (event.target.id === "calc-length" || event.target.id === "calc-width" || event.target.id === "calc-height") {
+          applyCostCalculatorDimensionInput(event.target);
+          return;
+        }
+        const layerSelect = event.target.dataset && event.target.dataset.ccLayerMaterial;
+        if (layerSelect) {
+          const row = (state.costCalculator.layers || []).find((item) => item.layer === layerSelect);
+          if (row) row.rawMaterialId = event.target.value ? Number(event.target.value) : "";
+          renderCostCalculator();
+          refreshIcons();
+          if (row && row.rawMaterialId) {
+            const material = getRawMaterial(row.rawMaterialId);
+            const calc = calculateCostCalculatorMaterial(row);
+            if (calc.error) showNotification(calc.error, "error");
+            else showNotification((material ? material.name : "Material") + " selected for " + row.layer);
+          }
+        }
+      });
+
+      document.querySelector(".content").addEventListener("focusout", (event) => {
+        if (event.target.id === "calc-length" || event.target.id === "calc-width" || event.target.id === "calc-height") {
+          applyCostCalculatorDimensionInput(event.target);
+        }
       });
 
       document.querySelector(".content").addEventListener("click", (event) => {
@@ -8475,6 +9268,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.closest("#btn-new-bom")) {
           resetBomEditor();
           navigateTo("bom-costing");
+          return;
+        }
+        const plyBtn = event.target.closest("[data-cc-ply]");
+        if (plyBtn && !plyBtn.disabled) {
+          const ply = Number(plyBtn.dataset.ccPly);
+          state.costCalculator.ply = ply;
+          loadCostCalculatorLayers(ply, { notify: true });
+          renderCostCalculator();
+          refreshIcons();
+          return;
+        }
+        if (event.target.closest("#btn-cc-add-service")) {
+          openCostCalculatorServiceModal();
+          return;
+        }
+        const removeService = event.target.closest("[data-cc-remove-service]");
+        if (removeService) {
+          const key = Number(removeService.dataset.ccRemoveService);
+          state.costCalculator.services = (state.costCalculator.services || []).filter((row) => Number(row.key) !== key);
+          renderCostCalculator();
+          refreshIcons();
+          return;
+        }
+        if (event.target.closest("#btn-cc-save-bom")) {
+          saveCostCalculatorAsBom();
+          return;
+        }
+        if (event.target.closest("#btn-cc-export-pdf")) {
+          exportCostCalculatorPdf();
           return;
         }
         const loadBom = event.target.closest("[data-load-bom]");
@@ -8703,6 +9525,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.getElementById("modal-dialog").addEventListener("change", (event) => {
+        if (event.target.id === "cc-modal-service-id") {
+          if (!state.modal.draft) state.modal.draft = {};
+          state.modal.draft.serviceId = event.target.value;
+          return;
+        }
         if (event.target.id === "fb-type") {
           state.modal.draft.type = event.target.value;
           return;
@@ -9013,6 +9840,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-save-service")) {
           saveServiceFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-cc-save-service")) {
+          saveCostCalculatorServiceFromModal();
           return;
         }
         if (event.target.closest("#btn-confirm-delete")) {
