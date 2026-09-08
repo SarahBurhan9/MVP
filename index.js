@@ -519,14 +519,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const PAGE_META = {
       dashboard: { title: "Dashboard", subtitle: "Manufacturing overview" },
-      "finished-goods": { title: "Finished Goods", subtitle: "Product master" },
-      "raw-materials": { title: "Raw Materials", subtitle: "Purchasing master" },
+      "formula-variables": { title: "Variables", subtitle: "Shared variables used by formulas" },
+      formulas: { title: "Formula", subtitle: "Definitions, builder, and validation" },
+      dimensions: { title: "Dimension", subtitle: "Dimension master" },
+      style: { title: "Style", subtitle: "Style master and style variables" },
+      "raw-materials": { title: "Raw Material", subtitle: "Purchasing master" },
+      "raw-material-rates": { title: "Raw Material Rates", subtitle: "Purchasing rates are managed on the Raw Material master" },
       services: { title: "Services", subtitle: "Conversion process master" },
       "service-rates": { title: "Service Rates", subtitle: "Manage pricing and formulas for services" },
-      style: { title: "Style", subtitle: "Style master and style variables" },
-      "formula-variables": { title: "Formula Variables", subtitle: "Shared variables used by formulas" },
-      dimensions: { title: "Dimensions", subtitle: "Dimension master" },
-      formulas: { title: "Formula Management", subtitle: "Definitions, builder, and validation" },
+      "finished-goods": { title: "Finished Goods", subtitle: "Product master" },
       "bom-costing": { title: "BOM & Costing", subtitle: "Select a finished good to begin" },
       "bom-list": { title: "BOM List", subtitle: "Saved drafts and active versions" },
       "cost-calculator": { title: "Cost Calculator", subtitle: "Quick cost estimate by style, size, ply, and materials" }
@@ -5014,6 +5015,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </thead>
               <tbody>${body}</tbody>
             </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderRawMaterialRatesPlaceholder() {
+      const page = document.getElementById("page-raw-material-rates");
+      if (!page) return;
+      page.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <p>Purchasing rates are still maintained on the Raw Material master. A dedicated rates page (like Service Rates) can be added next.</p>
+            <button type="button" class="btn btn-primary" id="btn-open-raw-materials">Open Raw Material</button>
           </div>
         </div>
       `;
@@ -9758,14 +9772,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCurrentPage() {
       const page = state.currentPage;
       if (page === "dashboard") renderDashboard();
-      if (page === "finished-goods") renderFinishedGoods();
+      if (page === "formula-variables") renderFormulaVariables();
+      if (page === "formulas") renderFormulas();
+      if (page === "dimensions") renderDimensions();
+      if (page === "style") renderStyles();
       if (page === "raw-materials") renderRawMaterials();
+      if (page === "raw-material-rates") renderRawMaterialRatesPlaceholder();
       if (page === "services") renderServices();
       if (page === "service-rates") renderServiceRates();
-      if (page === "style") renderStyles();
-      if (page === "formula-variables") renderFormulaVariables();
-      if (page === "dimensions") renderDimensions();
-      if (page === "formulas") renderFormulas();
+      if (page === "finished-goods") renderFinishedGoods();
       if (page === "bom-costing") renderBOMPage();
       if (page === "bom-list") {
         if (state.selectedFinishedGoodId) recalculateBOMCosts();
@@ -10079,6 +10094,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-add-material-master")) {
           openRawMaterialMasterModal();
+          return;
+        }
+        if (event.target.closest("#btn-open-raw-materials")) {
+          navigateTo("raw-materials");
           return;
         }
         if (event.target.closest("#btn-add-service-master")) {

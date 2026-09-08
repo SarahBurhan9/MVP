@@ -96,6 +96,7 @@
     .nav-item:hover { background: var(--sidebar-hover); color: #fff; }
     .nav-item.active { background: var(--sidebar-active); color: #fff; }
     .nav-item i, .nav-item svg { width: 16px; height: 16px; flex-shrink: 0; }
+    .nav-item.nav-section-start { margin-top: 10px; }
 
     .sidebar-footer {
       margin-top: auto;
