@@ -557,6 +557,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ply: "",
         layers: [],
         services: [],
+        removedServices: [],
         nextServiceKey: 1
       }
     };
@@ -3278,6 +3279,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ply: "",
         layers: [],
         services: [],
+        removedServices: [],
         nextServiceKey: 1
       };
     }
@@ -3357,14 +3359,110 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getCostCalculatorServices(ply) {
-      const ids = new Set(
-        serviceDimensions
-          .filter((row) => Number(row.ply) === Number(ply))
-          .map((row) => Number(row.serviceId))
-      );
-      const linked = services.filter((item) => item.status !== "Inactive" && ids.has(item.id));
-      if (linked.length) return linked;
-      return services.filter((item) => item.status !== "Inactive");
+      const seen = new Set();
+      const linked = [];
+      serviceDimensions
+        .filter((row) => Number(row.ply) === Number(ply))
+        .forEach((row) => {
+          const id = Number(row.serviceId);
+          if (seen.has(id)) return;
+          const service = getService(id);
+          if (!service || service.status === "Inactive") return;
+          seen.add(id);
+          linked.push(service);
+        });
+      return linked;
+    }
+
+    function nextCostCalculatorServiceKey() {
+      if (!state.costCalculator.nextServiceKey) state.costCalculator.nextServiceKey = 1;
+      const key = state.costCalculator.nextServiceKey;
+      state.costCalculator.nextServiceKey += 1;
+      return key;
+    }
+
+    function loadCostCalculatorServices(ply, options) {
+      const applicable = getCostCalculatorServices(ply);
+      if (options && options.resetRemoved) state.costCalculator.removedServices = [];
+      const removed = new Set((state.costCalculator.removedServices || []).map((id) => Number(id)));
+      const prev = Array.isArray(state.costCalculator.services) ? state.costCalculator.services : [];
+      state.costCalculator.services = applicable
+        .filter((service) => !removed.has(service.id))
+        .map((service) => {
+          const existing = prev.find((row) => Number(row.serviceId) === service.id);
+          return existing || { key: nextCostCalculatorServiceKey(), serviceId: service.id };
+        });
+      if (options && options.notify && !applicable.length) {
+        showNotification("No services configured for " + ply + "-ply", "error");
+      }
+    }
+
+    function handleCostCalculatorStyleChange(styleId) {
+      state.costCalculator.styleId = styleId;
+      state.costCalculator.removedServices = [];
+      const steps = getCostCalculatorStepState();
+      if (steps.hasPly) loadCostCalculatorServices(steps.ply, { resetRemoved: true });
+      else state.costCalculator.services = [];
+    }
+
+    function removeServiceFromCalculator(key) {
+      const row = (state.costCalculator.services || []).find((item) => Number(item.key) === Number(key));
+      if (!row) return;
+      state.costCalculator.services = (state.costCalculator.services || []).filter((item) => Number(item.key) !== Number(key));
+      if (!Array.isArray(state.costCalculator.removedServices)) state.costCalculator.removedServices = [];
+      const serviceId = Number(row.serviceId);
+      if (!state.costCalculator.removedServices.some((id) => Number(id) === serviceId)) {
+        state.costCalculator.removedServices.push(serviceId);
+      }
+    }
+
+    function addServiceBackToCalculator(serviceId) {
+      const id = Number(serviceId);
+      if (!id) return false;
+      if ((state.costCalculator.services || []).some((row) => Number(row.serviceId) === id)) return false;
+      const ply = Number(state.costCalculator.ply);
+      const allowed = getCostCalculatorServices(ply).some((item) => item.id === id);
+      if (!allowed) return false;
+      state.costCalculator.services.push({ key: nextCostCalculatorServiceKey(), serviceId: id });
+      state.costCalculator.removedServices = (state.costCalculator.removedServices || []).filter((item) => Number(item) !== id);
+      return true;
+    }
+
+    function getCostCalculatorRemovedServiceOptions(ply) {
+      const removed = new Set((state.costCalculator.removedServices || []).map((id) => Number(id)));
+      return getCostCalculatorServices(ply).filter((item) => removed.has(item.id));
+    }
+
+    function renderCostCalculatorServices(summary, steps) {
+      if (!steps.hasPly) {
+        return `<p class="stat-hint">Complete style, dimensions, and ply to load services.</p>`;
+      }
+      if (!summary.services.length) {
+        return `<p class="stat-hint">No services added.</p>`;
+      }
+      return `
+        <div class="cc-service-list">
+          <div class="cc-service-head" aria-hidden="true">
+            <span>Service</span><span>Qty</span><span>Rate</span><span>Cost</span><span></span>
+          </div>
+          ${summary.services.map((row) => {
+            const service = getService(row.serviceId);
+            const calc = row.calc;
+            return `
+              <div class="cc-service-row">
+                <div class="cc-layer-title">${escapeHtml(service ? service.name : "Service")}</div>
+                <div>${!calc.error ? formatQty(calc.qty) : "—"}</div>
+                <div>${!calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (service && service.rateUOM)) : "—"}</div>
+                <div>${!calc.error ? formatRupees(calc.cost) : "—"}</div>
+                <div>
+                  <button type="button" class="btn btn-sm btn-ghost" data-cc-remove-service="${row.key}" aria-label="Remove ${escapeHtml(service ? service.name : "service")}">× Remove</button>
+                </div>
+                ${calc.error ? `<div class="cc-service-error field-error">${escapeHtml(calc.error)}</div>` : ""}
+              </div>
+            `;
+          }).join("")}
+        </div>
+      `;
     }
 
     function findCostCalculatorMaterialLink(rawMaterialId, ply, finishedGood) {
@@ -3580,6 +3678,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!page) return;
       const cc = state.costCalculator;
       const steps = getCostCalculatorStepState();
+      if (steps.hasPly) loadCostCalculatorServices(steps.ply);
       const summary = updateCostCalculatorSummary();
       const styleOptions = styles.filter((item) => item.status !== "Inactive");
       const materials = steps.hasPly ? getCostCalculatorMaterials(steps.ply) : [];
@@ -3608,26 +3707,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         `;
       }).join("");
 
-      const serviceRows = summary.services.length
-        ? summary.services.map((row) => {
-          const service = getService(row.serviceId);
-          const calc = row.calc;
-          return `
-            <div class="cc-layer">
-              <div class="cc-layer-head">
-                <div class="cc-layer-title">${escapeHtml(service ? service.name : "Service")}</div>
-                <button type="button" class="btn btn-sm btn-ghost" data-cc-remove-service="${row.key}" aria-label="Remove service">× Remove</button>
-              </div>
-              ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
-              <div class="cc-metrics">
-                <div><span>Qty</span><strong>${!calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
-                <div><span>Rate</span><strong>${!calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (service && service.rateUOM)) : "—"}</strong></div>
-                <div><span>Cost</span><strong>${!calc.error ? formatRupees(calc.cost) : "—"}</strong></div>
-              </div>
-            </div>
-          `;
-        }).join("")
-        : `<p class="stat-hint">No services added. Optional — add printing, die cutting, or other processes.</p>`;
+      const serviceRows = renderCostCalculatorServices(summary, steps);
+      const removedOptions = steps.hasPly ? getCostCalculatorRemovedServiceOptions(steps.ply) : [];
 
       page.innerHTML = `
         <div class="toolbar">
@@ -3701,9 +3782,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="card-body">
                 <div class="cc-step-row">
                   <div class="cc-step">Step 5: Select Services</div>
-                  <button type="button" class="btn btn-sm btn-primary" id="btn-cc-add-service" ${steps.hasPly ? "" : "disabled"}>+ Add Service</button>
+                  <select id="cc-restore-service" class="full-select cc-add-service" ${steps.hasPly && removedOptions.length ? "" : "disabled"} aria-label="Add a removed service">
+                    <option value="">+ Add Service</option>
+                    ${removedOptions.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}
+                  </select>
                 </div>
-                ${steps.hasPly ? serviceRows : `<p class="stat-hint">Complete previous steps to add services.</p>`}
+                ${steps.hasPly ? serviceRows : `<p class="stat-hint">Complete previous steps to load services.</p>`}
                 ${steps.hasPly ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>` : ""}
               </div>
             </section>
@@ -9242,9 +9326,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           persistPrefs();
         }
         if (event.target.id === "cc-style") {
-          state.costCalculator.styleId = event.target.value;
+          handleCostCalculatorStyleChange(event.target.value);
           renderCostCalculator();
           refreshIcons();
+        }
+        if (event.target.id === "cc-restore-service") {
+          const serviceId = event.target.value;
+          const restored = addServiceBackToCalculator(serviceId);
+          const service = getService(serviceId);
+          renderCostCalculator();
+          refreshIcons();
+          if (restored) showNotification((service ? service.name : "Service") + " added");
         }
         if (event.target.id === "calc-length" || event.target.id === "calc-width" || event.target.id === "calc-height") {
           applyCostCalculatorDimensionInput(event.target);
@@ -9314,18 +9406,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const ply = Number(plyBtn.dataset.ccPly);
           state.costCalculator.ply = ply;
           loadCostCalculatorLayers(ply, { notify: true });
+          loadCostCalculatorServices(ply, { resetRemoved: true, notify: true });
           renderCostCalculator();
           refreshIcons();
           return;
         }
-        if (event.target.closest("#btn-cc-add-service")) {
-          openCostCalculatorServiceModal();
-          return;
-        }
         const removeService = event.target.closest("[data-cc-remove-service]");
         if (removeService) {
-          const key = Number(removeService.dataset.ccRemoveService);
-          state.costCalculator.services = (state.costCalculator.services || []).filter((row) => Number(row.key) !== key);
+          removeServiceFromCalculator(removeService.dataset.ccRemoveService);
           renderCostCalculator();
           refreshIcons();
           return;
