@@ -94,11 +94,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     ];
 
     const styleVariables = [
-      { id: 1, styleId: 101, variableCode: "GLUE_FLAP", value: 12.25, unit: "mm" },
-      { id: 2, styleId: 101, variableCode: "SHEET_WIDTH", value: 100, unit: "cm" },
-      { id: 3, styleId: 102, variableCode: "GLUE_FLAP", value: 10.5, unit: "mm" },
-      { id: 4, styleId: 102, variableCode: "SHEET_WIDTH", value: 95, unit: "cm" },
-      { id: 5, styleId: 103, variableCode: "GLUE_FLAP", value: 15.0, unit: "mm" }
+      { id: 1, styleId: 101, variableCode: "GLUE_FLAP", ply: 1, value: 10, unit: "mm" },
+      { id: 2, styleId: 101, variableCode: "SHEET_WIDTH", ply: 3, value: 100, unit: "cm" },
+      { id: 3, styleId: 102, variableCode: "GLUE_FLAP", ply: 1, value: 10.5, unit: "mm" },
+      { id: 4, styleId: 102, variableCode: "SHEET_WIDTH", ply: 1, value: 95, unit: "cm" },
+      { id: 5, styleId: 103, variableCode: "GLUE_FLAP", ply: 2, value: 15.0, unit: "mm" },
+      { id: 6, styleId: 101, variableCode: "GLUE_FLAP", ply: 2, value: 12, unit: "mm" },
+      { id: 7, styleId: 101, variableCode: "GLUE_FLAP", ply: 3, value: 15, unit: "mm" }
     ];
 
     const styleFormulas = [
@@ -1452,6 +1454,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       styleVariables.forEach((item) => {
         if (item.value != null && item.value !== "") item.value = roundTo(item.value, 4);
+        item.ply = normalizeStylePly(item.ply, 3);
       });
       formulaVariables.forEach((item) => {
         if (item.dataType === "numeric" && item.defaultValue != null && item.defaultValue !== "") {
@@ -1552,7 +1555,43 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getStyleVariables(styleId) {
-      return styleVariables.filter((item) => item.styleId === Number(styleId));
+      return styleVariables
+        .filter((item) => item.styleId === Number(styleId))
+        .slice()
+        .sort((a, b) => String(a.variableCode).localeCompare(String(b.variableCode)) || Number(a.ply) - Number(b.ply) || a.id - b.id);
+    }
+
+    function normalizeStylePly(value, fallback) {
+      const n = Number(value);
+      if (n === 1 || n === 2 || n === 3) return n;
+      return fallback == null ? 3 : fallback;
+    }
+
+    function getFinishedGoodPly(finishedGood) {
+      return normalizeStylePly(finishedGood && finishedGood.ply, 3);
+    }
+
+    function styleVariableComboKey(variableCode, ply) {
+      return String(variableCode || "").trim() + "::" + Number(ply);
+    }
+
+    function findStyleVariable(styleId, variableCode, ply, excludeId) {
+      return styleVariables.find((item) =>
+        item.styleId === Number(styleId) &&
+        item.variableCode === variableCode &&
+        Number(item.ply) === Number(ply) &&
+        (excludeId == null || item.id !== Number(excludeId))
+      ) || null;
+    }
+
+    function getStyleVariablesForPly(styleId, ply) {
+      const target = Number(ply);
+      return getStyleVariables(styleId).filter((item) => Number(item.ply) === target);
+    }
+
+    function renderStylePlyOptions(selected) {
+      const current = normalizeStylePly(selected, 1);
+      return [1, 2, 3].map((ply) => `<option value="${ply}" ${current === ply ? "selected" : ""}>${ply}</option>`).join("");
     }
 
     const BOM_DIMENSION_DISPLAY = [
@@ -1600,7 +1639,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       const style = finishedGood ? findStyleByName(finishedGood.style) : null;
       if (style) {
-        getStyleVariables(style.id).forEach((row) => {
+        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
           if (n === null) return;
           const catalog = getFormulaVariableByCode(row.variableCode);
@@ -1668,7 +1707,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       const shown = new Set(rows.map((row) => row.code));
       if (style) {
-        getStyleVariables(style.id).forEach((row) => {
+        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           if (shown.has(row.variableCode)) return;
           const catalog = getFormulaVariableByCode(row.variableCode);
           rows.push({
@@ -1728,7 +1767,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const vars = buildFormulaVariables(finishedGood, null, DEFAULT_WASTAGE_PERCENT);
       const style = finishedGood ? findStyleByName(finishedGood.style) : null;
       if (style) {
-        getStyleVariables(style.id).forEach((row) => {
+        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
           if (n !== null) vars[row.variableCode] = n;
         });
@@ -1781,17 +1820,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
     }
 
-    function getStyleVariableValue(styleId, variableCode) {
-      const row = styleVariables.find((item) =>
-        item.styleId === Number(styleId) && item.variableCode === variableCode
-      );
+    function getStyleVariableValue(styleId, variableCode, ply) {
+      const row = findStyleVariable(styleId, variableCode, ply);
       return row ? numericOrNull(row.value) : null;
     }
 
     function resolveVariableValue(code, finishedGood, fallback) {
       const style = finishedGood ? findStyleByName(finishedGood.style) : null;
       if (style) {
-        const styled = getStyleVariableValue(style.id, code);
+        const styled = getStyleVariableValue(style.id, code, getFinishedGoodPly(finishedGood));
         if (styled !== null) return styled;
       }
       const catalog = getFormulaVariableByCode(code);
@@ -5935,6 +5972,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         key: nextPendingStyleVarKey(),
         variableCode: "",
+        ply: 1,
         value: "",
         unit: "",
         errors: {}
@@ -5944,11 +5982,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderPendingStyleVariables() {
       const draft = state.modal.draft || {};
       const rows = Array.isArray(draft.pendingVariables) ? draft.pendingVariables : [];
-      const used = new Set(rows.map((row) => row.variableCode).filter(Boolean));
       const catalog = getActiveFormulaVariables();
       const body = rows.length
         ? rows.map((row) => {
-            const options = catalog.filter((item) => !used.has(item.code) || item.code === row.variableCode);
             const errors = row.errors || {};
             return `
               <div class="style-var-row" data-pending-var="${escapeHtml(row.key)}">
@@ -5956,13 +5992,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <label class="form-label" for="pending-var-code-${escapeHtml(row.key)}">Variable Code</label>
                   <select id="pending-var-code-${escapeHtml(row.key)}" class="full-select ${errors.variableCode ? "input-invalid" : ""}" data-pending-var-code="${escapeHtml(row.key)}">
                     <option value="">Select a variable...</option>
-                    ${options.map((item) => `
+                    ${catalog.map((item) => `
                       <option value="${escapeHtml(item.code)}" ${row.variableCode === item.code ? "selected" : ""}>
                         ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
                       </option>
                     `).join("")}
                   </select>
                   ${errors.variableCode ? `<div class="field-error">${escapeHtml(errors.variableCode)}</div>` : ""}
+                </div>
+                <div>
+                  <label class="form-label" for="pending-var-ply-${escapeHtml(row.key)}">Ply</label>
+                  <select id="pending-var-ply-${escapeHtml(row.key)}" class="full-select ${errors.ply ? "input-invalid" : ""}" data-pending-var-ply="${escapeHtml(row.key)}">
+                    ${renderStylePlyOptions(row.ply)}
+                  </select>
+                  ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
                 </div>
                 <div>
                   <label class="form-label style-var-row-label" for="pending-var-value-${escapeHtml(row.key)}">Value</label>
@@ -5987,7 +6030,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="section-head">
             <div>
               <div class="section-kicker">Style variables</div>
-              <p class="stat-hint" style="margin:4px 0 0;">Optional. Choose a formula variable, enter its value, then save with the style.</p>
+              <p class="stat-hint" style="margin:4px 0 0;">Optional. Choose a formula variable, ply, and value, then save with the style.</p>
             </div>
             <button type="button" class="btn btn-primary btn-sm" id="btn-add-pending-style-variable">
               <i data-lucide="plus"></i> Add Variable
@@ -6042,13 +6085,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <tr>
                 <td class="mono">${escapeHtml(row.variableCode)}</td>
                 <td>${escapeHtml(catalog ? catalog.name : row.variableCode)}</td>
+                <td>${escapeHtml(String(normalizeStylePly(row.ply, 3)))}</td>
                 <td>${escapeHtml(formatDecimal(row.value, 4, false))}</td>
                 <td>${escapeHtml(row.unit || (catalog && catalog.unit) || "")}</td>
                 ${masterRowActions("data-edit-style-var", row.id, "data-delete-style-var", row.id)}
               </tr>
             `;
           }).join("")
-        : emptyRow(5, "No variables added to this style yet.");
+        : emptyRow(6, "No variables added to this style yet.");
       const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
       const linkedIds = new Set(linkedFormulas.map((row) => Number(row.formulaId)));
       const availableFormulas = getStyleTypeFormulas().filter((item) => !linkedIds.has(item.id));
@@ -6119,6 +6163,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <tr>
                 <th>Variable Code</th>
                 <th>Variable Name</th>
+                <th>Ply</th>
                 <th>Value</th>
                 <th>Unit</th>
                 <th>Actions</th>
@@ -6203,15 +6248,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         String(row.variableCode || "").trim() || String(row.value ?? "").trim() !== ""
       );
       let pendingInvalid = false;
-      const usedCodes = new Set();
+      const usedCombos = new Set();
       pending.forEach((row) => {
         row.errors = {};
         if (!row.variableCode) row.errors.variableCode = "Variable is required.";
+        const ply = normalizeStylePly(row.ply, NaN);
+        if (![1, 2, 3].includes(ply)) row.errors.ply = "Ply must be 1, 2, or 3.";
         const parsed = parseByRule(row.value, "variable", { requiredError: "Value is required." });
         if (!parsed.ok) row.errors.value = parsed.error;
-        if (row.variableCode && usedCodes.has(row.variableCode)) row.errors.variableCode = "Variable already added.";
-        if (row.variableCode) usedCodes.add(row.variableCode);
+        if (row.variableCode && [1, 2, 3].includes(ply)) {
+          const key = styleVariableComboKey(row.variableCode, ply);
+          if (usedCombos.has(key)) row.errors.ply = "This variable is already set for this ply.";
+          usedCombos.add(key);
+        }
         row.parsedValue = parsed.ok ? parsed.value : null;
+        row.ply = [1, 2, 3].includes(ply) ? ply : row.ply;
         if (Object.keys(row.errors).length) pendingInvalid = true;
       });
       if (pendingInvalid) {
@@ -6228,6 +6279,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           id: nextMasterId(styleVariables),
           styleId,
           variableCode: row.variableCode,
+          ply: normalizeStylePly(row.ply, 1),
           value: row.parsedValue,
           unit: catalog ? catalog.unit : row.unit
         });
@@ -6263,8 +6315,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const rows = state.modal.draft.pendingVariables || [];
       const codeKey = target.dataset.pendingVarCode;
       const valueKey = target.dataset.pendingVarValue;
-      if (!codeKey && !valueKey) return false;
-      const row = rows.find((item) => item.key === (codeKey || valueKey));
+      const plyKey = target.dataset.pendingVarPly;
+      if (!codeKey && !valueKey && !plyKey) return false;
+      const row = rows.find((item) => item.key === (codeKey || valueKey || plyKey));
       if (!row) return false;
       if (codeKey) {
         row.variableCode = target.value;
@@ -6275,6 +6328,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (row.errors) row.errors.variableCode = "";
         return "rerender";
+      }
+      if (plyKey) {
+        row.ply = Number(target.value);
+        if (row.errors) row.errors.ply = "";
+        return true;
       }
       row.value = target.value;
       if (row.errors) row.errors.value = "";
@@ -6296,8 +6354,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = sub.draft || {};
       const errors = sub.errors || {};
       const style = styles.find((item) => item.id === state.modal.draft.id);
-      const used = new Set(getStyleVariables(state.modal.draft.id).map((row) => row.variableCode));
-      const options = getActiveFormulaVariables().filter((item) => !used.has(item.code) || item.code === draft.variableCode);
+      const options = getActiveFormulaVariables();
       const editing = sub.mode === "edit";
       return `
         <div class="modal-header">
@@ -6324,6 +6381,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${errors.variableCode ? `<div class="field-error">${escapeHtml(errors.variableCode)}</div>` : ""}
             </div>
             <div>
+              <label class="form-label" for="svar-ply">Ply</label>
+              <select id="svar-ply" class="full-select ${errors.ply ? "input-invalid" : ""}">
+                ${renderStylePlyOptions(draft.ply)}
+              </select>
+              ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
+            </div>
+            <div>
               <label class="form-label" for="svar-value">Value</label>
               <input id="svar-value" class="full-search ${errors.value ? "input-invalid" : ""}" type="number" step="0.0001" value="${escapeHtml(draft.value === "" || draft.value == null ? "" : formatDecimal(draft.value, 4, false))}" />
               ${errors.value ? `<div class="field-error">${escapeHtml(errors.value)}</div>` : ""}
@@ -6348,8 +6412,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         type: "style-variable",
         mode: existing ? "edit" : "add",
         draft: existing
-          ? { id: existing.id, variableCode: existing.variableCode, value: existing.value, unit: existing.unit || (catalog && catalog.unit) || "" }
-          : { variableCode: "", value: "", unit: "" },
+          ? { id: existing.id, variableCode: existing.variableCode, ply: normalizeStylePly(existing.ply, 3), value: existing.value, unit: existing.unit || (catalog && catalog.unit) || "" }
+          : { variableCode: "", ply: 1, value: "", unit: "" },
         errors: {}
       };
       renderModal();
@@ -6361,8 +6425,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = sub.draft;
       const errors = {};
       if (!draft.variableCode) errors.variableCode = "Variable is required.";
+      const ply = normalizeStylePly(draft.ply, NaN);
+      if (![1, 2, 3].includes(ply)) errors.ply = "Ply must be 1, 2, or 3.";
       const parsedValue = parseByRule(draft.value, "variable", { requiredError: "Value is required." });
       if (!parsedValue.ok) errors.value = parsedValue.error;
+      if (draft.variableCode && [1, 2, 3].includes(ply) && findStyleVariable(state.modal.draft.id, draft.variableCode, ply, draft.id)) {
+        errors.ply = "This variable is already set for this ply.";
+      }
       sub.errors = errors;
       if (Object.keys(errors).length) {
         showFirstValidationError(errors);
@@ -6375,7 +6444,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (sub.mode === "edit" && draft.id) {
         const index = styleVariables.findIndex((row) => row.id === draft.id);
         if (index >= 0) {
-          styleVariables[index] = { ...styleVariables[index], value, unit };
+          styleVariables[index] = { ...styleVariables[index], ply, value, unit };
         }
         showNotification("Variable updated");
       } else {
@@ -6383,6 +6452,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           id: nextMasterId(styleVariables),
           styleId: state.modal.draft.id,
           variableCode: draft.variableCode,
+          ply,
           value,
           unit
         });
@@ -6409,6 +6479,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       if (target.id === "svar-value") {
         draft.value = target.value;
+        return true;
+      }
+      if (target.id === "svar-ply") {
+        draft.ply = Number(target.value);
         return true;
       }
       return false;
@@ -7074,39 +7148,205 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return errors;
     }
 
-    function renderMaterialFormModal() {
-      const draft = state.modal.draft;
-      const errors = state.modal.errors || {};
-      const material = getRawMaterial(draft.rawMaterialId);
-      const formula = getFormula(draft.formulaId);
-      const preview = material ? calculateMaterialCost({
-        id: state.modal.lineId || 0,
-        rawMaterialId: draft.rawMaterialId,
-        layer: draft.layer,
+    function collectLeafFormulaVariables(expression) {
+      const leaves = [];
+      const walk = (expr, stack) => {
+        extractIdentifiers(expr).forEach((id) => {
+          if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id)) return;
+          if (stack.includes(id)) return;
+          const nested = getFormulaByCode(id);
+          if (nested && nested.isActive && nested.expression) {
+            walk(nested.expression, stack.concat(id));
+            return;
+          }
+          if (!leaves.includes(id)) leaves.push(id);
+        });
+      };
+      walk(String(expression || ""), []);
+      return leaves;
+    }
+
+    function formatPreviewVariableDisplay(code, value, unitHint) {
+      const catalog = getFormulaVariableByCode(code);
+      const unit = unitHint || (catalog && catalog.unit) || "";
+      const formatted = value === null || value === undefined || value === ""
+        ? "—"
+        : formatFormulaResult(value);
+      if (code === "WASTAGE") {
+        return Number.isFinite(Number(value)) ? formatDecimal(Number(value), 2, false) + "%" : formatted;
+      }
+      return unit ? formatted + " " + unit : formatted;
+    }
+
+    function getFormulaBreakdown(formula, variables, extraCodes) {
+      const codes = formula && formula.expression ? collectLeafFormulaVariables(formula.expression) : [];
+      (extraCodes || []).forEach((code) => {
+        if (code && !codes.includes(code)) codes.push(code);
+      });
+      return {
+        formula: formula || null,
+        variables: codes.map((code) => {
+          const catalog = getFormulaVariableByCode(code);
+          const value = variables && Object.prototype.hasOwnProperty.call(variables, code) ? variables[code] : null;
+          return {
+            code,
+            name: catalog ? catalog.name : code,
+            value,
+            display: formatPreviewVariableDisplay(code, value)
+          };
+        })
+      };
+    }
+
+    function getPreviewDimensionContext(dimensionId) {
+      const finishedGood = getSelectedFinishedGood();
+      const dim = getDimension(dimensionId);
+      if (dim) {
+        return {
+          source: "selected",
+          label: formatDimensionChipLabel(dim),
+          L: Number(dim.L),
+          W: Number(dim.W),
+          H: Number(dim.H),
+          uom: dim.uom || dim.unit || (finishedGood && finishedGood.dimensionUOM) || ""
+        };
+      }
+      if (finishedGood && finishedGood.dimensions) {
+        return {
+          source: "fg",
+          label: formatDimensions(finishedGood),
+          L: Number(finishedGood.dimensions.L),
+          W: Number(finishedGood.dimensions.W),
+          H: Number(finishedGood.dimensions.H),
+          uom: finishedGood.dimensionUOM || ""
+        };
+      }
+      return null;
+    }
+
+    function formatPreviewDimension(ctx) {
+      if (!ctx) {
+        return { size: "—", detail: "Select a dimension to use L, W, and H in the formula.", printArea: "—" };
+      }
+      const size = [ctx.L, ctx.W, ctx.H].map((n) => formatDecimal(n, 2, false)).join("x");
+      const titled = ctx.uom ? size + " (" + ctx.uom + ")" : size;
+      const area = Number(ctx.L) * Number(ctx.W);
+      return {
+        size: titled,
+        detail: "L=" + formatDecimal(ctx.L, 2, false) + ", W=" + formatDecimal(ctx.W, 2, false) + ", H=" + formatDecimal(ctx.H, 2, false),
+        printArea: Number.isFinite(area)
+          ? formatDecimal(area, 2, false) + " " + squaredDimensionUnit(ctx.uom)
+          : "—"
+      };
+    }
+
+    function renderPreviewField(label, valueHtml, valueClass) {
+      return `
+        <div class="preview-field">
+          <div class="preview-label">${escapeHtml(label)}</div>
+          <div class="preview-value${valueClass ? " " + valueClass : ""}">${valueHtml}</div>
+        </div>
+      `;
+    }
+
+    function calculatePreviewCost(kind, draft) {
+      if (kind === "material") {
+        const item = getRawMaterial(draft && draft.rawMaterialId);
+        if (!item) return { kind, ready: false, item: null, preview: null, error: null };
+        const preview = calculateMaterialCost({
+          id: (state.modal && state.modal.lineId) || 0,
+          rawMaterialId: draft.rawMaterialId,
+          layer: draft.layer,
+          calculationMethod: draft.calculationMethod,
+          formulaId: draft.formulaId,
+          dimensionId: draft.dimensionId,
+          manualQty: draft.manualQty,
+          wastagePercent: draft.wastagePercent,
+          netQty: 0,
+          grossQty: 0,
+          rate: 0,
+          costPerPiece: 0
+        });
+        return { kind, ready: true, item, preview, error: preview.error || null };
+      }
+      const item = getService(draft && draft.serviceId);
+      if (!item) return { kind: "service", ready: false, item: null, preview: null, error: null };
+      const preview = calculateServiceCost({
+        id: (state.modal && state.modal.lineId) || 0,
+        serviceId: draft.serviceId,
         calculationMethod: draft.calculationMethod,
         formulaId: draft.formulaId,
         dimensionId: draft.dimensionId,
         manualQty: draft.manualQty,
-        wastagePercent: draft.wastagePercent,
-        netQty: 0,
-        grossQty: 0,
+        quantity: 0,
         rate: 0,
         costPerPiece: 0
-      }) : null;
+      });
+      return { kind: "service", ready: true, item, preview, error: preview.error || null };
+    }
 
+    function formatPreviewData(kind, draft) {
+      const finishedGood = getSelectedFinishedGood();
+      const cost = calculatePreviewCost(kind, draft);
+      const formula = draft && draft.calculationMethod === "formula" ? getFormula(draft.formulaId) : null;
+      const dimension = getPreviewDimensionContext(draft && draft.dimensionId);
+      const dimensionText = formatPreviewDimension(dimension);
+      let variables = {};
+      if (kind === "material" && cost.item && finishedGood) {
+        variables = buildFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId);
+      } else if (kind === "service" && cost.item && finishedGood) {
+        variables = buildServiceFormulaVariables(finishedGood, cost.item, draft.dimensionId);
+      }
+      const extraCodes = kind === "material"
+        ? ["WASTAGE"]
+        : (variables.PRINT_AREA != null ? ["PRINT_AREA"] : []);
+      return {
+        ...cost,
+        draft,
+        formula,
+        dimension,
+        dimensionText,
+        breakdown: getFormulaBreakdown(formula, variables, extraCodes),
+        variables
+      };
+    }
+
+    function refreshBomLinePreview() {
+      const root = document.getElementById("bom-line-preview");
+      if (!root || !state.modal || !state.modal.draft) return;
+      if (state.modal.type === "material") root.innerHTML = renderMaterialModalRight();
+      else if (state.modal.type === "service") root.innerHTML = renderServiceModalRight();
+    }
+
+    function renderBomLineModalShell(title, leftHtml, rightHtml) {
       return `
         <div class="modal-header">
           <div>
             <div class="section-kicker">BOM line</div>
-            <strong>${state.modal.mode === "edit" ? "Edit Raw Material" : "Add Raw Material"}</strong>
+            <strong>${escapeHtml(title)}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body bom-line-body">
+          <div class="modal-content">
+            <div class="modal-left">${leftHtml}</div>
+            <aside id="bom-line-preview" class="modal-right" aria-live="polite" aria-label="Live cost preview">${rightHtml}</aside>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderMaterialModalLeft() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const formula = getFormula(draft.formulaId);
+      return `
+        <section aria-label="Material selection and inputs">
           <div class="form-grid">
             <div>
               <label class="form-label" for="modal-material-select">Raw Material</label>
-              <select id="modal-material-select" class="full-select ${errors.rawMaterialId ? "input-invalid" : ""}">
+              <select id="modal-material-select" class="full-select ${errors.rawMaterialId ? "input-invalid" : ""}" aria-invalid="${errors.rawMaterialId ? "true" : "false"}">
                 <option value="">Select a raw material...</option>
                 ${rawMaterials.map((item) => `
                   <option value="${item.id}" ${Number(draft.rawMaterialId) === item.id ? "selected" : ""}>
@@ -7118,11 +7358,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div>
               <label class="form-label" for="modal-layer-select">Layer</label>
-              <select id="modal-layer-select" class="full-select ${errors.layer ? "input-invalid" : ""}">
+              <select id="modal-layer-select" class="full-select ${errors.layer ? "input-invalid" : ""}" aria-invalid="${errors.layer ? "true" : "false"}">
                 ${getLayerOptionsForEditor(draft.layer).map((layer) => `<option value="${escapeHtml(layer)}" ${draft.layer === layer ? "selected" : ""}>${escapeHtml(layer)}</option>`).join("")}
               </select>
               ${errors.layer ? `<div class="field-error">${escapeHtml(errors.layer)}</div>` : ""}
             </div>
+            ${renderBomDimensionSelect(
+              material ? getMaterialLinkedDimensionIds(material) : [],
+              draft.dimensionId,
+              "modal-line-dimension",
+              errors.dimensionId,
+              "Qty formula is assigned from the material dimension link. You can override the formula."
+            )}
             <div>
               <label class="form-label" for="modal-method-select">Calculation Method</label>
               <select id="modal-method-select" class="full-select">
@@ -7133,7 +7380,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ${draft.calculationMethod === "formula" ? `
               <div>
                 <label class="form-label" for="modal-formula-select">Quantity Formula</label>
-                <select id="modal-formula-select" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
+                <select id="modal-formula-select" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
                   <option value="">Select a formula...</option>
                   ${getMaterialFormulas().map((item) => `
                     <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
@@ -7148,54 +7395,109 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ` : `
               <div>
                 <label class="form-label" for="modal-manual-qty">Net Quantity</label>
-                <input id="modal-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" />
+                <input id="modal-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" aria-invalid="${errors.manualQty ? "true" : "false"}" />
                 ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
               </div>
             `}
-            ${renderBomDimensionSelect(
-              material ? getMaterialLinkedDimensionIds(material) : [],
-              draft.dimensionId,
-              "modal-line-dimension",
-              errors.dimensionId,
-              "Qty formula is assigned from the material dimension link. You can override the formula."
-            )}
             <div>
               <label class="form-label" for="modal-wastage">Wastage %</label>
-              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(draft.wastagePercent === "" || draft.wastagePercent == null ? "" : formatDecimal(draft.wastagePercent, 2, false))}" />
+              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(draft.wastagePercent === "" || draft.wastagePercent == null ? "" : formatDecimal(draft.wastagePercent, 2, false))}" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
               ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
             </div>
           </div>
-          ${material ? `
-            <div class="detail-list">
-              <div><span>Material Name</span><strong>${escapeHtml(material.name)}</strong></div>
-              <div><span>Code</span><strong class="mono">${escapeHtml(material.code)}</strong></div>
-              <div><span>GSM</span><strong>${material.gsm === null ? "—" : escapeHtml(formatDecimal(material.gsm, 1, false))}</strong></div>
-              <div><span>UOM</span><strong>${escapeHtml(material.uom)}</strong></div>
-              <div><span>Purchasing Rate</span><strong>${formatRatePkr(material.purchasingRate, material.rateUOM)}</strong></div>
-              <div><span>Qty Formula</span><strong class="mono">${escapeHtml(formatBoundFormulaCode(material.qtyFormulaId))}</strong></div>
-              <div><span>Linked Dimensions</span><strong>${escapeHtml(formatMaterialDimensionSummary(material))}</strong></div>
-              <div><span>Qty UOM</span><strong>${escapeHtml(material.uom)}</strong></div>
-            </div>
-            <div class="rate-source">${preview && preview.rateSource === "dimension" && preview.dimensionId
-              ? "Rate Source: Dimension (" + escapeHtml(formatDimensionChipLabel(getDimension(preview.dimensionId))) + ") · purchasingRate × L × W × H / " + DIMENSION_RATE_DIVISOR + "."
-              : "Rate Source: Purchasing Rate (PKR)."} Wastage is applied before unit conversion.</div>
-          ` : ""}
           ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
           ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
-          ${preview && !preview.error ? `
-            <div class="preview-box">
-              <div class="cost-row"><span>Net Qty</span><strong>${formatQty(preview.netQty)} ${escapeHtml(material.uom)}</strong></div>
-              <div class="cost-row"><span>Gross Qty (after wastage)</span><strong>${formatQty(preview.grossQty)} ${escapeHtml(material.uom)}</strong></div>
-              ${preview.qtyForRate != null ? `<div class="cost-row"><span>Qty at rate UOM</span><strong>${formatQty(preview.qtyForRate)} ${escapeHtml(formatRateUnit(material.rateUOM))}</strong></div>` : ""}
-              <div class="cost-row"><span>Cost / Piece</span><strong>${formatCurrency(preview.costPerPiece)}</strong></div>
-            </div>
-          ` : ""}
-        </div>
-        <div class="modal-footer">
+        </section>
+        <div class="modal-left-actions">
           <button type="button" class="btn" data-modal-close>Cancel</button>
           <button type="button" class="btn btn-primary" id="btn-save-material">Save</button>
         </div>
       `;
+    }
+
+    function renderMaterialModalRight() {
+      const data = formatPreviewData("material", state.modal.draft);
+      if (!data.ready) {
+        return `<p class="preview-empty">Select a raw material to see live quantity, formula variables, and cost.</p>`;
+      }
+      const material = data.item;
+      const preview = data.preview;
+      const formula = data.formula;
+      const wastage = Number(state.modal.draft.wastagePercent);
+      const factor = Number.isFinite(wastage) ? 1 + wastage / 100 : null;
+      const varsHtml = data.breakdown.variables.length
+        ? `<div class="preview-vars" aria-label="Formula variables">
+            ${data.breakdown.variables.map((row) => `
+              <div class="preview-var">
+                <span class="mono">${escapeHtml(row.code)}</span>
+                <strong>${escapeHtml(row.display)}</strong>
+              </div>
+            `).join("")}
+          </div>`
+        : `<p class="stat-hint" style="margin-top:8px;">No formula variables to display.</p>`;
+      return `
+        <section class="preview-section" aria-label="Material details">
+          <h3 class="preview-heading">Material details</h3>
+          ${renderPreviewField("Code", `<span class="mono">${escapeHtml(material.code)}</span>`)}
+          ${renderPreviewField("Name", escapeHtml(material.name))}
+          ${renderPreviewField("Category", escapeHtml(material.category || "—"))}
+          ${renderPreviewField("UOM", escapeHtml(material.uom))}
+          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(material.purchasingRate, material.rateUOM)))}
+        </section>
+        <section class="preview-section" aria-label="Selected dimension">
+          <h3 class="preview-heading">Selected dimension</h3>
+          ${renderPreviewField("Size", escapeHtml(data.dimensionText.size))}
+          ${renderPreviewField("L × W × H", escapeHtml(data.dimensionText.detail))}
+        </section>
+        <section class="preview-section" aria-label="Formula and calculation">
+          <h3 class="preview-heading">Formula &amp; calculation</h3>
+          ${renderPreviewField(
+            "Formula",
+            state.modal.draft.calculationMethod === "manual"
+              ? "Manual quantity"
+              : (formula ? `<span class="mono">${escapeHtml(formula.code)}</span>` : "—")
+          )}
+          ${state.modal.draft.calculationMethod === "formula" ? `
+            <div class="preview-field">
+              <div class="preview-label">Variables</div>
+              ${varsHtml}
+            </div>
+          ` : ""}
+          ${preview && !preview.error ? `
+            ${renderPreviewField("Calculated qty", escapeHtml(formatQty(preview.netQty) + " " + material.uom))}
+            ${renderPreviewField(
+              "Gross qty (with wastage)",
+              escapeHtml(
+                Number.isFinite(preview.netQty) && Number.isFinite(preview.grossQty) && factor != null
+                  ? formatQty(preview.netQty) + " × " + formatDecimal(factor, 4, false) + " = " + formatQty(preview.grossQty) + " " + material.uom
+                  : formatQty(preview.grossQty) + " " + material.uom
+              )
+            )}
+          ` : `<p class="preview-error">${escapeHtml((preview && preview.error) || "Quantity cannot be calculated yet.")}</p>`}
+        </section>
+        <section class="preview-section" aria-label="Cost summary">
+          <h3 class="preview-heading">Cost summary</h3>
+          ${renderPreviewField("Material", escapeHtml(material.name))}
+          ${renderPreviewField("Layer", escapeHtml(state.modal.draft.layer || "—"))}
+          ${preview && !preview.error ? `
+            ${renderPreviewField("Gross qty", escapeHtml(formatQty(preview.grossQty) + " " + material.uom))}
+            ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, material.rateUOM)))}
+            ${renderPreviewField("Net cost", escapeHtml(formatCurrency(preview.costPerPiece)) + ' <span class="stat-hint">(per 1 piece)</span>')}
+            <div class="summary-highlight">
+              <div class="preview-label">Total</div>
+              <div class="preview-value cost-display">${escapeHtml(formatCurrency(preview.costPerPiece))}</div>
+            </div>
+          ` : `<p class="preview-error">${escapeHtml((preview && preview.error) || "Cost cannot be calculated yet.")}</p>`}
+        </section>
+      `;
+    }
+
+    function renderMaterialFormModal() {
+      return renderBomLineModalShell(
+        state.modal.mode === "edit" ? "Edit Raw Material" : "Add Raw Material",
+        renderMaterialModalLeft(),
+        renderMaterialModalRight()
+      );
     }
 
     function renderBreakdownModal() {
@@ -7275,6 +7577,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || (state.modal.type === "style-master" && state.modal.mode === "add"));
+      dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -7465,10 +7768,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "modal-manual-qty") {
         draft.manualQty = target.value === "" ? null : target.value;
         state.modal.errors = {};
+        refreshBomLinePreview();
         return true;
       } else if (target.id === "modal-wastage") {
         draft.wastagePercent = target.value;
         state.modal.errors = {};
+        refreshBomLinePreview();
         return true;
       } else return false;
       state.modal.errors = {};
@@ -7542,36 +7847,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return errors;
     }
 
-    function renderServiceFormModal() {
+    function renderServiceModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const service = getService(draft.serviceId);
       const formula = getFormula(draft.formulaId);
-      const preview = service ? calculateServiceCost({
-        id: state.modal.lineId || 0,
-        serviceId: draft.serviceId,
-        calculationMethod: draft.calculationMethod,
-        formulaId: draft.formulaId,
-        dimensionId: draft.dimensionId,
-        manualQty: draft.manualQty,
-        quantity: 0,
-        rate: 0,
-        costPerPiece: 0
-      }) : null;
-
       return `
-        <div class="modal-header">
-          <div>
-            <div class="section-kicker">BOM line</div>
-            <strong>${state.modal.mode === "edit" ? "Edit Service" : "Add Service"}</strong>
-          </div>
-          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
-        </div>
-        <div class="modal-body">
+        <section aria-label="Service selection and inputs">
           <div class="form-grid">
             <div>
               <label class="form-label" for="modal-service-select">Service</label>
-              <select id="modal-service-select" class="full-select ${errors.serviceId ? "input-invalid" : ""}">
+              <select id="modal-service-select" class="full-select ${errors.serviceId ? "input-invalid" : ""}" aria-invalid="${errors.serviceId ? "true" : "false"}">
                 <option value="">Select a service...</option>
                 ${services.map((item) => `
                   <option value="${item.id}" ${Number(draft.serviceId) === item.id ? "selected" : ""}>
@@ -7581,6 +7867,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : ""}
             </div>
+            ${renderBomDimensionSelect(
+              service ? getServiceLinkedDimensionIds(service) : [],
+              draft.dimensionId,
+              "modal-service-dimension",
+              errors.dimensionId,
+              "Qty formula is assigned from the service dimension link. You can override the formula."
+            )}
             <div>
               <label class="form-label" for="modal-service-method">Calculation Method</label>
               <select id="modal-service-method" class="full-select">
@@ -7590,8 +7883,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             ${draft.calculationMethod === "formula" ? `
               <div>
-                <label class="form-label" for="modal-service-formula">Formula</label>
-                <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
+                <label class="form-label" for="modal-service-formula">Quantity Formula</label>
+                <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
                   <option value="">Select a formula...</option>
                   ${getServiceFormulas().map((item) => `
                     <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
@@ -7606,47 +7899,93 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ` : `
               <div>
                 <label class="form-label" for="modal-service-qty">Quantity / Piece</label>
-                <input id="modal-service-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" />
+                <input id="modal-service-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" aria-invalid="${errors.manualQty ? "true" : "false"}" />
                 ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
               </div>
             `}
-            ${renderBomDimensionSelect(
-              service ? getServiceLinkedDimensionIds(service) : [],
-              draft.dimensionId,
-              "modal-service-dimension",
-              errors.dimensionId,
-              "Qty formula is assigned from the service dimension link. You can override the formula."
-            )}
           </div>
-          ${service ? `
-            <div class="detail-list">
-              <div><span>Service Name</span><strong>${escapeHtml(service.name)}</strong></div>
-              <div><span>Code</span><strong class="mono">${escapeHtml(service.code)}</strong></div>
-              <div><span>UOM</span><strong>${escapeHtml(service.uom)}</strong></div>
-              <div><span>Service Rate</span><strong>${formatRatePkr(service.serviceRate, service.rateUOM)}</strong></div>
-              <div><span>Bound Formula</span><strong class="mono">${escapeHtml(formatBoundFormulaCode(service.formulaId))}</strong></div>
-              <div><span>Linked Dimensions</span><strong>${escapeHtml(formatServiceDimensionSummary(service))}</strong></div>
-              <div><span>Qty UOM</span><strong>${escapeHtml(service.uom)}</strong></div>
-            </div>
-            <div class="rate-source">${preview && preview.rateSource === "dimension"
-              ? "Rate Source: Dimension (" + escapeHtml(formatDimensionChipLabel(getDimension(preview.dimensionId))) + ") · serviceRate × L × W × H / " + DIMENSION_RATE_DIVISOR + "."
-              : "Rate Source: Service Master (PKR)."}</div>
-          ` : ""}
           ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
           ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
           ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
-          ${preview && !preview.error ? `
-            <div class="preview-box">
-              <div class="cost-row"><span>Qty / Piece</span><strong>${formatQty(preview.quantity)}</strong></div>
-              <div class="cost-row"><span>Cost / Piece</span><strong>${formatRupees(preview.costPerPiece)}</strong></div>
-            </div>
-          ` : ""}
-        </div>
-        <div class="modal-footer">
+        </section>
+        <div class="modal-left-actions">
           <button type="button" class="btn" data-modal-close>Cancel</button>
           <button type="button" class="btn btn-primary" id="btn-save-service">Save</button>
         </div>
       `;
+    }
+
+    function renderServiceModalRight() {
+      const data = formatPreviewData("service", state.modal.draft);
+      if (!data.ready) {
+        return `<p class="preview-empty">Select a service to see live quantity, formula variables, and cost.</p>`;
+      }
+      const service = data.item;
+      const preview = data.preview;
+      const formula = data.formula;
+      const varsHtml = data.breakdown.variables.length
+        ? `<div class="preview-vars" aria-label="Formula variables">
+            ${data.breakdown.variables.map((row) => `
+              <div class="preview-var">
+                <span class="mono">${escapeHtml(row.code)}</span>
+                <strong>${escapeHtml(row.display)}</strong>
+              </div>
+            `).join("")}
+          </div>`
+        : `<p class="stat-hint" style="margin-top:8px;">No formula variables to display.</p>`;
+      return `
+        <section class="preview-section" aria-label="Service details">
+          <h3 class="preview-heading">Service details</h3>
+          ${renderPreviewField("Code", `<span class="mono">${escapeHtml(service.code)}</span>`)}
+          ${renderPreviewField("Name", escapeHtml(service.name))}
+          ${renderPreviewField("UOM", escapeHtml(service.uom))}
+          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(service.serviceRate, service.rateUOM)))}
+        </section>
+        <section class="preview-section" aria-label="Selected dimension">
+          <h3 class="preview-heading">Selected dimension</h3>
+          ${renderPreviewField("Size", escapeHtml(data.dimensionText.size))}
+          ${renderPreviewField("Print area", escapeHtml(data.dimensionText.printArea))}
+        </section>
+        <section class="preview-section" aria-label="Formula and calculation">
+          <h3 class="preview-heading">Formula &amp; calculation</h3>
+          ${renderPreviewField(
+            "Formula",
+            state.modal.draft.calculationMethod === "manual"
+              ? "Manual quantity"
+              : (formula ? `<span class="mono">${escapeHtml(formula.code)}</span>` : "—")
+          )}
+          ${state.modal.draft.calculationMethod === "formula" ? `
+            <div class="preview-field">
+              <div class="preview-label">Variables</div>
+              ${varsHtml}
+            </div>
+          ` : ""}
+          ${preview && !preview.error
+            ? renderPreviewField("Calculated qty", escapeHtml(formatQty(preview.quantity) + " " + service.uom))
+            : `<p class="preview-error">${escapeHtml((preview && preview.error) || "Quantity cannot be calculated yet.")}</p>`}
+        </section>
+        <section class="preview-section" aria-label="Cost summary">
+          <h3 class="preview-heading">Cost summary</h3>
+          ${renderPreviewField("Service", escapeHtml(service.name))}
+          ${renderPreviewField("Dimension", escapeHtml(data.dimensionText.size))}
+          ${preview && !preview.error ? `
+            ${renderPreviewField("Qty", escapeHtml(formatQty(preview.quantity) + " " + service.uom))}
+            ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, service.rateUOM)))}
+            <div class="summary-highlight">
+              <div class="preview-label">Total</div>
+              <div class="preview-value cost-display">${escapeHtml(formatRupees(preview.costPerPiece))}</div>
+            </div>
+          ` : `<p class="preview-error">${escapeHtml((preview && preview.error) || "Cost cannot be calculated yet.")}</p>`}
+        </section>
+      `;
+    }
+
+    function renderServiceFormModal() {
+      return renderBomLineModalShell(
+        state.modal.mode === "edit" ? "Edit Service" : "Add Service",
+        renderServiceModalLeft(),
+        renderServiceModalRight()
+      );
     }
 
     function renderServiceBreakdownModal() {
@@ -7790,6 +8129,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "modal-service-qty") {
         draft.manualQty = target.value === "" ? null : target.value;
         state.modal.errors = {};
+        refreshBomLinePreview();
         return true;
       } else return false;
       state.modal.errors = {};
@@ -8518,7 +8858,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             errors: {},
             sub: null
           };
-          openMasterDeleteModal("style-variable", deleteStyleVar.dataset.deleteStyleVar, row ? row.variableCode : "this variable");
+          openMasterDeleteModal("style-variable", deleteStyleVar.dataset.deleteStyleVar, row ? `${row.variableCode} (${normalizeStylePly(row.ply, 3)} ply)` : "this variable");
           state.modal.parentStyle = parent;
           return;
         }
