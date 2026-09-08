@@ -1348,9 +1348,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.L = roundTo(item.L, 2);
         item.W = roundTo(item.W, 2);
         item.H = roundTo(item.H, 2);
-        const clean = formatDimensionCode(item.L, item.W, item.H);
-        if (!item.code || /^\d+(\.\d+)?x\d+(\.\d+)?x\d+(\.\d+)?$/i.test(String(item.code))) item.code = clean;
-        if (!item.name || /^\d+(\.\d+)?x\d+(\.\d+)?x\d+(\.\d+)?$/i.test(String(item.name))) item.name = clean;
+        const clean = formatDimensionCode(item.L, item.W);
+        if (!item.code || isAutoDimensionCode(item.code)) item.code = clean;
+        if (!item.name || isAutoDimensionCode(item.name)) item.name = clean;
       });
       finishedGoods.forEach((item) => {
         if (!item.dimensions) return;
@@ -1409,7 +1409,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatDimensions(item) {
       const dims = item.dimensions || item;
-      const code = formatDimensionCode(dims.L, dims.W, dims.H).replace(/x/g, " × ");
+      const code = formatFinishedGoodSizeCode(dims).replace(/x/g, " × ");
       return `${code} ${item.dimensionUOM || item.uom || ""}`.trim();
     }
 
@@ -1418,7 +1418,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function formatFinishedGoodDisplayName(item) {
-      const dims = formatDimensionCode(item.dimensions);
+      const dims = formatFinishedGoodSizeCode(item.dimensions);
       return [item.product, item.style, item.variant, dims]
         .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
         .join(" ");
@@ -1984,9 +1984,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!el || !state.modal || !state.modal.draft) return;
       const parsedL = parseByRule(state.modal.draft.L, "dimension");
       const parsedW = parseByRule(state.modal.draft.W, "dimension");
-      const parsedH = parseByRule(state.modal.draft.H, "dimension");
-      el.textContent = parsedL.ok && parsedW.ok && parsedH.ok
-        ? formatDimensionCode(parsedL.value, parsedW.value, parsedH.value)
+      el.textContent = parsedL.ok && parsedW.ok
+        ? formatDimensionCode(parsedL.value, parsedW.value)
         : "—";
     }
 
@@ -2069,7 +2068,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatDimensionChipLabel(dim) {
       if (!dim) return "Unknown";
-      const code = dim.code || dim.name || formatDimensionCode(dim.L, dim.W, dim.H);
+      const code = dim.code || dim.name || formatDimensionCode(dim.L, dim.W);
       const unit = dim.uom || dim.unit || "";
       return unit ? code + " " + unit : code;
     }
@@ -3579,7 +3578,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       document.getElementById("page-dimensions").innerHTML = `
         <div class="toolbar">
           <div class="toolbar-left">
-            ${toolbarSearch("dim-search", state.searches.dimensions, "Search L x W x H, UOM...")}
+            ${toolbarSearch("dim-search", state.searches.dimensions, "Search L x W, UOM...")}
           </div>
           <div class="toolbar-right">
             <button type="button" class="btn btn-primary" id="btn-add-dimension">
@@ -5870,26 +5869,36 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function formatDimensionCode(L, W, H) {
-      const source = (L !== null && typeof L === "object" && !Array.isArray(L)) ? L : { L, W, H };
+    function formatDimensionCode(L, W) {
+      const source = (L !== null && typeof L === "object" && !Array.isArray(L)) ? L : { L, W };
+      return [source.L, source.W].map((part) => {
+        const n = Number(part);
+        return Number.isFinite(n) ? formatDecimal(n, 2, false) : "";
+      }).join("x");
+    }
+
+    function formatFinishedGoodSizeCode(dims) {
+      const source = dims || {};
       return [source.L, source.W, source.H].map((part) => {
         const n = Number(part);
         return Number.isFinite(n) ? formatDecimal(n, 2, false) : "";
       }).join("x");
     }
 
+    function isAutoDimensionCode(value) {
+      return /^\d+(\.\d+)?x\d+(\.\d+)?(x\d+(\.\d+)?)?$/i.test(String(value || "").trim());
+    }
+
     function validateDimensionDraft(draft) {
       const errors = {};
       const L = parseByRule(draft.L, "dimension", { requiredError: "Length must be greater than 0.", minError: "Length must be at least 0.1." });
       const W = parseByRule(draft.W, "dimension", { requiredError: "Width must be greater than 0.", minError: "Width must be at least 0.1." });
-      const H = parseByRule(draft.H, "dimension", { requiredError: "Height must be greater than 0.", minError: "Height must be at least 0.1." });
       if (!L.ok) errors.L = L.error;
       if (!W.ok) errors.W = W.error;
-      if (!H.ok) errors.H = H.error;
       if (!draft.uom) errors.uom = "UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
-      if (!errors.L && !errors.W && !errors.H && draft.uom) {
-        const code = formatDimensionCode(L.value, W.value, H.value);
+      if (!errors.L && !errors.W && draft.uom) {
+        const code = formatDimensionCode(L.value, W.value);
         if (dimensions.some((item) => (item.code === code || item.name === code) && (item.uom === draft.uom || item.unit === draft.uom) && item.id !== draft.id)) {
           errors.duplicate = "This dimension already exists.";
         }
@@ -5902,9 +5911,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = state.modal.errors || {};
       const previewL = parseByRule(draft.L, "dimension");
       const previewW = parseByRule(draft.W, "dimension");
-      const previewH = parseByRule(draft.H, "dimension");
-      const previewCode = previewL.ok && previewW.ok && previewH.ok
-        ? formatDimensionCode(previewL.value, previewW.value, previewH.value)
+      const previewCode = previewL.ok && previewW.ok
+        ? formatDimensionCode(previewL.value, previewW.value)
         : "—";
       return `
         <div class="modal-header">
@@ -5918,7 +5926,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="form-grid">
             <div>
               <label class="form-label" for="dim-name">Dimension Name</label>
-              <input id="dim-name" class="full-search" value="${escapeHtml(draft.name)}" placeholder="7x7x4" />
+              <input id="dim-name" class="full-search" value="${escapeHtml(draft.name)}" placeholder="7x7" />
             </div>
             <div>
               <label class="form-label" for="dim-uom">Unit</label>
@@ -5932,7 +5940,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div class="form-span-2">
               <label class="form-label">Values</label>
-              <div class="dim-input-row">
+              <div class="dim-input-row two">
                 <div>
                   <input id="dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.L === "" || draft.L == null ? "" : formatDecimal(draft.L, 2, false))}" placeholder="Length" />
                   ${errors.L ? `<div class="field-error">${escapeHtml(errors.L)}</div>` : ""}
@@ -5940,10 +5948,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div>
                   <input id="dim-w" class="full-search ${errors.W ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.W === "" || draft.W == null ? "" : formatDecimal(draft.W, 2, false))}" placeholder="Width" />
                   ${errors.W ? `<div class="field-error">${escapeHtml(errors.W)}</div>` : ""}
-                </div>
-                <div>
-                  <input id="dim-h" class="full-search ${errors.H ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.H === "" || draft.H == null ? "" : formatDecimal(draft.H, 2, false))}" placeholder="Height" />
-                  ${errors.H ? `<div class="field-error">${escapeHtml(errors.H)}</div>` : ""}
                 </div>
               </div>
             </div>
@@ -5993,16 +5997,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const parsedL = parseByRule(draft.L, "dimension");
       const parsedW = parseByRule(draft.W, "dimension");
-      const parsedH = parseByRule(draft.H, "dimension");
-      const code = formatDimensionCode(parsedL.value, parsedW.value, parsedH.value);
+      const code = formatDimensionCode(parsedL.value, parsedW.value);
       const typedName = String(draft.name || "").trim();
+      const existing = state.modal.mode === "edit" && draft.id
+        ? dimensions.find((row) => row.id === draft.id)
+        : null;
+      const storedH = numericOrNull(draft.H);
       const payload = {
-        name: !typedName || /^\d+(\.\d+)?x\d+(\.\d+)?x\d+(\.\d+)?$/i.test(typedName) ? code : typedName,
+        name: !typedName || isAutoDimensionCode(typedName) ? code : typedName,
         description: String(draft.description || "").trim(),
         code,
         L: parsedL.value,
         W: parsedW.value,
-        H: parsedH.value,
+        H: storedH !== null ? storedH : (existing && numericOrNull(existing.H) !== null ? existing.H : 0),
         uom: draft.uom,
         unit: draft.uom,
         status: draft.status
@@ -6028,7 +6035,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "dim-description") draft.description = target.value;
       else if (target.id === "dim-l") draft.L = target.value;
       else if (target.id === "dim-w") draft.W = target.value;
-      else if (target.id === "dim-h") draft.H = target.value;
       else if (target.id === "dim-uom") draft.uom = target.value;
       else if (target.id === "dim-status") draft.status = target.value;
       else return false;
@@ -7602,8 +7608,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (updateDimensionDraftFromEvent(event.target)) {
           if (event.target.id === "dim-l") normalizeDraftNumber(event.target, "L", "dimension");
           else if (event.target.id === "dim-w") normalizeDraftNumber(event.target, "W", "dimension");
-          else if (event.target.id === "dim-h") normalizeDraftNumber(event.target, "H", "dimension");
-          if (event.target.id === "dim-l" || event.target.id === "dim-w" || event.target.id === "dim-h") {
+          if (event.target.id === "dim-l" || event.target.id === "dim-w") {
             refreshDimensionCodePreview();
           } else {
             renderModal();
@@ -7658,7 +7663,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           restoreFocus(event.target.id);
         }
         if (updateDimensionDraftFromEvent(event.target)) {
-          if (event.target.id === "dim-l" || event.target.id === "dim-w" || event.target.id === "dim-h") {
+          if (event.target.id === "dim-l" || event.target.id === "dim-w") {
             refreshDimensionCodePreview();
           }
           restoreFocus(event.target.id);
