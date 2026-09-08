@@ -763,34 +763,55 @@
     .preview-box { background: #f8fafc; border: 1px solid var(--border); border-radius: 6px; padding: 10px; margin-top: 12px; }
     .var-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 12px; margin-top: 8px; font-size: 12px; }
 
-    .modal.split-form { width: min(960px, 100%); }
-    .bom-line-body { padding: 16px; }
-    .modal-content {
-      display: grid;
-      grid-template-columns: 60% 40%;
-      gap: 20px;
-      max-height: 600px;
+    .modal.split-form {
+      width: min(960px, 100%);
+      display: flex;
+      flex-direction: column;
+      max-height: min(90vh, 740px);
+      overflow: hidden;
+    }
+    .modal.split-form .modal-header {
+      flex-shrink: 0;
+    }
+    .bom-line-body {
+      padding: 16px;
+      flex: 1 1 auto;
       min-height: 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .modal.split-form .modal-content {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      gap: 16px;
+      flex: 1 1 auto;
+      min-height: 0;
+      max-height: none;
+      align-items: stretch;
     }
     .modal-left {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 12px;
       overflow-y: auto;
+      min-width: 0;
       min-height: 0;
       padding-right: 4px;
     }
     .modal-right {
       background: #f8fafc;
-      padding: 15px;
+      padding: 14px 16px;
       border-radius: var(--radius);
+      overflow-x: hidden;
       overflow-y: auto;
-      border-left: 1px solid var(--border);
+      border: 1px solid var(--border);
+      min-width: 0;
       min-height: 0;
     }
     .preview-section {
-      margin-bottom: 15px;
-      padding-bottom: 15px;
+      margin-bottom: 12px;
+      padding-bottom: 12px;
       border-bottom: 1px solid var(--border);
     }
     .preview-section:last-child {
@@ -804,32 +825,55 @@
       text-transform: uppercase;
       color: var(--text-muted);
       font-weight: 700;
+      line-height: 1.3;
       margin-bottom: 10px;
     }
+    .preview-field {
+      display: grid;
+      grid-template-columns: 88px minmax(0, 1fr);
+      gap: 8px 10px;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+    .preview-field:last-child { margin-bottom: 0; }
+    .preview-field-stack {
+      grid-template-columns: minmax(0, 1fr);
+    }
     .preview-label {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--text-muted);
       font-weight: 600;
       text-transform: uppercase;
+      letter-spacing: 0.02em;
+      line-height: 1.4;
+      padding-top: 2px;
     }
     .preview-value {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--text);
-      margin-top: 5px;
+      margin-top: 0;
       font-weight: 500;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
-    .preview-field { margin-bottom: 10px; }
-    .preview-field:last-child { margin-bottom: 0; }
     .preview-vars {
       display: grid;
       gap: 6px;
-      margin-top: 8px;
+      margin-top: 6px;
     }
     .preview-var {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, auto);
       gap: 10px;
       font-size: 13px;
+      line-height: 1.4;
+      align-items: start;
+    }
+    .preview-var strong {
+      text-align: right;
+      font-weight: 600;
+      overflow-wrap: anywhere;
     }
     .preview-empty, .preview-error {
       font-size: 13px;
@@ -839,7 +883,7 @@
     .preview-error { color: var(--danger); }
     .summary-highlight {
       background: var(--primary-soft);
-      padding: 10px;
+      padding: 10px 12px;
       border-radius: 4px;
       margin-top: 10px;
     }
@@ -847,23 +891,34 @@
       font-size: 18px;
       font-weight: 700;
       color: var(--primary);
+      line-height: 1.3;
     }
     .modal-left-actions {
       display: flex;
       justify-content: flex-end;
       gap: 8px;
       margin-top: auto;
-      padding-top: 8px;
+      padding-top: 12px;
+      flex-shrink: 0;
+      position: sticky;
+      bottom: 0;
+      background: #fff;
     }
 
     @media (max-width: 900px) {
-      .modal-content {
-        grid-template-columns: 1fr;
-        max-height: min(70vh, 720px);
+      .modal.split-form .modal-content {
+        grid-template-columns: minmax(0, 1fr);
+        overflow-y: auto;
+      }
+      .modal-left,
+      .modal-right {
+        overflow: visible;
       }
       .modal-right {
         border-left: none;
-        border-top: 1px solid var(--border);
+      }
+      .modal-left-actions {
+        position: static;
       }
     }
 
