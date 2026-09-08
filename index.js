@@ -107,6 +107,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 3, styleId: 103, formulaId: 316, order: 1, createdAt: "2026-01-01T00:00:00.000Z" }
     ];
 
+    const serviceDimensions = [
+      { id: 1, serviceId: 201, dimensionId: 201, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 2, serviceId: 201, dimensionId: 202, formulaId: 311, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 3, serviceId: 202, dimensionId: 201, formulaId: 312, createdAt: "2026-01-01T00:00:00.000Z" }
+    ];
+
+    const materialDimensions = [
+      { id: 1, rawMaterialId: 101, dimensionId: 201, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 2, rawMaterialId: 101, dimensionId: 202, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 3, rawMaterialId: 102, dimensionId: 201, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" },
+      { id: 4, rawMaterialId: 103, dimensionId: 201, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" }
+    ];
+
     const formulaVariables = [
       { id: 1, code: "L", name: "Length", description: "Product Length", dataType: "numeric", defaultValue: 7, unit: "inch", category: "Dimension", isActive: true },
       { id: 2, code: "W", name: "Width", description: "Product Width", dataType: "numeric", defaultValue: 7, unit: "inch", category: "Dimension", isActive: true },
@@ -136,9 +149,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     ];
 
     const rawMaterials = [
-      { id: 101, code: "RM-KRAFT-125", name: "Kraft Paper 125 GSM", category: "Paper", uom: "kg", purchasingRate: 165, rateUOM: "kg", gsm: 125, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 102, code: "RM-KRAFT-150", name: "Kraft Paper 150 GSM", category: "Paper", uom: "kg", purchasingRate: 185, rateUOM: "kg", gsm: 150, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 103, code: "RM-FLUTE-120", name: "Fluting Paper 120 GSM", category: "Paper", uom: "kg", purchasingRate: 155, rateUOM: "kg", gsm: 120, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 101, code: "RM-KRAFT-125", name: "Kraft Paper 125 GSM", category: "Paper", uom: "kg", purchasingRate: 165, rateUOM: "kg", gsm: 125, status: "Active", qtyFormulaId: 305, dimensionIds: [201, 202] },
+      { id: 102, code: "RM-KRAFT-150", name: "Kraft Paper 150 GSM", category: "Paper", uom: "kg", purchasingRate: 185, rateUOM: "kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 103, code: "RM-FLUTE-120", name: "Fluting Paper 120 GSM", category: "Paper", uom: "kg", purchasingRate: 155, rateUOM: "kg", gsm: 120, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
       { id: 104, code: "RM-FLUTE-140", name: "Fluting Paper 140 GSM", category: "Paper", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 140, status: "Active", qtyFormulaId: null, dimensionIds: [] },
       { id: 105, code: "RM-DUPLEX-300", name: "Duplex Board 300 GSM", category: "Board", uom: "kg", purchasingRate: 160, rateUOM: "kg", gsm: 300, status: "Active", qtyFormulaId: null, dimensionIds: [] },
       { id: 106, code: "RM-DUPLEX-350", name: "Duplex Board 350 GSM", category: "Board", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 350, status: "Active", qtyFormulaId: null, dimensionIds: [] },
@@ -150,8 +163,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     ];
 
     const services = [
-      { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", serviceRate: 3.5, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
-      { id: 202, code: "SRV-DIECUT", name: "Die Cutting", uom: "pieces", serviceRate: 2, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
+      { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", serviceRate: 3.5, rateUOM: "piece", status: "Active", formulaId: 311, dimensionIds: [201, 202] },
+      { id: 202, code: "SRV-DIECUT", name: "Die Cutting", uom: "pieces", serviceRate: 2, rateUOM: "piece", status: "Active", formulaId: 312, dimensionIds: [201] },
       { id: 203, code: "SRV-LAM", name: "Lamination", uom: "pieces", serviceRate: 4.5, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
       { id: 204, code: "SRV-PASTE", name: "Pasting", uom: "pieces", serviceRate: 1, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
       { id: 205, code: "SRV-WINPASTE", name: "Window Pasting", uom: "pieces", serviceRate: 1.25, rateUOM: "piece", status: "Active", formulaId: null, dimensionIds: [] },
@@ -399,7 +412,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dimensions: snapshotData(dimensions),
       formulaVariables: snapshotData(formulaVariables),
       styleVariables: snapshotData(styleVariables),
-      styleFormulas: snapshotData(styleFormulas)
+      styleFormulas: snapshotData(styleFormulas),
+      serviceDimensions: snapshotData(serviceDimensions),
+      materialDimensions: snapshotData(materialDimensions)
     };
 
     const FORMULA_TYPES = ["Material", "Service", "Style"];
@@ -499,7 +514,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 2;
+    const IDB_VERSION = 4;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "rawMaterials",
@@ -510,7 +525,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "dimensions",
       "formulaVariables",
       "styleVariables",
-      "styleFormulas"
+      "styleFormulas",
+      "serviceDimensions",
+      "materialDimensions"
     ];
 
     let idb = null;
@@ -566,6 +583,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (storeName === "formulaVariables") return formulaVariables;
       if (storeName === "styleVariables") return styleVariables;
       if (storeName === "styleFormulas") return styleFormulas;
+      if (storeName === "serviceDimensions") return serviceDimensions;
+      if (storeName === "materialDimensions") return materialDimensions;
       return null;
     }
 
@@ -798,6 +817,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         styles,
         styleVariables,
         styleFormulas,
+        serviceDimensions,
+        materialDimensions,
         dimensions,
         boms,
         sequences: {
@@ -832,6 +853,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(styles, cloudData.styles || []);
       replaceArrayContents(styleVariables, cloudData.styleVariables || []);
       replaceArrayContents(styleFormulas, cloudData.styleFormulas || []);
+      replaceArrayContents(serviceDimensions, cloudData.serviceDimensions || []);
+      replaceArrayContents(materialDimensions, cloudData.materialDimensions || []);
       replaceArrayContents(dimensions, cloudData.dimensions || []);
       replaceArrayContents(boms, cloudData.boms || []);
       sanitizeNumericMasters();
@@ -848,6 +871,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       syncSequencesFromData();
       ensureSeedStyleFormulas();
+      ensureSeedServiceDimensions();
+      ensureSeedMaterialDimensions();
       syncSequencesFromData();
       if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
         try {
@@ -1113,7 +1138,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           }
 
           syncSequencesFromData();
-          if (ensureSeedStyleFormulas()) {
+          const seededStyle = ensureSeedStyleFormulas();
+          const seededServiceDims = ensureSeedServiceDimensions();
+          const seededMaterialDims = ensureSeedMaterialDimensions();
+          if (seededStyle || seededServiceDims || seededMaterialDims) {
             syncSequencesFromData();
             await persistAllCollections();
             await persistSequencesNow();
@@ -1187,6 +1215,54 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function ensureSeedServiceDimensions() {
+      if (serviceDimensions.length) return false;
+      let added = false;
+      (SEED_DATA.serviceDimensions || []).forEach((seedLink) => {
+        const service = getService(seedLink.serviceId);
+        const dimension = getDimension(seedLink.dimensionId);
+        const seedFormula = (SEED_DATA.formulas || []).find((item) => item.id === seedLink.formulaId);
+        const formula = seedFormula ? getFormulaByCode(seedFormula.code) : getFormula(seedLink.formulaId);
+        if (!service || !dimension || !formula) return;
+        serviceDimensions.push({
+          id: nextMasterId(serviceDimensions),
+          serviceId: service.id,
+          dimensionId: dimension.id,
+          formulaId: formula.id,
+          createdAt: seedLink.createdAt || new Date().toISOString()
+        });
+        added = true;
+      });
+      if (added) {
+        services.forEach((item) => syncServiceDimensionIds(item.id));
+      }
+      return added;
+    }
+
+    function ensureSeedMaterialDimensions() {
+      if (materialDimensions.length) return false;
+      let added = false;
+      (SEED_DATA.materialDimensions || []).forEach((seedLink) => {
+        const material = getRawMaterial(seedLink.rawMaterialId);
+        const dimension = getDimension(seedLink.dimensionId);
+        const seedFormula = (SEED_DATA.formulas || []).find((item) => item.id === seedLink.formulaId);
+        const formula = seedFormula ? getFormulaByCode(seedFormula.code) : getFormula(seedLink.formulaId);
+        if (!material || !dimension || !formula) return;
+        materialDimensions.push({
+          id: nextMasterId(materialDimensions),
+          rawMaterialId: material.id,
+          dimensionId: dimension.id,
+          formulaId: formula.id,
+          createdAt: seedLink.createdAt || new Date().toISOString()
+        });
+        added = true;
+      });
+      if (added) {
+        rawMaterials.forEach((item) => syncMaterialDimensionIds(item.id));
+      }
+      return added;
+    }
+
     async function resetToSeedData() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
@@ -1198,6 +1274,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(formulaVariables, snapshotData(SEED_DATA.formulaVariables));
       replaceArrayContents(styleVariables, snapshotData(SEED_DATA.styleVariables));
       replaceArrayContents(styleFormulas, snapshotData(SEED_DATA.styleFormulas));
+      replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
+      replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
       sanitizeNumericMasters();
       resetBomEditor();
       bomLineSeq = 1;
@@ -2055,6 +2133,84 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return dimensions.find((item) => item.id === Number(id)) || null;
     }
 
+    function getServiceDimensionLinks(serviceId) {
+      return serviceDimensions
+        .filter((item) => item.serviceId === Number(serviceId))
+        .slice()
+        .sort((a, b) => a.id - b.id);
+    }
+
+    function getServiceDimensionLink(serviceId, dimensionId) {
+      if (serviceId == null || dimensionId == null || dimensionId === "") return null;
+      return serviceDimensions.find((item) =>
+        item.serviceId === Number(serviceId) && Number(item.dimensionId) === Number(dimensionId)
+      ) || null;
+    }
+
+    function getServiceLinkedDimensionIds(service) {
+      if (!service) return [];
+      const fromLinks = getServiceDimensionLinks(service.id)
+        .map((row) => Number(row.dimensionId))
+        .filter((id) => getDimension(id));
+      if (fromLinks.length) return normalizeDimensionIds(fromLinks);
+      return normalizeDimensionIds(service.dimensionIds);
+    }
+
+    function syncServiceDimensionIds(serviceId) {
+      const service = getService(serviceId);
+      if (!service) return;
+      service.dimensionIds = normalizeDimensionIds(
+        getServiceDimensionLinks(serviceId).map((row) => Number(row.dimensionId))
+      );
+    }
+
+    function formatServiceDimensionSummary(service) {
+      const links = getServiceDimensionLinks(service && service.id);
+      if (links.length) {
+        return links.map((row) => formatDimensionChipLabel(getDimension(row.dimensionId))).join(", ") || "—";
+      }
+      return formatLinkedDimensionSummary(service && service.dimensionIds);
+    }
+
+    function getMaterialDimensionLinks(rawMaterialId) {
+      return materialDimensions
+        .filter((item) => item.rawMaterialId === Number(rawMaterialId))
+        .slice()
+        .sort((a, b) => a.id - b.id);
+    }
+
+    function getMaterialDimensionLink(rawMaterialId, dimensionId) {
+      if (rawMaterialId == null || dimensionId == null || dimensionId === "") return null;
+      return materialDimensions.find((item) =>
+        item.rawMaterialId === Number(rawMaterialId) && Number(item.dimensionId) === Number(dimensionId)
+      ) || null;
+    }
+
+    function getMaterialLinkedDimensionIds(material) {
+      if (!material) return [];
+      const fromLinks = getMaterialDimensionLinks(material.id)
+        .map((row) => Number(row.dimensionId))
+        .filter((id) => getDimension(id));
+      if (fromLinks.length) return normalizeDimensionIds(fromLinks);
+      return normalizeDimensionIds(material.dimensionIds);
+    }
+
+    function syncMaterialDimensionIds(rawMaterialId) {
+      const material = getRawMaterial(rawMaterialId);
+      if (!material) return;
+      material.dimensionIds = normalizeDimensionIds(
+        getMaterialDimensionLinks(rawMaterialId).map((row) => Number(row.dimensionId))
+      );
+    }
+
+    function formatMaterialDimensionSummary(material) {
+      const links = getMaterialDimensionLinks(material && material.id);
+      if (links.length) {
+        return links.map((row) => formatDimensionChipLabel(getDimension(row.dimensionId))).join(", ") || "—";
+      }
+      return formatLinkedDimensionSummary(material && material.dimensionIds);
+    }
+
     function normalizeDimensionIds(value) {
       const list = Array.isArray(value) ? value : (value == null || value === "" ? [] : [value]);
       const unique = [];
@@ -2162,7 +2318,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderBomDimensionSelect(linkedIds, selectedId, selectId, error) {
+    function renderBomDimensionSelect(linkedIds, selectedId, selectId, error, hint) {
       const linked = normalizeDimensionIds(linkedIds);
       if (!linked.length) return "";
       return `
@@ -2176,7 +2332,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             }).join("")}
           </select>
           ${error ? `<div class="field-error">${escapeHtml(error)}</div>` : ""}
-          <p class="stat-hint" style="margin-top:6px;">Rate uses L × W × H from the selected dimension.</p>
+          <p class="stat-hint" style="margin-top:6px;">${escapeHtml(hint || "Rate uses L × W × H from the selected dimension.")}</p>
         </div>
       `;
     }
@@ -2184,21 +2340,43 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applyMaterialFormulaBindings(draft) {
       const material = getRawMaterial(draft.rawMaterialId);
       if (!material) return;
-      if (material.qtyFormulaId) {
+      const linkedIds = getMaterialLinkedDimensionIds(material);
+      draft.dimensionId = pickBomDimensionId(linkedIds, draft.dimensionId, getSelectedFinishedGood());
+      applyMaterialDimensionFormula(draft);
+      if (!draft.formulaId && material.qtyFormulaId) {
         draft.calculationMethod = "formula";
         draft.formulaId = Number(material.qtyFormulaId);
       }
-      draft.dimensionId = pickBomDimensionId(material.dimensionIds, draft.dimensionId, getSelectedFinishedGood());
+    }
+
+    function applyMaterialDimensionFormula(draft) {
+      const material = getRawMaterial(draft.rawMaterialId);
+      if (!material || !draft.dimensionId) return;
+      const link = getMaterialDimensionLink(material.id, draft.dimensionId);
+      if (!link || !link.formulaId) return;
+      draft.calculationMethod = "formula";
+      draft.formulaId = Number(link.formulaId);
     }
 
     function applyServiceFormulaBinding(draft) {
       const service = getService(draft.serviceId);
       if (!service) return;
-      if (service.formulaId) {
+      const linkedIds = getServiceLinkedDimensionIds(service);
+      draft.dimensionId = pickBomDimensionId(linkedIds, draft.dimensionId, getSelectedFinishedGood());
+      applyServiceDimensionFormula(draft);
+      if (!draft.formulaId && service.formulaId) {
         draft.calculationMethod = "formula";
         draft.formulaId = Number(service.formulaId);
       }
-      draft.dimensionId = pickBomDimensionId(service.dimensionIds, draft.dimensionId, getSelectedFinishedGood());
+    }
+
+    function applyServiceDimensionFormula(draft) {
+      const service = getService(draft.serviceId);
+      if (!service || !draft.dimensionId) return;
+      const link = getServiceDimensionLink(service.id, draft.dimensionId);
+      if (!link || !link.formulaId) return;
+      draft.calculationMethod = "formula";
+      draft.formulaId = Number(link.formulaId);
     }
 
     function nextFormulaId() {
@@ -2476,17 +2654,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { valid: true, error: null, result: evaluated.result };
     }
 
-    function buildFormulaVariables(finishedGood, material, wastagePercent) {
+    function buildFormulaVariables(finishedGood, material, wastagePercent, dimensionId) {
       const defaults = getFormulaVariableDefaults();
+      const dim = getDimension(dimensionId);
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
       const sheetLength = resolveVariableValue("SHEET_LENGTH", finishedGood, defaults.SHEET_LENGTH ?? DEFAULT_TEST_VALUES.SHEET_LENGTH);
       const sheetWidth = resolveVariableValue("SHEET_WIDTH", finishedGood, defaults.SHEET_WIDTH ?? DEFAULT_TEST_VALUES.SHEET_WIDTH);
       const sheetArea = resolveVariableValue("SHEET_AREA", finishedGood, Number(sheetLength) * Number(sheetWidth));
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       return {
-        L: roundTo(finishedGood.dimensions.L, 2),
-        W: roundTo(finishedGood.dimensions.W, 2),
-        H: roundTo(finishedGood.dimensions.H, 2),
+        L: roundTo(dim ? dim.L : finishedGood.dimensions.L, 2),
+        W: roundTo(dim ? dim.W : finishedGood.dimensions.W, 2),
+        H: roundTo(dim ? dim.H : finishedGood.dimensions.H, 2),
         PLY: Number(finishedGood.ply),
         GSM: material && material.gsm != null ? roundTo(material.gsm, 1) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
         GLUE_FLAP: glueFlap,
@@ -2569,7 +2748,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           line.costPerPiece = 0;
           return line;
         }
-        const variables = buildFormulaVariables(finishedGood, material, wastage);
+        const variables = buildFormulaVariables(finishedGood, material, wastage, line.dimensionId);
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
         if (!calculated.success) {
           line.error = calculated.error;
@@ -2581,7 +2760,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         netQty = calculated.result;
       }
 
-      const variables = buildFormulaVariables(finishedGood, material, wastage);
+      const variables = buildFormulaVariables(finishedGood, material, wastage, line.dimensionId);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
       if (grossFormula && grossFormula.isActive) {
@@ -2604,7 +2783,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       line.netQty = roundTo(netQty, 4);
       line.grossQty = roundTo(grossQty, 4);
       delete line.rateFormulaId;
-      const rateResult = applyDimensionBasedRate(masterRate, line.dimensionId, material.dimensionIds);
+      const rateResult = applyDimensionBasedRate(masterRate, line.dimensionId, getMaterialLinkedDimensionIds(material));
       if (rateResult.error) {
         line.error = rateResult.error;
         line.costPerPiece = 0;
@@ -2691,7 +2870,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       line.rate = roundTo(rate, 2);
       line.rateSource = "master";
-      const rateResult = applyDimensionBasedRate(rate, line.dimensionId, service.dimensionIds);
+      const rateResult = applyDimensionBasedRate(rate, line.dimensionId, getServiceLinkedDimensionIds(service));
       if (rateResult.error) {
         line.error = rateResult.error;
         line.quantity = 0;
@@ -2772,15 +2951,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function createMaterialLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
       const material = getRawMaterial(config.rawMaterialId);
+      const linkedIds = getMaterialLinkedDimensionIds(material);
+      const dimensionId = config.dimensionId !== undefined
+        ? (config.dimensionId == null ? null : Number(config.dimensionId))
+        : pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
+      const link = getMaterialDimensionLink(material && material.id, dimensionId);
+      const boundFormula = formula
+        || getFormula(link && link.formulaId)
+        || getFormula(material && material.qtyFormulaId);
       return calculateMaterialCost({
         id: nextBomLineId(),
         rawMaterialId: config.rawMaterialId,
         layer: config.layer,
         calculationMethod: config.calculationMethod,
-        formulaId: formula ? formula.id : (material ? normalizeFormulaBinding(material.qtyFormulaId) : null),
-        dimensionId: config.dimensionId !== undefined
-          ? (config.dimensionId == null ? null : Number(config.dimensionId))
-          : pickBomDimensionId(material && material.dimensionIds, null, getSelectedFinishedGood()),
+        formulaId: boundFormula ? boundFormula.id : null,
+        dimensionId,
         manualQty: config.manualQty,
         wastagePercent: config.wastagePercent ?? DEFAULT_WASTAGE_PERCENT,
         netQty: 0,
@@ -2798,14 +2983,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function createServiceLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
       const service = getService(config.serviceId);
+      const linkedIds = getServiceLinkedDimensionIds(service);
+      const dimensionId = config.dimensionId !== undefined
+        ? (config.dimensionId == null ? null : Number(config.dimensionId))
+        : pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
+      const link = getServiceDimensionLink(service && service.id, dimensionId);
+      const boundFormula = formula
+        || getFormula(link && link.formulaId)
+        || getFormula(service && service.formulaId);
       return calculateServiceCost({
         id: nextBomLineId(),
         serviceId: config.serviceId,
         calculationMethod: config.calculationMethod,
-        formulaId: formula ? formula.id : normalizeFormulaBinding(service && service.formulaId),
-        dimensionId: config.dimensionId !== undefined
-          ? (config.dimensionId == null ? null : Number(config.dimensionId))
-          : pickBomDimensionId(service && service.dimensionIds, null, getSelectedFinishedGood()),
+        formulaId: boundFormula ? boundFormula.id : null,
+        dimensionId,
         manualQty: config.manualQty,
         quantity: 0,
         rate: 0,
@@ -3191,7 +3382,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             item.purchasingRate,
             item.status,
             formatBoundFormulaCode(item.qtyFormulaId),
-            formatLinkedDimensionSummary(item.dimensionIds)
+            formatMaterialDimensionSummary(item)
           ],
           q
         )
@@ -3202,7 +3393,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const q = state.searches.services;
       return services.filter((item) =>
         matchesQuery(
-          [item.code, item.name, item.uom, item.rateUOM, item.serviceRate, item.status, formatBoundFormulaCode(item.formulaId), formatLinkedDimensionSummary(item.dimensionIds)],
+          [item.code, item.name, item.uom, item.rateUOM, item.serviceRate, item.status, formatBoundFormulaCode(item.formulaId), formatServiceDimensionSummary(item)],
           q
         )
       );
@@ -3415,7 +3606,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td>${formatCurrency(item.purchasingRate)}</td>
               <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
               <td class="mono">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</td>
-              <td>${escapeHtml(formatLinkedDimensionSummary(item.dimensionIds))}</td>
+              <td>${escapeHtml(formatMaterialDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-rm", item.id, "data-delete-rm", item.id)}
             </tr>
@@ -3470,7 +3661,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td>${formatCurrency(item.serviceRate)}</td>
               <td>Rs./${escapeHtml(formatRateUnit(item.rateUOM) || item.rateUOM)}</td>
               <td class="mono">${escapeHtml(formatBoundFormulaCode(item.formulaId))}</td>
-              <td>${escapeHtml(formatLinkedDimensionSummary(item.dimensionIds))}</td>
+              <td>${escapeHtml(formatServiceDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
@@ -3688,7 +3879,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = getFormula(formulaId);
       const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
         || services.some((item) => bindingUsesFormula(item.formulaId, formula))
-        || styleFormulas.some((item) => bindingUsesFormula(item.formulaId, formula));
+        || styleFormulas.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || serviceDimensions.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || materialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula));
       const usedInEditor = state.bomMaterials.some((line) => lineUsesFormula(line, formula)) ||
         state.bomServices.some((line) => lineUsesFormula(line, formula));
       const usedInSaved = boms.some((bom) =>
@@ -4956,16 +5149,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderRawMaterialFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
+      const editing = state.modal.mode === "edit";
+      const tab = state.modal.materialTab || "info";
       const showGsm = draft.category === "Paper" || draft.category === "Board";
-      return `
-        <div class="modal-header">
-          <div>
-            <div class="section-kicker">Material master</div>
-            <strong>${state.modal.mode === "edit" ? "Edit Raw Material" : "Add New Raw Material"}</strong>
-          </div>
-          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
-        </div>
-        <div class="modal-body">
+      const infoForm = `
           <div class="form-grid">
             <div>
               <label class="form-label" for="rm-code">Code</label>
@@ -5003,11 +5190,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             <div>
-              <label class="form-label" for="rm-qty-formula">Quantity Formula</label>
+              <label class="form-label" for="rm-qty-formula">Default Quantity Formula</label>
               <select id="rm-qty-formula" class="full-select">
                 ${renderBoundFormulaOptions("Material", draft.qtyFormulaId)}
               </select>
-              <p class="stat-hint" style="margin-top:6px;">Optional. Used to auto-fill quantity in the BOM editor.</p>
+              <p class="stat-hint" style="margin-top:6px;">Optional fallback when a dimension has no linked qty formula.</p>
             </div>
             ${showGsm ? `
               <div>
@@ -5024,11 +5211,67 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
           </div>
-          ${renderLinkedDimensionPicker(draft.dimensionIds, "rm-dimension-select")}
+      `;
+      const linked = editing && draft.id ? getMaterialDimensionLinks(draft.id) : [];
+      const dimRows = linked.length
+        ? linked.map((row) => {
+            const dim = getDimension(row.dimensionId);
+            const formula = getFormula(row.formulaId);
+            return `
+              <tr>
+                <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
+                <td>
+                  <div>${escapeHtml(formula ? formula.name : "Missing formula")}</div>
+                  <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}</div>
+                </td>
+                ${masterRowActions("data-edit-material-dim", row.id, "data-delete-material-dim", row.id)}
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(3, "No dimensions linked to this material yet.");
+      const dimsForm = `
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Material dimensions</div>
+            <p class="stat-hint" style="margin:4px 0 0;">Link preset dimensions and a Material qty formula. BOM auto-assigns the formula when this dimension is selected.</p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-material-dimension">
+            <i data-lucide="plus"></i> Add Dimension to Material
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:560px;">
+            <thead>
+              <tr>
+                <th>Dimension Name</th>
+                <th>Formula (Qty Calculate)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${dimRows}</tbody>
+          </table>
+        </div>
+      `;
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Material master</div>
+            <strong>${editing ? "Edit Raw Material" : "Add New Raw Material"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          ${editing ? `
+            <div class="section-tabs">
+              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-material-tab="info">Material Info</button>
+              <button type="button" class="section-tab ${tab === "dimensions" ? "active" : ""}" data-material-tab="dimensions">Dimensions</button>
+            </div>
+            ${tab === "dimensions" ? dimsForm : infoForm}
+          ` : infoForm}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-raw-material">${state.modal.mode === "edit" ? "Update Material" : "Add Material"}</button>
+          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-raw-material">${editing ? "Update Material Info" : "Add Material"}</button>` : ""}
         </div>
       `;
     }
@@ -5056,8 +5299,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedId: item ? item.id : null,
         mode: item ? "edit" : "add",
         lineId: null,
+        materialTab: "info",
         draft: item ? rawMaterialToDraft(item) : defaultRawMaterialDraft(),
-        errors: {}
+        errors: {},
+        sub: null
       };
       renderModal();
     }
@@ -5083,7 +5328,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rateUOM: draft.rateUOM,
         gsm: parsedGsm && parsedGsm.ok ? parsedGsm.value : null,
         qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
-        dimensionIds: normalizeDimensionIds(draft.dimensionIds),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -5092,11 +5336,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           rawMaterials[index] = { ...rawMaterials[index], ...payload };
           delete rawMaterials[index].rateFormulaId;
         }
+        syncMaterialDimensionIds(draft.id);
         showNotification("Material updated successfully");
-      } else {
-        rawMaterials.push({ id: nextMasterId(rawMaterials), ...payload });
-        showNotification("Material added successfully");
+        state.modal.errors = {};
+        renderModal();
+        renderRawMaterials();
+        refreshIcons();
+        afterDataChange("rawMaterials");
+        return;
       }
+      rawMaterials.push({ id: nextMasterId(rawMaterials), ...payload, dimensionIds: [] });
+      showNotification("Material added successfully");
       closeModal();
       renderRawMaterials();
       refreshIcons();
@@ -5114,12 +5364,169 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "rm-rate-uom") draft.rateUOM = target.value;
       else if (target.id === "rm-gsm") draft.gsm = target.value;
       else if (target.id === "rm-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
-      else if (target.id === "rm-dimension-select") {
-        draft.dimensionIds = addLinkedDimensionId(draft.dimensionIds, target.value);
-      }
       else if (target.id === "rm-status") draft.status = target.value;
       else return false;
       return true;
+    }
+
+    function renderMaterialDimensionLinkModal() {
+      const sub = state.modal.sub;
+      const draft = sub.draft;
+      const errors = sub.errors || {};
+      const rawMaterialId = state.modal.draft && state.modal.draft.id;
+      const used = new Set(
+        getMaterialDimensionLinks(rawMaterialId)
+          .filter((row) => row.id !== draft.id)
+          .map((row) => Number(row.dimensionId))
+      );
+      const available = dimensions.filter((item) => item.status !== "Inactive" && (!used.has(item.id) || Number(draft.dimensionId) === item.id));
+      const formula = getFormula(draft.formulaId);
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Material dimension</div>
+            <strong>${sub.mode === "edit" ? "Edit Dimension Link" : "Add Dimension to Material"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-back-material-edit">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="rm-dim-select">Dimension</label>
+              <select id="rm-dim-select" class="full-select ${errors.dimensionId ? "input-invalid" : ""}" ${available.length ? "" : "disabled"}>
+                <option value="">${available.length ? "Select a dimension..." : "No unused dimensions"}</option>
+                ${available.map((item) => `
+                  <option value="${item.id}" ${Number(draft.dimensionId) === item.id ? "selected" : ""}>${escapeHtml(formatDimensionChipLabel(item))}</option>
+                `).join("")}
+              </select>
+              ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="rm-dim-formula">Formula (Qty Calculate)</label>
+              <select id="rm-dim-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
+                <option value="">Select a Material formula...</option>
+                ${getMaterialFormulas().map((item) => `
+                  <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
+                    ${escapeHtml(item.name)} (${escapeHtml(item.code)})
+                  </option>
+                `).join("")}
+              </select>
+              ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
+              ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" id="btn-back-material-edit">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-material-dimension">${sub.mode === "edit" ? "Update Link" : "Add Dimension"}</button>
+        </div>
+      `;
+    }
+
+    function openMaterialDimensionLinkModal(linkId) {
+      if (state.modal.type !== "raw-material-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
+      const existing = linkId ? materialDimensions.find((row) => row.id === Number(linkId)) : null;
+      state.modal.sub = {
+        type: "material-dimension",
+        mode: existing ? "edit" : "add",
+        draft: existing
+          ? { id: existing.id, dimensionId: existing.dimensionId, formulaId: existing.formulaId }
+          : { dimensionId: "", formulaId: "" },
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function backToMaterialEdit() {
+      state.modal.sub = null;
+      state.modal.materialTab = "dimensions";
+      renderModal();
+      refreshIcons();
+    }
+
+    function saveMaterialDimensionLinkFromModal() {
+      const sub = state.modal.sub;
+      if (!sub || !sub.draft || !state.modal.draft || !state.modal.draft.id) return;
+      const draft = sub.draft;
+      const errors = {};
+      const rawMaterialId = Number(state.modal.draft.id);
+      const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
+      const formulaId = draft.formulaId ? Number(draft.formulaId) : null;
+      if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
+      const formula = getFormula(formulaId);
+      if (!formulaId || !formula || formula.type !== "Material" || !formula.isActive) {
+        errors.formulaId = "Select an active Material formula.";
+      }
+      if (dimensionId && materialDimensions.some((row) =>
+        row.rawMaterialId === rawMaterialId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
+      )) {
+        errors.dimensionId = "This dimension is already linked to the material.";
+      }
+      sub.errors = errors;
+      if (Object.keys(errors).length) {
+        renderModal();
+        return;
+      }
+      if (sub.mode === "edit" && draft.id) {
+        const index = materialDimensions.findIndex((row) => row.id === Number(draft.id));
+        if (index >= 0) {
+          materialDimensions[index] = {
+            ...materialDimensions[index],
+            dimensionId,
+            formulaId
+          };
+        }
+        showNotification("Dimension link updated");
+      } else {
+        materialDimensions.push({
+          id: nextMasterId(materialDimensions),
+          rawMaterialId,
+          dimensionId,
+          formulaId,
+          createdAt: new Date().toISOString()
+        });
+        showNotification("Dimension linked to material");
+      }
+      syncMaterialDimensionIds(rawMaterialId);
+      state.modal.sub = null;
+      state.modal.materialTab = "dimensions";
+      renderModal();
+      renderRawMaterials();
+      refreshIcons();
+      afterDataChange("materialDimensions", "rawMaterials");
+      refreshOpenBomCalculations();
+    }
+
+    function removeMaterialDimensionLink(linkId) {
+      const index = materialDimensions.findIndex((row) => row.id === Number(linkId));
+      if (index < 0) return;
+      const rawMaterialId = materialDimensions[index].rawMaterialId;
+      materialDimensions.splice(index, 1);
+      syncMaterialDimensionIds(rawMaterialId);
+      showNotification("Dimension removed from material");
+      if (state.modal.type === "raw-material-master") {
+        state.modal.sub = null;
+        state.modal.materialTab = "dimensions";
+        renderModal();
+      }
+      renderRawMaterials();
+      refreshIcons();
+      afterDataChange("materialDimensions", "rawMaterials");
+      refreshOpenBomCalculations();
+    }
+
+    function updateMaterialDimensionLinkDraftFromEvent(target) {
+      if (!state.modal.sub || state.modal.sub.type !== "material-dimension" || !state.modal.sub.draft) return false;
+      const draft = state.modal.sub.draft;
+      if (target.id === "rm-dim-select") {
+        draft.dimensionId = target.value ? Number(target.value) : "";
+        return "rerender";
+      }
+      if (target.id === "rm-dim-formula") {
+        draft.formulaId = target.value ? Number(target.value) : "";
+        return "rerender";
+      }
+      return false;
     }
 
     function defaultServiceMasterDraft() {
@@ -5152,15 +5559,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderServiceMasterFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
-      return `
-        <div class="modal-header">
-          <div>
-            <div class="section-kicker">Service master</div>
-            <strong>${state.modal.mode === "edit" ? "Edit Service" : "Add New Service"}</strong>
-          </div>
-          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
-        </div>
-        <div class="modal-body">
+      const editing = state.modal.mode === "edit";
+      const tab = state.modal.serviceTab || "info";
+      const infoForm = `
           <div class="form-grid">
             <div>
               <label class="form-label" for="srv-code">Code</label>
@@ -5192,11 +5593,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             <div>
-              <label class="form-label" for="srv-formula">Formula</label>
+              <label class="form-label" for="srv-formula">Default Formula</label>
               <select id="srv-formula" class="full-select">
                 ${renderBoundFormulaOptions("Service", draft.formulaId)}
               </select>
-              <p class="stat-hint" style="margin-top:6px;">Optional. Used to auto-fill the service formula in the BOM editor.</p>
+              <p class="stat-hint" style="margin-top:6px;">Optional fallback when a dimension has no linked qty formula.</p>
             </div>
             <div>
               <label class="form-label" for="srv-status">Status</label>
@@ -5206,11 +5607,67 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
           </div>
-          ${renderLinkedDimensionPicker(draft.dimensionIds, "srv-dimension-select")}
+      `;
+      const linked = editing && draft.id ? getServiceDimensionLinks(draft.id) : [];
+      const dimRows = linked.length
+        ? linked.map((row) => {
+            const dim = getDimension(row.dimensionId);
+            const formula = getFormula(row.formulaId);
+            return `
+              <tr>
+                <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
+                <td>
+                  <div>${escapeHtml(formula ? formula.name : "Missing formula")}</div>
+                  <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}</div>
+                </td>
+                ${masterRowActions("data-edit-service-dim", row.id, "data-delete-service-dim", row.id)}
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(3, "No dimensions linked to this service yet.");
+      const dimsForm = `
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Service dimensions</div>
+            <p class="stat-hint" style="margin:4px 0 0;">Link preset dimensions and a Service qty formula. BOM auto-assigns the formula when this dimension is selected.</p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-service-dimension">
+            <i data-lucide="plus"></i> Add Dimension to Service
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:560px;">
+            <thead>
+              <tr>
+                <th>Dimension Name</th>
+                <th>Formula (Qty Calculate)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${dimRows}</tbody>
+          </table>
+        </div>
+      `;
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Service master</div>
+            <strong>${editing ? "Edit Service" : "Add New Service"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          ${editing ? `
+            <div class="section-tabs">
+              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-service-tab="info">Service Info</button>
+              <button type="button" class="section-tab ${tab === "dimensions" ? "active" : ""}" data-service-tab="dimensions">Dimensions</button>
+            </div>
+            ${tab === "dimensions" ? dimsForm : infoForm}
+          ` : infoForm}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-service-master">${state.modal.mode === "edit" ? "Update Service" : "Add Service"}</button>
+          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-service-master">${editing ? "Update Service Info" : "Add Service"}</button>` : ""}
         </div>
       `;
     }
@@ -5236,8 +5693,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedId: item ? item.id : null,
         mode: item ? "edit" : "add",
         lineId: null,
+        serviceTab: "info",
         draft: item ? serviceToDraft(item) : defaultServiceMasterDraft(),
-        errors: {}
+        errors: {},
+        sub: null
       };
       renderModal();
     }
@@ -5259,17 +5718,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         serviceRate: parsedRate.value,
         rateUOM: draft.rateUOM,
         formulaId: normalizeFormulaBinding(draft.formulaId),
-        dimensionIds: normalizeDimensionIds(draft.dimensionIds),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
         const index = services.findIndex((row) => row.id === draft.id);
         if (index >= 0) services[index] = { ...services[index], ...payload };
+        syncServiceDimensionIds(draft.id);
         showNotification("Service updated successfully");
-      } else {
-        services.push({ id: nextMasterId(services), ...payload });
-        showNotification("Service added successfully");
+        state.modal.errors = {};
+        renderModal();
+        renderServices();
+        refreshIcons();
+        afterDataChange("services");
+        return;
       }
+      services.push({
+        id: nextMasterId(services),
+        ...payload,
+        dimensionIds: []
+      });
+      showNotification("Service added successfully");
       closeModal();
       renderServices();
       refreshIcons();
@@ -5285,12 +5753,169 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "srv-rate") draft.serviceRate = target.value;
       else if (target.id === "srv-rate-uom") draft.rateUOM = target.value;
       else if (target.id === "srv-formula") draft.formulaId = normalizeFormulaBinding(target.value);
-      else if (target.id === "srv-dimension-select") {
-        draft.dimensionIds = addLinkedDimensionId(draft.dimensionIds, target.value);
-      }
       else if (target.id === "srv-status") draft.status = target.value;
       else return false;
       return true;
+    }
+
+    function renderServiceDimensionLinkModal() {
+      const sub = state.modal.sub;
+      const draft = sub.draft;
+      const errors = sub.errors || {};
+      const serviceId = state.modal.draft && state.modal.draft.id;
+      const used = new Set(
+        getServiceDimensionLinks(serviceId)
+          .filter((row) => row.id !== draft.id)
+          .map((row) => Number(row.dimensionId))
+      );
+      const available = dimensions.filter((item) => item.status !== "Inactive" && (!used.has(item.id) || Number(draft.dimensionId) === item.id));
+      const formula = getFormula(draft.formulaId);
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Service dimension</div>
+            <strong>${sub.mode === "edit" ? "Edit Dimension Link" : "Add Dimension to Service"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-back-service-edit">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="srv-dim-select">Dimension</label>
+              <select id="srv-dim-select" class="full-select ${errors.dimensionId ? "input-invalid" : ""}" ${available.length ? "" : "disabled"}>
+                <option value="">${available.length ? "Select a dimension..." : "No unused dimensions"}</option>
+                ${available.map((item) => `
+                  <option value="${item.id}" ${Number(draft.dimensionId) === item.id ? "selected" : ""}>${escapeHtml(formatDimensionChipLabel(item))}</option>
+                `).join("")}
+              </select>
+              ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="srv-dim-formula">Formula (Qty Calculate)</label>
+              <select id="srv-dim-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
+                <option value="">Select a Service formula...</option>
+                ${getServiceFormulas().map((item) => `
+                  <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
+                    ${escapeHtml(item.name)} (${escapeHtml(item.code)})
+                  </option>
+                `).join("")}
+              </select>
+              ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
+              ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" id="btn-back-service-edit">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-service-dimension">${sub.mode === "edit" ? "Update Link" : "Add Dimension"}</button>
+        </div>
+      `;
+    }
+
+    function openServiceDimensionLinkModal(linkId) {
+      if (state.modal.type !== "service-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
+      const existing = linkId ? serviceDimensions.find((row) => row.id === Number(linkId)) : null;
+      state.modal.sub = {
+        type: "service-dimension",
+        mode: existing ? "edit" : "add",
+        draft: existing
+          ? { id: existing.id, dimensionId: existing.dimensionId, formulaId: existing.formulaId }
+          : { dimensionId: "", formulaId: "" },
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function backToServiceEdit() {
+      state.modal.sub = null;
+      state.modal.serviceTab = "dimensions";
+      renderModal();
+      refreshIcons();
+    }
+
+    function saveServiceDimensionLinkFromModal() {
+      const sub = state.modal.sub;
+      if (!sub || !sub.draft || !state.modal.draft || !state.modal.draft.id) return;
+      const draft = sub.draft;
+      const errors = {};
+      const serviceId = Number(state.modal.draft.id);
+      const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
+      const formulaId = draft.formulaId ? Number(draft.formulaId) : null;
+      if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
+      const formula = getFormula(formulaId);
+      if (!formulaId || !formula || formula.type !== "Service" || !formula.isActive) {
+        errors.formulaId = "Select an active Service formula.";
+      }
+      if (dimensionId && serviceDimensions.some((row) =>
+        row.serviceId === serviceId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
+      )) {
+        errors.dimensionId = "This dimension is already linked to the service.";
+      }
+      sub.errors = errors;
+      if (Object.keys(errors).length) {
+        renderModal();
+        return;
+      }
+      if (sub.mode === "edit" && draft.id) {
+        const index = serviceDimensions.findIndex((row) => row.id === Number(draft.id));
+        if (index >= 0) {
+          serviceDimensions[index] = {
+            ...serviceDimensions[index],
+            dimensionId,
+            formulaId
+          };
+        }
+        showNotification("Dimension link updated");
+      } else {
+        serviceDimensions.push({
+          id: nextMasterId(serviceDimensions),
+          serviceId,
+          dimensionId,
+          formulaId,
+          createdAt: new Date().toISOString()
+        });
+        showNotification("Dimension linked to service");
+      }
+      syncServiceDimensionIds(serviceId);
+      state.modal.sub = null;
+      state.modal.serviceTab = "dimensions";
+      renderModal();
+      renderServices();
+      refreshIcons();
+      afterDataChange("serviceDimensions", "services");
+      refreshOpenBomCalculations();
+    }
+
+    function removeServiceDimensionLink(linkId) {
+      const index = serviceDimensions.findIndex((row) => row.id === Number(linkId));
+      if (index < 0) return;
+      const serviceId = serviceDimensions[index].serviceId;
+      serviceDimensions.splice(index, 1);
+      syncServiceDimensionIds(serviceId);
+      showNotification("Dimension removed from service");
+      if (state.modal.type === "service-master") {
+        state.modal.sub = null;
+        state.modal.serviceTab = "dimensions";
+        renderModal();
+      }
+      renderServices();
+      refreshIcons();
+      afterDataChange("serviceDimensions", "services");
+      refreshOpenBomCalculations();
+    }
+
+    function updateServiceDimensionLinkDraftFromEvent(target) {
+      if (!state.modal.sub || state.modal.sub.type !== "service-dimension" || !state.modal.sub.draft) return false;
+      const draft = state.modal.sub.draft;
+      if (target.id === "srv-dim-select") {
+        draft.dimensionId = target.value ? Number(target.value) : "";
+        return "rerender";
+      }
+      if (target.id === "srv-dim-formula") {
+        draft.formulaId = target.value ? Number(target.value) : "";
+        return "rerender";
+      }
+      return false;
     }
 
     function defaultStyleDraft() {
@@ -6268,17 +6893,34 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else if (entity === "raw-material") {
         const index = rawMaterials.findIndex((item) => item.id === id);
         if (index >= 0) rawMaterials.splice(index, 1);
+        for (let i = materialDimensions.length - 1; i >= 0; i -= 1) {
+          if (materialDimensions[i].rawMaterialId === id) materialDimensions.splice(i, 1);
+        }
         closeModal();
         renderRawMaterials();
         showNotification("Material deleted successfully");
-        afterDataChange("rawMaterials");
+        afterDataChange("rawMaterials", "materialDimensions");
       } else if (entity === "service") {
         const index = services.findIndex((item) => item.id === id);
         if (index >= 0) services.splice(index, 1);
+        for (let i = serviceDimensions.length - 1; i >= 0; i -= 1) {
+          if (serviceDimensions[i].serviceId === id) serviceDimensions.splice(i, 1);
+        }
         closeModal();
         renderServices();
         showNotification("Service deleted successfully");
-        afterDataChange("services");
+        afterDataChange("services", "serviceDimensions");
+      } else if (entity === "service-dimension") {
+        const parent = state.modal.parentService;
+        removeServiceDimensionLink(id);
+        if (parent) {
+          state.modal = parent;
+          state.modal.sub = null;
+          state.modal.serviceTab = "dimensions";
+          renderModal();
+        }
+        refreshIcons();
+        return;
       } else if (entity === "style") {
         const style = styles.find((item) => item.id === id);
         const used = style ? productsUsingStyle(style.name) : [];
@@ -6301,10 +6943,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else if (entity === "dimension") {
         const index = dimensions.findIndex((item) => item.id === id);
         if (index >= 0) dimensions.splice(index, 1);
+        for (let i = serviceDimensions.length - 1; i >= 0; i -= 1) {
+          if (Number(serviceDimensions[i].dimensionId) === id) serviceDimensions.splice(i, 1);
+        }
+        for (let i = materialDimensions.length - 1; i >= 0; i -= 1) {
+          if (Number(materialDimensions[i].dimensionId) === id) materialDimensions.splice(i, 1);
+        }
+        services.forEach((item) => syncServiceDimensionIds(item.id));
+        rawMaterials.forEach((item) => syncMaterialDimensionIds(item.id));
         closeModal();
         renderDimensions();
         showNotification("Dimension deleted successfully");
-        afterDataChange("dimensions");
+        afterDataChange("dimensions", "serviceDimensions", "materialDimensions", "services", "rawMaterials");
       } else if (entity === "formula-variable") {
         const variable = formulaVariables.find((item) => item.id === id);
         const used = variable ? formulasUsingVariable(variable.code) : [];
@@ -6353,7 +7003,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           formulaId: line.formulaId || (sheetWeight ? sheetWeight.id : null),
           dimensionId: line.dimensionId != null
             ? Number(line.dimensionId)
-            : pickBomDimensionId(material && material.dimensionIds, null, getSelectedFinishedGood()),
+            : pickBomDimensionId(getMaterialLinkedDimensionIds(material), null, getSelectedFinishedGood()),
           manualQty: line.manualQty,
           wastagePercent: line.wastagePercent
         };
@@ -6393,7 +7043,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (material && !Number.isFinite(Number(material.purchasingRate))) {
         errors.rate = "Purchasing rate from the Raw Material Master is not valid.";
       }
-      const linkedDims = material ? normalizeDimensionIds(material.dimensionIds) : [];
+      const linkedDims = material ? getMaterialLinkedDimensionIds(material) : [];
       if (linkedDims.length && !draft.dimensionId) {
         errors.dimensionId = "Select a dimension for rate calculation.";
       } else if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
@@ -6502,7 +7152,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
               </div>
             `}
-            ${renderBomDimensionSelect(material ? material.dimensionIds : [], draft.dimensionId, "modal-line-dimension", errors.dimensionId)}
+            ${renderBomDimensionSelect(
+              material ? getMaterialLinkedDimensionIds(material) : [],
+              draft.dimensionId,
+              "modal-line-dimension",
+              errors.dimensionId,
+              "Qty formula is assigned from the material dimension link. You can override the formula."
+            )}
             <div>
               <label class="form-label" for="modal-wastage">Wastage %</label>
               <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(draft.wastagePercent === "" || draft.wastagePercent == null ? "" : formatDecimal(draft.wastagePercent, 2, false))}" />
@@ -6517,7 +7173,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div><span>UOM</span><strong>${escapeHtml(material.uom)}</strong></div>
               <div><span>Purchasing Rate</span><strong>${formatRatePkr(material.purchasingRate, material.rateUOM)}</strong></div>
               <div><span>Qty Formula</span><strong class="mono">${escapeHtml(formatBoundFormulaCode(material.qtyFormulaId))}</strong></div>
-              <div><span>Linked Dimensions</span><strong>${escapeHtml(formatLinkedDimensionSummary(material.dimensionIds))}</strong></div>
+              <div><span>Linked Dimensions</span><strong>${escapeHtml(formatMaterialDimensionSummary(material))}</strong></div>
               <div><span>Qty UOM</span><strong>${escapeHtml(material.uom)}</strong></div>
             </div>
             <div class="rate-source">${preview && preview.rateSource === "dimension" && preview.dimensionId
@@ -6617,13 +7273,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
 
-      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit"));
+      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || (state.modal.type === "style-master" && state.modal.mode === "add"));
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
+      } else if (state.modal.type === "raw-material-master" && state.modal.sub && state.modal.sub.type === "material-dimension") {
+        dialog.innerHTML = renderMaterialDimensionLinkModal();
       } else if (state.modal.type === "raw-material-master") {
         dialog.innerHTML = renderRawMaterialFormModal();
+      } else if (state.modal.type === "service-master" && state.modal.sub && state.modal.sub.type === "service-dimension") {
+        dialog.innerHTML = renderServiceDimensionLinkModal();
       } else if (state.modal.type === "service-master") {
         dialog.innerHTML = renderServiceMasterFormModal();
       } else if (state.modal.type === "style-master" && state.modal.sub && state.modal.sub.type === "style-variable") {
@@ -6798,7 +7458,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "modal-layer-select") draft.layer = target.value;
       else if (target.id === "modal-method-select") draft.calculationMethod = target.value;
       else if (target.id === "modal-formula-select") draft.formulaId = target.value ? Number(target.value) : null;
-      else if (target.id === "modal-line-dimension") draft.dimensionId = target.value ? Number(target.value) : null;
+      else if (target.id === "modal-line-dimension") {
+        draft.dimensionId = target.value ? Number(target.value) : null;
+        applyMaterialDimensionFormula(draft);
+      }
       else if (target.id === "modal-manual-qty") {
         draft.manualQty = target.value === "" ? null : target.value;
         state.modal.errors = {};
@@ -6823,7 +7486,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           formulaId: line.formulaId || (printingQty ? printingQty.id : null),
           dimensionId: line.dimensionId != null
             ? Number(line.dimensionId)
-            : pickBomDimensionId(service && service.dimensionIds, null, getSelectedFinishedGood()),
+            : pickBomDimensionId(getServiceLinkedDimensionIds(service), null, getSelectedFinishedGood()),
           manualQty: line.manualQty
         };
       }
@@ -6843,7 +7506,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const service = getService(draft.serviceId);
       if (draft.serviceId && !service) errors.serviceId = "Service must exist in the Service Master.";
       if (service && !Number.isFinite(Number(service.serviceRate))) errors.rate = "Service rate from the Service Master is not valid.";
-      const linkedDims = service ? normalizeDimensionIds(service.dimensionIds) : [];
+      const linkedDims = service ? getServiceLinkedDimensionIds(service) : [];
       if (linkedDims.length && !draft.dimensionId) {
         errors.dimensionId = "Select a dimension for rate calculation.";
       } else if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
@@ -6947,7 +7610,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
               </div>
             `}
-            ${renderBomDimensionSelect(service ? service.dimensionIds : [], draft.dimensionId, "modal-service-dimension", errors.dimensionId)}
+            ${renderBomDimensionSelect(
+              service ? getServiceLinkedDimensionIds(service) : [],
+              draft.dimensionId,
+              "modal-service-dimension",
+              errors.dimensionId,
+              "Qty formula is assigned from the service dimension link. You can override the formula."
+            )}
           </div>
           ${service ? `
             <div class="detail-list">
@@ -6956,7 +7625,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div><span>UOM</span><strong>${escapeHtml(service.uom)}</strong></div>
               <div><span>Service Rate</span><strong>${formatRatePkr(service.serviceRate, service.rateUOM)}</strong></div>
               <div><span>Bound Formula</span><strong class="mono">${escapeHtml(formatBoundFormulaCode(service.formulaId))}</strong></div>
-              <div><span>Linked Dimensions</span><strong>${escapeHtml(formatLinkedDimensionSummary(service.dimensionIds))}</strong></div>
+              <div><span>Linked Dimensions</span><strong>${escapeHtml(formatServiceDimensionSummary(service))}</strong></div>
               <div><span>Qty UOM</span><strong>${escapeHtml(service.uom)}</strong></div>
             </div>
             <div class="rate-source">${preview && preview.rateSource === "dimension"
@@ -7114,7 +7783,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       else if (target.id === "modal-service-method") draft.calculationMethod = target.value;
       else if (target.id === "modal-service-formula") draft.formulaId = target.value ? Number(target.value) : null;
-      else if (target.id === "modal-service-dimension") draft.dimensionId = target.value ? Number(target.value) : null;
+      else if (target.id === "modal-service-dimension") {
+        draft.dimensionId = target.value ? Number(target.value) : null;
+        applyServiceDimensionFormula(draft);
+      }
       else if (target.id === "modal-service-qty") {
         draft.manualQty = target.value === "" ? null : target.value;
         state.modal.errors = {};
@@ -7579,13 +8251,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (updateRawMaterialDraftFromEvent(event.target)) {
           if (event.target.id === "rm-rate") normalizeDraftNumber(event.target, "purchasingRate", "rate", true);
           if (event.target.id === "rm-gsm") normalizeDraftNumber(event.target, "gsm", "gsm");
-          if (event.target.id === "rm-category" || event.target.id === "rm-dimension-select") renderModal();
+          if (event.target.id === "rm-category") renderModal();
           restoreFocus(event.target.id);
+          return;
+        }
+        const materialDimChange = updateMaterialDimensionLinkDraftFromEvent(event.target);
+        if (materialDimChange) {
+          if (materialDimChange === "rerender") {
+            renderModal();
+            refreshIcons();
+            restoreFocus(event.target.id);
+          }
           return;
         }
         if (updateServiceMasterDraftFromEvent(event.target)) {
           if (event.target.id === "srv-rate") normalizeDraftNumber(event.target, "serviceRate", "rate", true);
-          if (event.target.id === "srv-dimension-select") renderModal();
+          return;
+        }
+        const serviceDimChange = updateServiceDimensionLinkDraftFromEvent(event.target);
+        if (serviceDimChange) {
+          if (serviceDimChange === "rerender") {
+            renderModal();
+            refreshIcons();
+            restoreFocus(event.target.id);
+          }
           return;
         }
         if (updateStyleDraftFromEvent(event.target)) return;
@@ -7708,8 +8397,66 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           saveRawMaterialFromModal();
           return;
         }
+        if (event.target.closest("#btn-add-material-dimension")) {
+          openMaterialDimensionLinkModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-material-dimension")) {
+          saveMaterialDimensionLinkFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-back-material-edit")) {
+          backToMaterialEdit();
+          return;
+        }
+        const materialTab = event.target.closest("[data-material-tab]");
+        if (materialTab) {
+          state.modal.materialTab = materialTab.dataset.materialTab;
+          renderModal();
+          refreshIcons();
+          return;
+        }
+        const editMaterialDim = event.target.closest("[data-edit-material-dim]");
+        if (editMaterialDim) {
+          openMaterialDimensionLinkModal(editMaterialDim.dataset.editMaterialDim);
+          return;
+        }
+        const deleteMaterialDim = event.target.closest("[data-delete-material-dim]");
+        if (deleteMaterialDim) {
+          removeMaterialDimensionLink(deleteMaterialDim.dataset.deleteMaterialDim);
+          return;
+        }
         if (event.target.closest("#btn-save-service-master")) {
           saveServiceMasterFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-add-service-dimension")) {
+          openServiceDimensionLinkModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-service-dimension")) {
+          saveServiceDimensionLinkFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-back-service-edit")) {
+          backToServiceEdit();
+          return;
+        }
+        const serviceTab = event.target.closest("[data-service-tab]");
+        if (serviceTab) {
+          state.modal.serviceTab = serviceTab.dataset.serviceTab;
+          renderModal();
+          refreshIcons();
+          return;
+        }
+        const editServiceDim = event.target.closest("[data-edit-service-dim]");
+        if (editServiceDim) {
+          openServiceDimensionLinkModal(editServiceDim.dataset.editServiceDim);
+          return;
+        }
+        const deleteServiceDim = event.target.closest("[data-delete-service-dim]");
+        if (deleteServiceDim) {
+          removeServiceDimensionLink(deleteServiceDim.dataset.deleteServiceDim);
           return;
         }
         if (event.target.closest("#btn-save-style")) {
