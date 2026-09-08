@@ -188,20 +188,37 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     ];
 
     const rawMaterials = [
-      { id: 101, code: "RM-KRAFT-125", name: "Kraft Paper 125 GSM", category: "Paper", uom: "kg", purchasingRate: 165, rateUOM: "kg", gsm: 125, status: "Active", qtyFormulaId: 305, dimensionIds: [201, 202] },
-      { id: 102, code: "RM-KRAFT-150", name: "Kraft Paper 150 GSM", category: "Paper", uom: "kg", purchasingRate: 185, rateUOM: "kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
-      { id: 103, code: "RM-FLUTE-120", name: "Fluting Paper 120 GSM", category: "Paper", uom: "kg", purchasingRate: 155, rateUOM: "kg", gsm: 120, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
-      { id: 104, code: "RM-FLUTE-140", name: "Fluting Paper 140 GSM", category: "Paper", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 140, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 105, code: "RM-DUPLEX-300", name: "Duplex Board 300 GSM", category: "Board", uom: "kg", purchasingRate: 160, rateUOM: "kg", gsm: 300, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 106, code: "RM-DUPLEX-350", name: "Duplex Board 350 GSM", category: "Board", uom: "kg", purchasingRate: 175, rateUOM: "kg", gsm: 350, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 107, code: "RM-SHEET-3PLY", name: "Corrugated Sheet 3 Ply", category: "Sheet", uom: "sheet", purchasingRate: 150, rateUOM: "sheet", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 108, code: "RM-FILM-WIN", name: "Window Film", category: "Film", uom: "kg", purchasingRate: 300, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 109, code: "RM-INK-PRINT", name: "Printing Ink", category: "Consumable", uom: "kg", purchasingRate: 800, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 110, code: "RM-GLUE-ADH", name: "Glue / Adhesive", category: "Consumable", uom: "kg", purchasingRate: 600, rateUOM: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 111, code: "RM-BOARD-CORR", name: "Corrugated Board", category: "Board", uom: "sq.meter", purchasingRate: 150, rateUOM: "sq.meter", gsm: 180, status: "Active", qtyFormulaId: null, dimensionIds: [] },
-      { id: 301, code: "KRAFT-TOP", name: "Kraft Paper Top", category: "Paper", uom: "kg", purchasingRate: 150.5, rateUOM: "Rs./kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
-      { id: 302, code: "FLUTE-MID", name: "Corrugated Fluting", category: "Board", uom: "kg", purchasingRate: 120, rateUOM: "Rs./kg", gsm: 120, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
-      { id: 303, code: "KRAFT-BTM", name: "Kraft Paper Bottom", category: "Paper", uom: "kg", purchasingRate: 150.5, rateUOM: "Rs./kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] }
+      { id: 101, code: "RM-KRAFT-125", name: "Kraft Paper 125 GSM", category: "Paper", uom: "kg", gsm: 125, status: "Active", qtyFormulaId: 305, dimensionIds: [201, 202] },
+      { id: 102, code: "RM-KRAFT-150", name: "Kraft Paper 150 GSM", category: "Paper", uom: "kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 103, code: "RM-FLUTE-120", name: "Fluting Paper 120 GSM", category: "Paper", uom: "kg", gsm: 120, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 104, code: "RM-FLUTE-140", name: "Fluting Paper 140 GSM", category: "Paper", uom: "kg", gsm: 140, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 105, code: "RM-DUPLEX-300", name: "Duplex Board 300 GSM", category: "Board", uom: "kg", gsm: 300, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 106, code: "RM-DUPLEX-350", name: "Duplex Board 350 GSM", category: "Board", uom: "kg", gsm: 350, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 107, code: "RM-SHEET-3PLY", name: "Corrugated Sheet 3 Ply", category: "Sheet", uom: "sheet", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 108, code: "RM-FILM-WIN", name: "Window Film", category: "Film", uom: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 109, code: "RM-INK-PRINT", name: "Printing Ink", category: "Consumable", uom: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 110, code: "RM-GLUE-ADH", name: "Glue / Adhesive", category: "Consumable", uom: "kg", gsm: null, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 111, code: "RM-BOARD-CORR", name: "Corrugated Board", category: "Board", uom: "sq.meter", gsm: 180, status: "Active", qtyFormulaId: null, dimensionIds: [] },
+      { id: 301, code: "KRAFT-TOP", name: "Kraft Paper Top", category: "Paper", uom: "kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 302, code: "FLUTE-MID", name: "Corrugated Fluting", category: "Board", uom: "kg", gsm: 120, status: "Active", qtyFormulaId: 305, dimensionIds: [201] },
+      { id: 303, code: "KRAFT-BTM", name: "Kraft Paper Bottom", category: "Paper", uom: "kg", gsm: 150, status: "Active", qtyFormulaId: 305, dimensionIds: [201] }
+    ];
+
+    const materialRates = [
+      { id: 1, rawMaterialId: 101, rate: 165, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 2, rawMaterialId: 102, rate: 185, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 3, rawMaterialId: 103, rate: 155, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 4, rawMaterialId: 104, rate: 175, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 5, rawMaterialId: 105, rate: 160, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 6, rawMaterialId: 106, rate: 175, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 7, rawMaterialId: 107, rate: 150, rateUOM: "Rs./sheet", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 8, rawMaterialId: 108, rate: 300, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 9, rawMaterialId: 109, rate: 800, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 10, rawMaterialId: 110, rate: 600, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 11, rawMaterialId: 111, rate: 150, rateUOM: "Rs./sq.meter", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 12, rawMaterialId: 301, rate: 150.5, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 13, rawMaterialId: 302, rate: 120, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
+      { id: 14, rawMaterialId: 303, rate: 150.5, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" }
     ];
 
     const services = [
@@ -465,6 +482,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const SEED_DATA = {
       finishedGoods: snapshotData(finishedGoods),
       rawMaterials: snapshotData(rawMaterials),
+      materialRates: snapshotData(materialRates),
       services: snapshotData(services),
       serviceRates: snapshotData(serviceRates),
       formulas: snapshotData(formulas),
@@ -524,7 +542,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dimensions: { title: "Dimension", subtitle: "Dimension master" },
       style: { title: "Style", subtitle: "Style master and style variables" },
       "raw-materials": { title: "Raw Material", subtitle: "Purchasing master" },
-      "raw-material-rates": { title: "Raw Material Rates", subtitle: "Purchasing rates are managed on the Raw Material master" },
+      "raw-material-rates": { title: "Raw Material Rates", subtitle: "Manage purchasing rates for raw materials" },
       services: { title: "Services", subtitle: "Conversion process master" },
       "service-rates": { title: "Service Rates", subtitle: "Manage pricing and formulas for services" },
       "finished-goods": { title: "Finished Goods", subtitle: "Product master" },
@@ -538,6 +556,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       searches: {
         finishedGoods: "",
         rawMaterials: "",
+        materialRates: "",
         services: "",
         serviceRates: "",
         style: "",
@@ -548,6 +567,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         boms: ""
       },
       formulaFilter: "all",
+      materialRateFilter: "all",
+      materialRateSort: "name",
       serviceRateFilter: "all",
       serviceRateSort: "name",
       bomListFilter: "all",
@@ -591,10 +612,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 5;
+    const IDB_VERSION = 6;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "rawMaterials",
+      "materialRates",
       "services",
       "serviceRates",
       "formulas",
@@ -653,6 +675,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function getCollectionArray(storeName) {
       if (storeName === "finishedGoods") return finishedGoods;
       if (storeName === "rawMaterials") return rawMaterials;
+      if (storeName === "materialRates") return materialRates;
       if (storeName === "services") return services;
       if (storeName === "serviceRates") return serviceRates;
       if (storeName === "formulas") return formulas;
@@ -771,6 +794,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         currentPage: state.currentPage,
         searches: state.searches,
         formulaFilter: state.formulaFilter,
+        materialRateFilter: state.materialRateFilter,
+        materialRateSort: state.materialRateSort,
         serviceRateFilter: state.serviceRateFilter,
         serviceRateSort: state.serviceRateSort,
         bomListFilter: state.bomListFilter
@@ -892,6 +917,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return snapshotData({
         finishedGoods,
         rawMaterials,
+        materialRates,
         services,
         serviceRates,
         formulas,
@@ -929,6 +955,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applyCloudPayload(cloudData) {
       replaceArrayContents(finishedGoods, cloudData.finishedGoods || []);
       replaceArrayContents(rawMaterials, cloudData.rawMaterials || []);
+      replaceArrayContents(materialRates, cloudData.materialRates || []);
       replaceArrayContents(services, cloudData.services || []);
       replaceArrayContents(serviceRates, cloudData.serviceRates || []);
       replaceArrayContents(formulas, cloudData.formulas || []);
@@ -961,6 +988,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       ensureCalculatedSheetAreaCatalog();
       ensureSeedCostCalculatorData();
       ensureServiceRates();
+      ensureMaterialRates();
       syncSequencesFromData();
       if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
         try {
@@ -1233,8 +1261,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const seededSheetVars = ensureSeedWindowLidSheetVariables();
           const seededSheetArea = ensureCalculatedSheetAreaCatalog();
           const seededCalculator = ensureSeedCostCalculatorData();
-          const seededRates = ensureServiceRates();
-          if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededCalculator || seededRates) {
+          const seededServiceRates = ensureServiceRates();
+          const seededMaterialRates = ensureMaterialRates();
+          if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededCalculator || seededServiceRates || seededMaterialRates) {
             syncSequencesFromData();
             await persistAllCollections();
             await persistSequencesNow();
@@ -1257,6 +1286,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (prefs) {
             if (prefs.searches) state.searches = { ...state.searches, ...prefs.searches };
             if (prefs.formulaFilter) state.formulaFilter = prefs.formulaFilter;
+            if (prefs.materialRateFilter) state.materialRateFilter = prefs.materialRateFilter;
+            if (prefs.materialRateSort) state.materialRateSort = prefs.materialRateSort;
             if (prefs.serviceRateFilter) state.serviceRateFilter = prefs.serviceRateFilter;
             if (prefs.serviceRateSort) state.serviceRateSort = prefs.serviceRateSort;
             if (prefs.bomListFilter) state.bomListFilter = prefs.bomListFilter;
@@ -1447,7 +1478,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (rawMaterials.some((item) => item.code === seed.code)) return;
         const copy = snapshotData(seed);
         if (sheetWeight) copy.qtyFormulaId = sheetWeight.id;
+        delete copy.purchasingRate;
+        delete copy.rateUOM;
         rawMaterials.push(copy);
+        added = true;
+      });
+
+      (SEED_DATA.materialRates || []).filter((item) => item.rawMaterialId >= 301 && item.rawMaterialId <= 303).forEach((seedRate) => {
+        if (getMaterialRate(seedRate.rawMaterialId)) return;
+        if (!getRawMaterial(seedRate.rawMaterialId)) return;
+        const copy = snapshotData(seedRate);
+        copy.id = nextMasterId(materialRates);
+        materialRates.push(copy);
         added = true;
       });
 
@@ -1562,9 +1604,43 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function ensureMaterialRates() {
+      let added = false;
+      const now = "2026-01-01T00:00:00.000Z";
+      rawMaterials.forEach((material) => {
+        if (getMaterialRate(material.id)) {
+          delete material.purchasingRate;
+          delete material.rateUOM;
+          return;
+        }
+        const seed = (SEED_DATA.materialRates || []).find((row) => Number(row.rawMaterialId) === material.id);
+        const rate = seed ? seed.rate : Number(material.purchasingRate);
+        const rateUOM = seed ? seed.rateUOM : (material.rateUOM || "Rs./kg");
+        if (!Number.isFinite(Number(rate)) && !seed) {
+          delete material.purchasingRate;
+          delete material.rateUOM;
+          return;
+        }
+        materialRates.push({
+          id: nextMasterId(materialRates),
+          rawMaterialId: material.id,
+          rate: roundTo(Number(rate) || 0, 2),
+          rateUOM: normalizeMaterialRateUom(rateUOM) || "Rs./kg",
+          status: seed && seed.status ? seed.status : "Active",
+          createdAt: (seed && seed.createdAt) || now,
+          updatedAt: (seed && seed.updatedAt) || now
+        });
+        delete material.purchasingRate;
+        delete material.rateUOM;
+        added = true;
+      });
+      return added;
+    }
+
     async function resetToSeedData() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
+      replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
       replaceArrayContents(services, snapshotData(SEED_DATA.services));
       replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
       replaceArrayContents(formulas, snapshotData(SEED_DATA.formulas));
@@ -1585,6 +1661,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.searches = {
         finishedGoods: "",
         rawMaterials: "",
+        materialRates: "",
         services: "",
         serviceRates: "",
         style: "",
@@ -1595,6 +1672,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         boms: ""
       };
       state.formulaFilter = "all";
+      state.materialRateFilter = "all";
+      state.materialRateSort = "name";
       state.serviceRateFilter = "all";
       state.serviceRateSort = "name";
       state.bomListFilter = "all";
@@ -1743,11 +1822,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.displayName = formatFinishedGoodDisplayName(item);
       });
       rawMaterials.forEach((item) => {
-        item.purchasingRate = roundTo(item.purchasingRate, 2);
         if (item.gsm != null && item.gsm !== "") item.gsm = roundTo(item.gsm, 1);
         item.qtyFormulaId = normalizeFormulaBinding(item.qtyFormulaId);
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
         delete item.rateFormulaId;
+      });
+      materialRates.forEach((item) => {
+        item.rate = roundTo(item.rate, 2);
+        item.rateUOM = normalizeMaterialRateUom(item.rateUOM) || item.rateUOM;
+        if (!item.status) item.status = "Active";
       });
       services.forEach((item) => {
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
@@ -1830,6 +1913,36 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         job: "Rs./job"
       };
       return mapped[unit] || (unit ? "Rs./" + unit : "");
+    }
+
+    const MATERIAL_RATE_UOMS = ["Rs./kg", "Rs./sheet", "Rs./piece", "Rs./gm", "Rs./sq.meter", "Rs./sq.inch", "Rs./meter"];
+
+    function normalizeMaterialRateUom(value) {
+      const raw = String(value || "").trim();
+      if (!raw) return "";
+      const labeled = raw.replace(/^rs\.?\s*\/\s*/i, "Rs./");
+      if (MATERIAL_RATE_UOMS.includes(labeled)) return labeled;
+      const unit = formatRateUnit(raw) || normalizeUnit(raw);
+      const mapped = {
+        kg: "Rs./kg",
+        gm: "Rs./gm",
+        sheet: "Rs./sheet",
+        piece: "Rs./piece",
+        pieces: "Rs./piece",
+        sqin: "Rs./sq.inch",
+        "sq.inch": "Rs./sq.inch",
+        sqm: "Rs./sq.meter",
+        "sq.meter": "Rs./sq.meter",
+        m: "Rs./meter",
+        meter: "Rs./meter"
+      };
+      return mapped[unit] || (unit ? "Rs./" + unit : "");
+    }
+
+    function getMaterialRate(rawMaterialId) {
+      const id = Number(rawMaterialId);
+      const matches = materialRates.filter((row) => Number(row.rawMaterialId) === id);
+      return matches.find((row) => row.status !== "Inactive") || matches[0] || null;
     }
 
     function getServiceRate(serviceId) {
@@ -3272,7 +3385,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         GSM: material?.gsm != null ? roundTo(material.gsm, 1) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
         GLUE_FLAP: glueFlap,
         WASTAGE: roundTo(wastagePercent, 2),
-        MATERIAL_RATE: material ? roundTo(material?.purchasingRate ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
+        MATERIAL_RATE: material ? roundTo((getMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
         SHEET_LENGTH: sheet.length,
@@ -3309,9 +3422,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return line;
       }
 
-      const masterRate = Number(material?.purchasingRate);
+      const rateRow = getMaterialRate(material.id);
+      if (!rateRow) {
+        line.error = "No rate configured for material " + (material.code || material.id);
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.rate = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+      const masterRate = Number(rateRow?.rate);
       if (!Number.isFinite(masterRate) || masterRate <= 0) {
-        line.error = "Invalid rate: " + (material?.purchasingRate ?? "missing") + ". Rate must be > 0.";
+        line.error = "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0.";
         line.netQty = 0;
         line.grossQty = 0;
         line.rate = 0;
@@ -3390,7 +3512,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       line.rateSource = "master";
       line.dimensionVolume = null;
       try {
-        const qtyForRate = convertQuantity(grossQty, material?.uom, formatRateUnit(material?.rateUOM) || material?.uom, {
+        const qtyForRate = convertQuantity(grossQty, material?.uom, formatRateUnit(rateRow?.rateUOM) || material?.uom, {
           gsm: material?.gsm,
           sheetArea: getSheetDimensions(finishedGood).area
         });
@@ -3833,9 +3955,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!formula || !formula.isActive) {
         return { ...empty, error: "Formula not configured for " + material.name + " in " + ply + "-ply" };
       }
-      const masterRate = Number(material?.purchasingRate);
+      const rateRow = getMaterialRate(material.id);
+      const masterRate = Number(rateRow?.rate);
+      if (!rateRow) {
+        return { ...empty, error: "No rate configured for material " + (material.code || material.id) };
+      }
       if (!Number.isFinite(masterRate) || masterRate <= 0) {
-        return { ...empty, error: "Invalid rate: " + (material?.purchasingRate ?? "missing") + ". Rate must be > 0." };
+        return { ...empty, error: "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0." };
       }
       const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
       const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
@@ -3875,7 +4001,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: formula.id,
         dimensionId: link.dimensionId,
         wastagePercent: wastage,
-        rateUOM: material.rateUOM,
+        rateUOM: rateRow?.rateUOM || "",
         uom: material.uom
       };
     }
@@ -3998,7 +4124,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
             <div class="cc-metrics">
               <div><span>Qty</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
-              <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (material && material.rateUOM)) : "—"}</strong></div>
+              <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM)) : "—"}</strong></div>
               <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.rawMaterialId && calc.error ? "Error" : "—")}</strong></div>
               <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
             </div>
@@ -4303,7 +4429,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <td>${escapeHtml(row.layer)}</td>
                 <td>${escapeHtml(material ? material.name : (row.rawMaterialId ? "Missing material" : "—"))}</td>
                 <td class="num">${ok ? escapeHtml(formatQty(calc.qty) + (calc.uom ? " " + calc.uom : "")) : "—"}</td>
-                <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (material && material.rateUOM))) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM))) : "—"}</td>
                 <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : (calc.error ? "Error" : "—")}</td>
               </tr>
             `;
@@ -4848,9 +4974,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             item.name,
             item.category,
             item.uom,
-            item.rateUOM,
             item.gsm,
-            item.purchasingRate,
             item.status,
             formatBoundFormulaCode(item.qtyFormulaId),
             formatMaterialDimensionSummary(item)
@@ -4901,6 +5025,40 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (av !== bv) return av - bv;
         }
         return String(a.service.name || "").localeCompare(String(b.service.name || ""), undefined, { sensitivity: "base" });
+      });
+      return rows;
+    }
+
+    function getMaterialRateRecord(rawMaterialId) {
+      const id = Number(rawMaterialId);
+      return materialRates.find((row) => Number(row.rawMaterialId) === id) || null;
+    }
+
+    function materialRateTableRows() {
+      const q = state.searches.materialRates;
+      const statusFilter = state.materialRateFilter;
+      const sort = state.materialRateSort;
+      const rows = rawMaterials.map((material) => {
+        const rateRow = getMaterialRateRecord(material.id);
+        return { material, rateRow };
+      }).filter(({ material, rateRow }) => {
+        const status = rateRow ? rateRow.status : "";
+        if (statusFilter === "active" && status !== "Active") return false;
+        if (statusFilter === "inactive" && status !== "Inactive") return false;
+        return matchesQuery(
+          [material.code, material.name, rateRow && rateRow.rate, rateRow && rateRow.rateUOM, formatMaterialDimensionSummary(material), status],
+          q
+        );
+      });
+      rows.sort((a, b) => {
+        if (sort === "rate") {
+          const ar = Number(a.rateRow && a.rateRow.rate);
+          const br = Number(b.rateRow && b.rateRow.rate);
+          const av = Number.isFinite(ar) ? ar : Number.POSITIVE_INFINITY;
+          const bv = Number.isFinite(br) ? br : Number.POSITIVE_INFINITY;
+          if (av !== bv) return av - bv;
+        }
+        return String(a.material.name || "").localeCompare(String(b.material.name || ""), undefined, { sensitivity: "base" });
       });
       return rows;
     }
@@ -5109,15 +5267,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
               <td>${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</td>
               <td>${escapeHtml(item.uom)}</td>
-              <td>${formatCurrency(item?.purchasingRate ?? 0)}</td>
-              <td>Rs./${escapeHtml(formatRateUnit(item?.rateUOM) || item?.rateUOM || "—")}</td>
               <td class="mono">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</td>
               <td>${escapeHtml(formatMaterialDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-rm", item.id, "data-delete-rm", item.id)}
             </tr>
           `).join("")
-        : emptyRow(11, "No raw materials match this search.");
+        : emptyRow(9, "No raw materials match this search.");
 
       document.getElementById("page-raw-materials").innerHTML = `
         <div class="toolbar">
@@ -5141,8 +5297,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <th>Category</th>
                   <th>GSM</th>
                   <th>UOM</th>
-                  <th>Purchasing Rate</th>
-                  <th>Rate UOM</th>
                   <th>Qty Formula</th>
                   <th>Dimensions</th>
                   <th>Status</th>
@@ -5156,14 +5310,65 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderRawMaterialRatesPlaceholder() {
+    function renderRawMaterialRates() {
       const page = document.getElementById("page-raw-material-rates");
       if (!page) return;
+      const rows = materialRateTableRows();
+      const body = rows.length
+        ? rows.map(({ material, rateRow }) => {
+            const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
+              ? formatNumber(rateRow.rate, 2)
+              : "—";
+            return `
+            <tr>
+              <td class="mono">${escapeHtml(material.code)}</td>
+              <td>${escapeHtml(material.name)}</td>
+              <td>${rateText}</td>
+              <td>${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</td>
+              <td>${escapeHtml(formatMaterialDimensionSummary(material))}</td>
+              <td>${rateRow ? statusBadge(rateRow.status) : '<span class="badge badge-muted">Unset</span>'}</td>
+              <td>
+                <button type="button" class="btn btn-sm" data-edit-material-rate="${material.id}">Update</button>
+              </td>
+            </tr>
+          `;
+          }).join("")
+        : emptyRow(7, "No material rates match this search.");
+
       page.innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-left">
+            ${toolbarSearch("mrate-search", state.searches.materialRates, "Search material name, code...")}
+            <select class="filter-select" id="mrate-status-filter">
+              <option value="all" ${state.materialRateFilter === "all" ? "selected" : ""}>All statuses</option>
+              <option value="active" ${state.materialRateFilter === "active" ? "selected" : ""}>Active</option>
+              <option value="inactive" ${state.materialRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
+            </select>
+            <select class="filter-select" id="mrate-sort">
+              <option value="name" ${state.materialRateSort === "name" ? "selected" : ""}>Sort by material name</option>
+              <option value="rate" ${state.materialRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+          </div>
+        </div>
         <div class="card">
-          <div class="card-body">
-            <p>Purchasing rates are still maintained on the Raw Material master. A dedicated rates page (like Service Rates) can be added next.</p>
-            <button type="button" class="btn btn-primary" id="btn-open-raw-materials">Open Raw Material</button>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Rate (PKR)</th>
+                  <th>Rate UOM</th>
+                  <th>Dimensions</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
           </div>
         </div>
       `;
@@ -5961,7 +6166,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </td>
                   <td>${formatQty(line.grossQty)}</td>
                   <td>
-                    ${material ? formatRatePkr(line.rate, material.rateUOM) : "—"}
+                    ${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}
                     <div class="stat-hint">Raw Material Master</div>
                   </td>
                   <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
@@ -6695,8 +6900,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: "",
         category: "Paper",
         uom: "kg",
-        purchasingRate: "",
-        rateUOM: "kg",
         gsm: "",
         qtyFormulaId: null,
         dimensionIds: [],
@@ -6713,9 +6916,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.category) errors.category = "Category is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
-      const rate = parseByRule(draft.purchasingRate, "rate", { requiredError: "Purchasing rate must be greater than 0." });
-      if (!rate.ok) errors.purchasingRate = rate.error;
-      if (!draft.rateUOM) errors.rateUOM = "Rate UOM is required.";
       if ((draft.category === "Paper" || draft.category === "Board") && draft.gsm !== "" && draft.gsm != null) {
         const gsm = parseByRule(draft.gsm, "gsm", { requiredError: "GSM must be greater than 0." });
         if (!gsm.ok) errors.gsm = gsm.error;
@@ -6751,20 +6951,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="rm-uom">UOM</label>
               <select id="rm-uom" class="full-select">
-                ${["kg", "gm", "sheet"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
-              </select>
-            </div>
-            <div>
-              <label class="form-label" for="rm-rate">Purchasing Rate (PKR)</label>
-              <input id="rm-rate" class="full-search ${errors.purchasingRate ? "input-invalid" : ""}" type="number" min="0.01" step="0.01" value="${escapeHtml(draft.purchasingRate === "" || draft.purchasingRate == null ? "" : formatDecimal(draft.purchasingRate, 2, true))}" placeholder="150.50" />
-              ${errors.purchasingRate ? `<div class="field-error">${escapeHtml(errors.purchasingRate)}</div>` : ""}
-            </div>
-            <div>
-              <label class="form-label" for="rm-rate-uom">Rate UOM</label>
-              <select id="rm-rate-uom" class="full-select">
-                ${[["kg", "Rs./kg"], ["sheet", "Rs./sheet"], ["piece", "Rs./piece"], ["gm", "Rs./gm"]].map(([value, label]) => `
-                  <option value="${value}" ${draft.rateUOM === value ? "selected" : ""}>${label}</option>
-                `).join("")}
+                ${["kg", "gm", "sheet", "sq.meter"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
               </select>
             </div>
             <div>
@@ -6787,6 +6974,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
                 <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
               </select>
+            </div>
+            <div class="form-span-2">
+              <p class="stat-hint">Rates managed in Raw Material Rates page</p>
             </div>
           </div>
       `;
@@ -6863,8 +7053,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: item.name,
         category: item.category,
         uom: item.uom,
-        purchasingRate: formatDecimal(item.purchasingRate, 2, true),
-        rateUOM: item.rateUOM,
         gsm: item.gsm == null ? "" : formatDecimal(item.gsm, 1, false),
         qtyFormulaId: normalizeFormulaBinding(item.qtyFormulaId),
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
@@ -6897,15 +7085,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const showGsm = draft.category === "Paper" || draft.category === "Board";
-      const parsedRate = parseByRule(draft.purchasingRate, "rate");
       const parsedGsm = showGsm && draft.gsm !== "" && draft.gsm != null ? parseByRule(draft.gsm, "gsm") : null;
       const payload = {
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         category: draft.category,
         uom: draft.uom,
-        purchasingRate: parsedRate.value,
-        rateUOM: draft.rateUOM,
         gsm: parsedGsm && parsedGsm.ok ? parsedGsm.value : null,
         qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
         status: draft.status
@@ -6915,6 +7100,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (index >= 0) {
           rawMaterials[index] = { ...rawMaterials[index], ...payload };
           delete rawMaterials[index].rateFormulaId;
+          delete rawMaterials[index].purchasingRate;
+          delete rawMaterials[index].rateUOM;
         }
         syncMaterialDimensionIds(draft.id);
         showNotification("Material updated successfully");
@@ -6940,11 +7127,166 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "rm-name") draft.name = target.value;
       else if (target.id === "rm-category") draft.category = target.value;
       else if (target.id === "rm-uom") draft.uom = target.value;
-      else if (target.id === "rm-rate") draft.purchasingRate = target.value;
-      else if (target.id === "rm-rate-uom") draft.rateUOM = target.value;
       else if (target.id === "rm-gsm") draft.gsm = target.value;
       else if (target.id === "rm-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "rm-status") draft.status = target.value;
+      else return false;
+      return true;
+    }
+
+    function defaultMaterialRateDraft(material, rateRow) {
+      const inferredUom = normalizeMaterialRateUom(material && material.uom) || "Rs./kg";
+      return {
+        rawMaterialId: material ? material.id : null,
+        rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
+        rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        status: (rateRow && rateRow.status) || "Active"
+      };
+    }
+
+    function materialRateUomOptions(selected) {
+      const values = MATERIAL_RATE_UOMS.slice();
+      if (selected && !values.includes(selected)) values.push(selected);
+      return `<option value="">Select rate UOM</option>` + values.map((value) => `
+        <option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>
+      `).join("");
+    }
+
+    function renderMaterialRateFormModal() {
+      const draft = state.modal.draft || {};
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const dimSummary = material ? formatMaterialDimensionSummary(material) : "—";
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Pricing</div>
+            <strong>Update Material Rate</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-body">
+              <div class="section-kicker">Material (Read-only)</div>
+              <div><strong>Material:</strong> ${escapeHtml(material ? material.name : "Material not found")}</div>
+              <div><strong>Code:</strong> ${escapeHtml(material ? material.code : "—")}</div>
+              <div><strong>UOM:</strong> ${escapeHtml(material ? material.uom : "—")}</div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="mrate-rate">Rate (PKR)</label>
+              <input id="mrate-rate" class="full-search ${errors.rate ? "input-invalid" : ""}" type="number" min="0.01" max="99999.99" step="0.01" value="${escapeHtml(draft.rate === "" || draft.rate == null ? "" : formatDecimal(draft.rate, 2, true))}" placeholder="165.00" />
+              ${errors.rate ? `<div class="field-error">${escapeHtml(errors.rate)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="mrate-uom">Rate UOM</label>
+              <select id="mrate-uom" class="full-select ${errors.rateUOM ? "input-invalid" : ""}">
+                ${materialRateUomOptions(draft.rateUOM)}
+              </select>
+              ${errors.rateUOM ? `<div class="field-error">${escapeHtml(errors.rateUOM)}</div>` : ""}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label">Dimensions (optional)</label>
+              <div class="full-search" style="min-height:38px;display:flex;align-items:center;">${escapeHtml(dimSummary || "—")}</div>
+              <p class="stat-hint">Dimension links are managed on the Raw Material master</p>
+            </div>
+            <div class="form-span-2">
+              <div class="section-kicker">Status</div>
+              <label class="radio-row"><input type="radio" name="mrate-status" value="Active" ${draft.status === "Active" ? "checked" : ""} /> Active</label>
+              <label class="radio-row"><input type="radio" name="mrate-status" value="Inactive" ${draft.status === "Inactive" ? "checked" : ""} /> Inactive</label>
+              ${errors.status ? `<div class="field-error">${escapeHtml(errors.status)}</div>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-material-rate">Update Material Rate</button>
+        </div>
+      `;
+    }
+
+    function openMaterialRateModal(rawMaterialId) {
+      const material = getRawMaterial(rawMaterialId);
+      if (!material) {
+        showNotification("Material not found", "error");
+        return;
+      }
+      const rateRow = getMaterialRateRecord(material.id);
+      state.modal = {
+        type: "material-rate",
+        selectedId: material.id,
+        mode: "edit",
+        lineId: null,
+        draft: defaultMaterialRateDraft(material, rateRow),
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function validateMaterialRateDraft(draft) {
+      const errors = {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      if (!material) {
+        errors.rawMaterialId = "Material not found";
+        return errors;
+      }
+      if (material.status === "Inactive") {
+        errors.status = "Cannot update rate if material inactive";
+      }
+      const rate = Number(draft.rate);
+      if (!Number.isFinite(rate) || rate <= 0) errors.rate = "Rate must be positive number";
+      else if (rate > 99999.99) errors.rate = "Rate must be 99999.99 or less.";
+      if (!draft.rateUOM) errors.rateUOM = "Rate UOM must be selected";
+      return errors;
+    }
+
+    function saveMaterialRateFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateMaterialRateDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const material = getRawMaterial(draft.rawMaterialId);
+      const now = new Date().toISOString();
+      const existing = getMaterialRateRecord(draft.rawMaterialId);
+      const payload = {
+        rawMaterialId: Number(draft.rawMaterialId),
+        rate: roundTo(Number(draft.rate), 2),
+        rateUOM: normalizeMaterialRateUom(draft.rateUOM) || draft.rateUOM,
+        status: draft.status || "Active",
+        updatedAt: now
+      };
+      if (existing) {
+        const index = materialRates.findIndex((row) => row.id === existing.id);
+        materialRates[index] = { ...existing, ...payload };
+      } else {
+        materialRates.push({
+          id: nextMasterId(materialRates),
+          ...payload,
+          createdAt: now
+        });
+      }
+      const unit = formatRateUnit(payload.rateUOM) || "unit";
+      showNotification("Material rate updated: " + material.name + " - Rs. " + formatDecimal(payload.rate, 2, true) + "/" + unit);
+      closeModal();
+      renderRawMaterialRates();
+      refreshIcons();
+      afterDataChange("materialRates");
+      refreshOpenBomCalculations();
+      if (state.currentPage === "cost-calculator") renderCostCalculator();
+    }
+
+    function updateMaterialRateDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "material-rate") return false;
+      const draft = state.modal.draft;
+      if (target.id === "mrate-rate") draft.rate = target.value;
+      else if (target.id === "mrate-uom") draft.rateUOM = target.value;
+      else if (target.name === "mrate-status") draft.status = target.value;
       else return false;
       return true;
     }
@@ -8688,10 +9030,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         for (let i = materialDimensions.length - 1; i >= 0; i -= 1) {
           if (materialDimensions[i].rawMaterialId === id) materialDimensions.splice(i, 1);
         }
+        for (let i = materialRates.length - 1; i >= 0; i -= 1) {
+          if (Number(materialRates[i].rawMaterialId) === id) materialRates.splice(i, 1);
+        }
         closeModal();
         renderRawMaterials();
         showNotification("Material deleted successfully");
-        afterDataChange("rawMaterials", "materialDimensions");
+        afterDataChange("rawMaterials", "materialDimensions", "materialRates");
       } else if (entity === "service") {
         const usage = serviceBomUsageMessage(id);
         if (usage) {
@@ -8830,8 +9175,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.layer && !allowedLayers.includes(draft.layer)) {
         errors.layer = "Layer is not valid for this ply count.";
       }
-      if (material && !Number.isFinite(Number(material.purchasingRate))) {
-        errors.rate = "Purchasing rate from the Raw Material Master is not valid.";
+      if (material && !getMaterialRate(material.id)) {
+        errors.rate = "No rate configured for this material.";
+      } else if (material && !Number.isFinite(Number(getMaterialRate(material.id)?.rate))) {
+        errors.rate = "Purchasing rate from Raw Material Rates is not valid.";
       }
       const linkedDims = material ? getMaterialLinkedDimensionIds(material, ply) : [];
       if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
@@ -9179,7 +9526,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("Code", `<span class="mono">${escapeHtml(material.code)}</span>`)}
           ${renderPreviewField("Name", escapeHtml(material.name))}
           ${renderPreviewField("UOM", escapeHtml(material.uom))}
-          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(material?.purchasingRate, material?.rateUOM)))}
+          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(getMaterialRate(material.id)?.rate, getMaterialRate(material.id)?.rateUOM)))}
         </section>
         <section class="preview-section" aria-label="Selected dimension">
           <h3 class="preview-heading">Selected dimension</h3>
@@ -9219,7 +9566,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("Layer", escapeHtml(state.modal.draft.layer || "—"))}
           ${preview && !preview.error ? `
             ${renderPreviewField("Gross qty", escapeHtml(formatQty(preview.grossQty) + " " + material.uom))}
-            ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, material.rateUOM)))}
+            ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, getMaterialRate(material.id)?.rateUOM)))}
             ${renderPreviewField("Net cost", escapeHtml(formatCurrency(preview.costPerPiece)) + ' <span class="stat-hint">(per 1 piece)</span>')}
             <div class="summary-highlight">
               <div class="preview-label">Total</div>
@@ -9266,13 +9613,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
             <div><span>Wastage</span><strong>${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}%</strong></div>
             <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
-            <div><span>Qty at rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(material.rateUOM) : "")}</strong></div>
-            <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(material?.purchasingRate, material?.rateUOM) : "—"}</strong></div>
-            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, material ? material.rateUOM : "")} (master)</strong></div>
-            ${material && normalizeUnit(material.uom) !== normalizeUnit(material.rateUOM)
+            <div><span>Qty at rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(getMaterialRate(material.id)?.rateUOM) : "")}</strong></div>
+            <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(getMaterialRate(material.id)?.rate, getMaterialRate(material.id)?.rateUOM) : "—"}</strong></div>
+            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, getMaterialRate(material && material.id)?.rateUOM || "")} (master)</strong></div>
+            ${material && normalizeUnit(material.uom) !== normalizeUnit(getMaterialRate(material.id)?.rateUOM)
               ? `<div><span>Equivalent rate in ${escapeHtml(material.uom)}</span><strong>${(() => {
                   try {
-                    return formatRatePkr(convertRate(material?.purchasingRate, material?.rateUOM, material?.uom, material?.gsm), material?.uom);
+                    const rateRow = getMaterialRate(material.id);
+                    return formatRatePkr(convertRate(rateRow?.rate, rateRow?.rateUOM, material?.uom, material?.gsm), material?.uom);
                   } catch (error) {
                     return escapeHtml(error.message || "Unsupported unit conversion");
                   }
@@ -9321,7 +9669,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
 
       if (state.modal.type === "finished-good") {
@@ -9330,6 +9678,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderMaterialDimensionLinkModal();
       } else if (state.modal.type === "raw-material-master") {
         dialog.innerHTML = renderRawMaterialFormModal();
+      } else if (state.modal.type === "material-rate") {
+        dialog.innerHTML = renderMaterialRateFormModal();
       } else if (state.modal.type === "service-master" && state.modal.sub && state.modal.sub.type === "service-dimension") {
         dialog.innerHTML = renderServiceDimensionLinkModal();
       } else if (state.modal.type === "service-master") {
@@ -9913,7 +10263,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (page === "dimensions") renderDimensions();
       if (page === "style") renderStyles();
       if (page === "raw-materials") renderRawMaterials();
-      if (page === "raw-material-rates") renderRawMaterialRatesPlaceholder();
+      if (page === "raw-material-rates") renderRawMaterialRates();
       if (page === "services") renderServices();
       if (page === "service-rates") renderServiceRates();
       if (page === "finished-goods") renderFinishedGoods();
@@ -10010,6 +10360,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
+        } else if (id === "mrate-search") {
+          state.searches.materialRates = event.target.value;
+          renderRawMaterialRates();
+          refreshIcons();
+          restoreFocus(id);
+          persistPrefs();
         } else if (id === "srv-search") {
           state.searches.services = event.target.value;
           renderServices();
@@ -10080,6 +10436,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "formula-filter") {
           state.formulaFilter = event.target.value;
           renderFormulas();
+          refreshIcons();
+          persistPrefs();
+        }
+        if (event.target.id === "mrate-status-filter") {
+          state.materialRateFilter = event.target.value;
+          renderRawMaterialRates();
+          refreshIcons();
+          persistPrefs();
+        }
+        if (event.target.id === "mrate-sort") {
+          state.materialRateSort = event.target.value;
+          renderRawMaterialRates();
           refreshIcons();
           persistPrefs();
         }
@@ -10232,10 +10600,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           openRawMaterialMasterModal();
           return;
         }
-        if (event.target.closest("#btn-open-raw-materials")) {
-          navigateTo("raw-materials");
-          return;
-        }
         if (event.target.closest("#btn-add-service-master")) {
           openServiceMasterModal();
           return;
@@ -10298,6 +10662,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             return;
           }
           openMasterDeleteModal("service", deleteSrv.dataset.deleteSrvMaster, item ? item.name : "this service");
+          return;
+        }
+        const editMaterialRate = event.target.closest("[data-edit-material-rate]");
+        if (editMaterialRate) {
+          openMaterialRateModal(editMaterialRate.dataset.editMaterialRate);
           return;
         }
         const editServiceRate = event.target.closest("[data-edit-service-rate]");
@@ -10468,10 +10837,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (updateRawMaterialDraftFromEvent(event.target)) {
-          if (event.target.id === "rm-rate") normalizeDraftNumber(event.target, "purchasingRate", "rate", true);
           if (event.target.id === "rm-gsm") normalizeDraftNumber(event.target, "gsm", "gsm");
           if (event.target.id === "rm-category") renderModal();
           restoreFocus(event.target.id);
+          return;
+        }
+        if (updateMaterialRateDraftFromEvent(event.target)) {
+          if (event.target.id === "mrate-rate") normalizeDraftNumber(event.target, "rate", "rate", true);
           return;
         }
         const materialDimChange = updateMaterialDimensionLinkDraftFromEvent(event.target);
@@ -10556,6 +10928,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (event.target.id === "rm-code") event.target.value = String(event.target.value || "").toUpperCase();
           restoreFocus(event.target.id);
         }
+        if (updateMaterialRateDraftFromEvent(event.target)) {
+          restoreFocus(event.target.id);
+        }
         if (updateServiceMasterDraftFromEvent(event.target)) {
           if (event.target.id === "srv-code") event.target.value = String(event.target.value || "").toUpperCase();
           restoreFocus(event.target.id);
@@ -10620,6 +10995,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-save-raw-material")) {
           saveRawMaterialFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-material-rate")) {
+          saveMaterialRateFromModal();
           return;
         }
         if (event.target.closest("#btn-add-material-dimension")) {
