@@ -1138,11 +1138,18 @@
       background: #f8fafc;
     }
     .style-formula-value { text-align: right; min-width: 120px; }
+    .cc-style-formula-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #cc-style-formulas-root:empty { display: none; }
     textarea.full-search { min-height: 72px; resize: vertical; }
     .btn-icon { width: 30px; height: 30px; padding: 0; justify-content: center; }
 
     .calc-error-cost { color: var(--danger); font-weight: 700; }
     .input-invalid { border-color: #fca5a5 !important; }
+    .field-error { margin-top: 4px; font-size: 12px; color: var(--danger); font-weight: 600; }
 
     .form-grid { display: grid; gap: 12px; }
     .form-grid.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1324,6 +1331,31 @@
 
     .modal.wide { width: min(820px, 100%); }
     .fb-layout { display: grid; grid-template-columns: minmax(0, 1fr) 230px; gap: 16px; }
+    .fb-desc-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+    }
+    .fb-service-flags {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      padding-bottom: 4px;
+    }
+    .fb-flag {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-muted);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .fb-flag input { margin: 0; }
     .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip, .op-btn {
       border: 1px solid var(--border);
@@ -1452,7 +1484,8 @@
       .header { padding: 0 12px; }
       .pi-grid, .pi-fields, .dim-grid, .bom-meta, .calc-dims-grid { grid-template-columns: 1fr; }
       .fg-combo-control input { font-size: 14px; }
-      .fb-layout, .test-fields, .form-grid.two { grid-template-columns: 1fr; }
+      .fb-layout, .fb-desc-row, .test-fields, .form-grid.two { grid-template-columns: 1fr; }
+      .fb-service-flags { align-items: flex-start; }
       .form-span-2 { grid-column: auto; }
       .style-var-row { grid-template-columns: 1fr; }
       .style-var-row-actions { justify-content: flex-start; min-height: auto; }
