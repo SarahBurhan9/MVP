@@ -660,15 +660,38 @@
       font-size: 12px;
     }
 
-    .bom-flow span {
+    .bom-flow-tab {
       background: #e2e8f0;
       color: #334155;
       padding: 3px 8px;
+      border: 1px solid transparent;
       border-radius: 999px;
       font-weight: 600;
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    .bom-flow-tab:hover {
+      background: #cbd5e1;
+    }
+
+    .bom-flow-tab.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
     }
 
     .bom-flow .flow-arrow { background: transparent; color: var(--text-muted); padding: 0; }
+
+    #fg-selector-root,
+    #bom-product-root,
+    #bom-style-formulas-root,
+    #bom-materials-root,
+    #bom-services-root,
+    #bom-cost-root {
+      scroll-margin-top: calc(var(--header-height) + 12px);
+    }
 
     .bom-layout {
       display: grid;

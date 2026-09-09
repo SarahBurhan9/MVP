@@ -593,6 +593,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       costPer100: 0,
       costPer1000: 0,
       fgSelectorOpen: false,
+      bomFlowSection: "fg-selector-root",
       modal: {
         type: null,
         selectedId: null,
@@ -6069,21 +6070,64 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    const BOM_FLOW_SECTIONS = [
+      { id: "fg-selector-root", label: "Select Finished Good" },
+      { id: "bom-product-root", label: "Product Information" },
+      { id: "bom-style-formulas-root", label: "Style Formulas" },
+      { id: "bom-materials-root", label: "Raw Materials" },
+      { id: "bom-services-root", label: "Services" },
+      { id: "bom-cost-root", label: "Cost Summary" }
+    ];
+
+    function setActiveBomFlowSection(sectionId) {
+      if (!sectionId) return;
+      state.bomFlowSection = sectionId;
+      document.querySelectorAll("[data-bom-section]").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.bomSection === sectionId);
+      });
+    }
+
+    function scrollToBomSection(sectionId) {
+      const target = document.getElementById(sectionId);
+      if (!target) return;
+      setActiveBomFlowSection(sectionId);
+      state.bomFlowScrollLock = true;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.setTimeout(() => {
+        state.bomFlowScrollLock = false;
+      }, 700);
+    }
+
+    function updateBomFlowFromViewport() {
+      if (state.currentPage !== "bom-costing" || state.bomFlowScrollLock) return;
+      const buttons = document.querySelectorAll("[data-bom-section]");
+      if (!buttons.length) return;
+      const headerOffset = 64;
+      let bestId = state.bomFlowSection || BOM_FLOW_SECTIONS[0].id;
+      let bestTop = -Infinity;
+      buttons.forEach((btn) => {
+        const el = document.getElementById(btn.dataset.bomSection);
+        if (!el) return;
+        const top = el.getBoundingClientRect().top - headerOffset;
+        if (top <= 12 && top >= bestTop) {
+          bestTop = top;
+          bestId = btn.dataset.bomSection;
+        }
+      });
+      setActiveBomFlowSection(bestId);
+    }
+
     function renderBOMPage() {
+      const chips = BOM_FLOW_SECTIONS.map((section, index) => {
+        const active = (state.bomFlowSection || BOM_FLOW_SECTIONS[0].id) === section.id ? " active" : "";
+        const arrow = index < BOM_FLOW_SECTIONS.length - 1 ? `<span class="flow-arrow" aria-hidden="true">↓</span>` : "";
+        return `
+          <button type="button" class="bom-flow-tab${active}" data-bom-section="${section.id}">${escapeHtml(section.label)}</button>
+          ${arrow}
+        `;
+      }).join("");
       document.getElementById("page-bom-costing").innerHTML = `
-        <div class="bom-flow">
-          <span>Select Finished Good</span>
-          <span class="flow-arrow">↓</span>
-          <span>Product Information</span>
-          <span class="flow-arrow">↓</span>
-          <span>Style Formulas</span>
-          <span class="flow-arrow">↓</span>
-          <span>Raw Materials</span>
-          <span class="flow-arrow">↓</span>
-          <span>Services</span>
-          <span class="flow-arrow">↓</span>
-          <span>Cost Summary</span>
-        </div>
+        <div class="bom-flow" role="navigation" aria-label="BOM sections">${chips}</div>
         <div class="bom-layout">
           <div class="bom-main">
             <div class="card">
@@ -6145,6 +6189,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function showFgComboList() {
+      state.fgSelectorOpen = true;
+      const list = document.getElementById("fg-combo-list");
+      if (list) list.classList.add("open");
+    }
+
     function resetBomEditor() {
       state.selectedFinishedGoodId = null;
       state.currentBOM = null;
@@ -6167,13 +6217,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const nextId = Number(id);
       const item = finishedGoods.find((fg) => fg.id === nextId);
       if (!item) return;
-      if (state.selectedFinishedGoodId === nextId && state.currentBOM) {
-        state.fgSelectorOpen = false;
-        state.searches.bomFinishedGood = "";
-        renderFinishedGoodSelector();
-        refreshIcons();
-        return;
-      }
 
       state.selectedFinishedGoodId = item.id;
       const existing = getBomsForFinishedGood(item.id);
@@ -6189,8 +6232,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.fgSelectorOpen = false;
       closeModal();
       loadSampleBom(item.id);
-      renderBOMPage();
-      refreshIcons();
+      recalculateBOMCosts();
+      renderFinishedGoodSelector();
+      refreshBomViews();
       persistEditorState();
     }
 
@@ -6987,6 +7031,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.classList.remove("wide");
         dialog.classList.remove("wide-form");
         dialog.classList.remove("formula-explainer");
+        dialog.classList.remove("split-form");
         dialog.innerHTML = "";
       }
     }
@@ -9476,7 +9521,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         calculationMethod: "formula",
         formulaId: null,
         dimensionId: null,
-        manualQty: null,
+        manualQty: 1,
         wastagePercent: DEFAULT_WASTAGE_PERCENT
       };
     }
@@ -10514,6 +10559,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
+      dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -11415,6 +11461,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
+        const bomSection = event.target.closest("[data-bom-section]");
+        if (bomSection) {
+          scrollToBomSection(bomSection.dataset.bomSection);
+          return;
+        }
+
         if (event.target.closest("#btn-save-draft")) {
           saveDraftBom();
           return;
@@ -11690,10 +11742,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       document.querySelector(".content").addEventListener("focusin", (event) => {
         if (event.target.id === "fg-combo-search" && !state.fgSelectorOpen) {
-          state.fgSelectorOpen = true;
-          renderFinishedGoodSelector();
-          refreshIcons();
-          restoreFocus("fg-combo-search");
+          showFgComboList();
         }
         if (event.target.closest("[data-cc-ply]") && !event.target.disabled) {
           if (openCostCalculatorStyleFormulas()) refreshCostCalculatorStyleFormulas();
@@ -11709,6 +11758,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
         }
       });
+
+      window.addEventListener("scroll", () => {
+        updateBomFlowFromViewport();
+      }, { passive: true });
 
       document.getElementById("modal-backdrop").addEventListener("click", (event) => {
         if (event.target.id === "modal-backdrop" || event.target.closest("[data-modal-close]")) {
