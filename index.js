@@ -1782,14 +1782,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function applyCleanUserDataInMemory() {
-      replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
-      replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
-      replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
-      replaceArrayContents(services, snapshotData(SEED_DATA.services));
-      replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
+      replaceArrayContents(finishedGoods, []);
+      replaceArrayContents(rawMaterials, []);
+      replaceArrayContents(materialRates, []);
+      replaceArrayContents(services, []);
+      replaceArrayContents(serviceRates, []);
       replaceArrayContents(boms, snapshotData(SEED_DATA.boms));
-      replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
-      replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
+      replaceArrayContents(serviceDimensions, []);
+      replaceArrayContents(materialDimensions, []);
       sanitizeNumericMasters();
       resetBomEditor({ keepModal: true, skipPersist: true });
       state.costCalculator = defaultCostCalculatorState();
@@ -1807,9 +1807,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.serviceRateFilter = "all";
       state.serviceRateSort = "name";
       state.bomListFilter = "all";
-      ensureSeedServiceDimensions();
-      ensureSeedMaterialDimensions();
-      ensureSeedCostCalculatorData();
     }
 
     function setCleanUserDataBusy(busy) {
