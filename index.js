@@ -2124,6 +2124,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (source === "fg") return "From finished good";
       if (source === "style") return "From style variable";
       if (source === "formula") return "From formula variable default";
+      if (source === "covered_area") return "From COVERED_AREA formula";
       if (source === "derived") return "Calculated from L and W";
       return "";
     }
@@ -2182,12 +2183,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const linearUnit = dimUnit || units.L || units.W || "";
       const rows = BOM_DIMENSION_DISPLAY.map((def) => {
         if (def.kind === "derived" && def.code === "AREA") {
+          const areaEval = evaluateFormula("COVERED_AREA", buildStyleFormulaVariables(finishedGood), ["COVERED_AREA"]);
           return {
             code: def.code,
             name: def.name,
-            value: L * W,
+            value: areaEval.success ? roundTo(areaEval.result, 2) : null,
             unit: squaredDimensionUnit(linearUnit),
-            source: "derived"
+            source: "covered_area"
           };
         }
         if (def.kind === "derived" && def.code === "PERIMETER") {
