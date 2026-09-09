@@ -2294,7 +2294,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             expression: "",
             success: false,
             result: null,
-            error: "Linked style formula no longer exists."
+            error: "Linked style formula no longer exists.",
+            serviceLength: false,
+            serviceWidth: false
           };
         }
         if (!formula.isActive) {
@@ -2306,7 +2308,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             expression: formula.expression,
             success: false,
             result: null,
-            error: "This style formula is inactive."
+            error: "This style formula is inactive.",
+            serviceLength: Boolean(formula.serviceLength),
+            serviceWidth: Boolean(formula.serviceWidth)
           };
         }
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
@@ -2320,9 +2324,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           expression: formula.expression,
           success: calculated.success,
           result: calculated.success ? calculated.result : null,
-          error: calculated.success ? null : calculated.error
+          error: calculated.success ? null : calculated.error,
+          serviceLength: Boolean(formula.serviceLength),
+          serviceWidth: Boolean(formula.serviceWidth)
         };
       });
+    }
+
+    function getServiceDimensionOverridesFromStyleFormulas(finishedGood, evaluatedStyleFormulas) {
+      const rows = evaluatedStyleFormulas || evaluateStyleFormulasForFinishedGood(finishedGood);
+      let serviceL = null;
+      let serviceW = null;
+      rows.forEach((row) => {
+        if (row.serviceLength && row.success) {
+          const n = numericOrNull(row.result);
+          if (n !== null) serviceL = n;
+        }
+        if (row.serviceWidth && row.success) {
+          const n = numericOrNull(row.result);
+          if (n !== null) serviceW = n;
+        }
+      });
+      return { serviceL, serviceW };
     }
 
     function getStyleVariableValue(styleId, variableCode, ply) {
@@ -3612,8 +3635,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       }
       const fgDims = finishedGood?.dimensions ?? {};
-      const L = roundTo(override.L !== null ? override.L : (dim?.L ?? fgDims.L ?? defaults.L), 2);
-      const W = roundTo(override.W !== null ? override.W : (dim?.W ?? fgDims.W ?? defaults.W), 2);
+      const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
+      const baseL = styleDims.serviceL !== null ? styleDims.serviceL : (dim?.L ?? fgDims.L ?? defaults.L);
+      const baseW = styleDims.serviceW !== null ? styleDims.serviceW : (dim?.W ?? fgDims.W ?? defaults.W);
+      const L = roundTo(override.L !== null ? override.L : baseL, 2);
+      const W = roundTo(override.W !== null ? override.W : baseW, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
       const area = evaluateFormula("COVERED_AREA", {
@@ -3846,6 +3872,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>
                 <div><span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
                 <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
+                ${row.success && row.serviceLength ? `<div class="stat-hint mono">Service length = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
+                ${row.success && row.serviceWidth ? `<div class="stat-hint mono">Service width = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
               </div>
               <div class="style-formula-value">
                 <span class="formula-cell">
