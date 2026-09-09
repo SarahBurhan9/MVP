@@ -2183,7 +2183,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const linearUnit = dimUnit || units.L || units.W || "";
       const rows = BOM_DIMENSION_DISPLAY.map((def) => {
         if (def.kind === "derived" && def.code === "AREA") {
-          const areaEval = evaluateFormula("COVERED_AREA", buildStyleFormulaVariables(finishedGood), ["COVERED_AREA"]);
+          const coveredAreaFormula = getFormulaByCode("COVERED_AREA");
+          const areaVars = { ...getFormulaVariableDefaults(), ...context };
+          if (style) {
+            getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
+              const n = numericOrNull(row.value);
+              if (n !== null) areaVars[row.variableCode] = n;
+            });
+          }
+          const areaEval = coveredAreaFormula
+            ? evaluateFormula(coveredAreaFormula.expression, areaVars, ["COVERED_AREA"])
+            : { success: false, result: null };
           return {
             code: def.code,
             name: def.name,
