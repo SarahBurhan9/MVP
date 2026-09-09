@@ -3425,9 +3425,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { valid: true, error: null, result: evaluated.result };
     }
 
-    function buildFormulaVariables(finishedGood, material, wastagePercent, dimensionId) {
+    function buildFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula) {
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
+      const formulaRec = formula || null;
       const styleVals = {};
       const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
@@ -3440,8 +3441,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const sheet = getSheetDimensions(finishedGood);
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       const fgDims = finishedGood?.dimensions ?? {};
-      const L = roundTo(dim?.L ?? fgDims.L ?? defaults.L, 2);
-      const W = roundTo(dim?.W ?? fgDims.W ?? defaults.W, 2);
+      const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
+      let L = dim?.L ?? fgDims.L ?? defaults.L;
+      let W = dim?.W ?? fgDims.W ?? defaults.W;
+      if (formulaRec && formulaRec.serviceLength && styleDims.serviceL !== null) L = styleDims.serviceL;
+      if (formulaRec && formulaRec.serviceWidth && styleDims.serviceW !== null) W = styleDims.serviceW;
+      L = roundTo(L, 2);
+      W = roundTo(W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       return {
         ...defaults,
@@ -3541,7 +3547,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           line.costPerPiece = 0;
           return line;
         }
-        const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId);
+        const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, formula);
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
         if (!calculated.success) {
           line.error = calculated.error;
@@ -3553,7 +3559,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         netQty = calculated.result;
       }
 
-      const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId);
+      const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
+      const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
       if (grossFormula && grossFormula.isActive) {
@@ -4191,7 +4198,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           wastagePercent: wastage
         };
       }
-      const variables = buildFormulaVariables(fg, material, wastage, null);
+      const variables = buildFormulaVariables(fg, material, wastage, null, formula);
       const areaEval = evaluateFormula("COVERED_AREA", variables, ["COVERED_AREA"]);
       return {
         qty: line.grossQty,
@@ -9813,7 +9820,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = item
         ? (isService
           ? buildServiceFormulaVariables(fg, item, line.dimensionId, line, formula)
-          : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId))
+          : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula))
         : {};
       const isManual = line.calculationMethod === "manual";
       if (!isManual && !formula) {
@@ -9854,7 +9861,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const uom = calc.uom || (material && material.uom) || "";
       const title = material ? material.name + " — " + material.code : layer;
       const variables = material
-        ? buildFormulaVariables(fg, material, Number(calc.wastagePercent) || 0, null)
+        ? buildFormulaVariables(fg, material, Number(calc.wastagePercent) || 0, null, formula)
         : {};
       const coveredInQty = collectNestedFormulas(formula).some((item) => item.code === "COVERED_AREA");
       const finalCovered = Number.isFinite(Number(calc.coveredArea))
@@ -10131,7 +10138,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const dimensionText = formatPreviewDimension(dimension);
       let variables = {};
       if (kind === "material" && cost.item && finishedGood) {
-        variables = buildFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId);
+        variables = buildFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId, formula);
       } else if (kind === "service" && cost.item && finishedGood) {
         variables = buildServiceFormulaVariables(finishedGood, cost.item, draft.dimensionId, draft, formula);
       }
@@ -10352,7 +10359,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const material = getRawMaterial(line.rawMaterialId);
       const formula = getFormula(line.formulaId);
-      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId) : {};
+      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId, formula) : {};
       return `
         <div class="modal-header">
           <div>
