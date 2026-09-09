@@ -593,6 +593,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       costPer100: 0,
       costPer1000: 0,
       fgSelectorOpen: false,
+      cleaningUserData: false,
       bomFlowSection: "fg-selector-root",
       modal: {
         type: null,
@@ -1716,28 +1717,71 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "materialDimensions"
     ];
 
-    async function deleteUserDataFromCloud() {
-      const userId = getCurrentUser().uid;
-      if (!userId) return { ok: false, error: "Not signed in" };
-      if (!navigator.onLine) return { ok: false, error: "offline" };
-      try {
-        const payload = collectCloudBackupPayload();
-        await setDoc(doc(db, "users", userId, "data", "backup"), payload);
-        localStorage.setItem("lastSyncTime", payload.syncTimestamp);
-        updateSyncStatus("Synced " + new Date(payload.syncTimestamp).toLocaleTimeString(), "success");
-        return { ok: true };
-      } catch (error) {
-        console.error("Cloud clean error:", error);
-        return { ok: false, error: error.message || "Cloud delete failed" };
-      }
+    function snapshotUserDataState() {
+      return {
+        finishedGoods: snapshotData(finishedGoods),
+        rawMaterials: snapshotData(rawMaterials),
+        materialRates: snapshotData(materialRates),
+        services: snapshotData(services),
+        serviceRates: snapshotData(serviceRates),
+        boms: snapshotData(boms),
+        serviceDimensions: snapshotData(serviceDimensions),
+        materialDimensions: snapshotData(materialDimensions),
+        bomLineSeq,
+        bomSeq,
+        selectedFinishedGoodId: state.selectedFinishedGoodId,
+        currentBOM: snapshotData(state.currentBOM),
+        bomMaterials: snapshotData(state.bomMaterials),
+        bomServices: snapshotData(state.bomServices),
+        bomStyleResults: snapshotData(state.bomStyleResults),
+        totalMaterialCost: state.totalMaterialCost,
+        totalServiceCost: state.totalServiceCost,
+        finalCostPerPiece: state.finalCostPerPiece,
+        costPer100: state.costPer100,
+        costPer1000: state.costPer1000,
+        searches: snapshotData(state.searches),
+        materialRateFilter: state.materialRateFilter,
+        materialRateSort: state.materialRateSort,
+        serviceRateFilter: state.serviceRateFilter,
+        serviceRateSort: state.serviceRateSort,
+        bomListFilter: state.bomListFilter,
+        costCalculator: snapshotData(state.costCalculator)
+      };
     }
 
-    async function cleanUserData() {
-      if (!isCloudLinked()) {
-        showNotification("Link a cloud account before cleaning your data.", "error");
-        return;
-      }
+    function restoreUserDataState(snap) {
+      if (!snap) return;
+      replaceArrayContents(finishedGoods, snap.finishedGoods);
+      replaceArrayContents(rawMaterials, snap.rawMaterials);
+      replaceArrayContents(materialRates, snap.materialRates);
+      replaceArrayContents(services, snap.services);
+      replaceArrayContents(serviceRates, snap.serviceRates);
+      replaceArrayContents(boms, snap.boms);
+      replaceArrayContents(serviceDimensions, snap.serviceDimensions);
+      replaceArrayContents(materialDimensions, snap.materialDimensions);
+      bomLineSeq = snap.bomLineSeq;
+      bomSeq = snap.bomSeq;
+      state.selectedFinishedGoodId = snap.selectedFinishedGoodId;
+      state.currentBOM = snap.currentBOM;
+      state.bomMaterials = Array.isArray(snap.bomMaterials) ? snap.bomMaterials : [];
+      state.bomServices = Array.isArray(snap.bomServices) ? snap.bomServices : [];
+      state.bomStyleResults = Array.isArray(snap.bomStyleResults) ? snap.bomStyleResults : [];
+      state.totalMaterialCost = snap.totalMaterialCost;
+      state.totalServiceCost = snap.totalServiceCost;
+      state.finalCostPerPiece = snap.finalCostPerPiece;
+      state.costPer100 = snap.costPer100;
+      state.costPer1000 = snap.costPer1000;
+      if (snap.searches) state.searches = snap.searches;
+      state.materialRateFilter = snap.materialRateFilter;
+      state.materialRateSort = snap.materialRateSort;
+      state.serviceRateFilter = snap.serviceRateFilter;
+      state.serviceRateSort = snap.serviceRateSort;
+      state.bomListFilter = snap.bomListFilter;
+      state.costCalculator = snap.costCalculator || defaultCostCalculatorState();
+      sanitizeNumericMasters();
+    }
 
+    function applyCleanUserDataInMemory() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
       replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
@@ -1747,7 +1791,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
       replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
       sanitizeNumericMasters();
-      resetBomEditor();
+      resetBomEditor({ keepModal: true, skipPersist: true });
       state.costCalculator = defaultCostCalculatorState();
       bomLineSeq = 1;
       bomSeq = 1;
@@ -1766,37 +1810,136 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       ensureSeedServiceDimensions();
       ensureSeedMaterialDimensions();
       ensureSeedCostCalculatorData();
+    }
 
-      if (!idbReady) {
-        showNotification("Your data has been cleared. You can now login with a new email.");
-        navigateTo("dashboard");
-        return;
+    function setCleanUserDataBusy(busy) {
+      state.cleaningUserData = Boolean(busy);
+      const dashBtn = document.getElementById("btn-clean-user-data");
+      if (dashBtn) {
+        dashBtn.disabled = busy || !isCloudLinked();
+        dashBtn.setAttribute("aria-busy", busy ? "true" : "false");
+        dashBtn.textContent = busy ? "Cleaning..." : "Clean My Data";
       }
+      if (state.modal && state.modal.entity === "user-data") {
+        const confirmBtn = document.getElementById("btn-confirm-master-delete");
+        if (confirmBtn) {
+          confirmBtn.disabled = busy;
+          confirmBtn.setAttribute("aria-busy", busy ? "true" : "false");
+          confirmBtn.textContent = busy ? "Cleaning..." : "Clean My Data";
+        }
+        document.querySelectorAll("#modal-dialog [data-modal-close]").forEach((btn) => {
+          btn.disabled = busy;
+        });
+      }
+    }
 
-      setSaveStatus("Saving...", "saving");
-      suppressCloudPush = true;
+    function refreshViewsAfterUserDataClean() {
       try {
-        await Promise.all(USER_DATA_STORES.map((name) => saveToIndexedDB(name, getCollectionArray(name))));
-        await persistSequencesNow();
-        await persistEditorNow();
-        await persistPrefsNow();
-        markSaved();
+        renderDashboard();
+        renderFinishedGoods();
+        renderRawMaterials();
+        renderRawMaterialRates();
+        renderServices();
+        renderServiceRates();
+        renderBomList();
+        renderBOMPage();
+        renderCostCalculator();
+        refreshIcons();
       } catch (error) {
-        console.error("Failed to clean local data", error);
-        setSaveStatus("Save failed", "error");
-        showNotification("Failed to clear local data", "error");
-        suppressCloudPush = false;
+        console.error("Failed to refresh views after clean", error);
+      }
+    }
+
+    async function persistUserDataStores() {
+      for (let i = 0; i < USER_DATA_STORES.length; i += 1) {
+        const name = USER_DATA_STORES[i];
+        await saveToIndexedDB(name, getCollectionArray(name));
+      }
+      await persistSequencesNow();
+      await persistEditorNow();
+      await persistPrefsNow();
+    }
+
+    async function deleteUserDataFromCloud() {
+      const userId = getCurrentUser().uid;
+      if (!userId) return { ok: false, error: "Not signed in" };
+      if (!navigator.onLine) return { ok: false, error: "offline" };
+      try {
+        const payload = collectCloudBackupPayload();
+        await setDoc(doc(db, "users", userId, "data", "backup"), payload);
+        localStorage.setItem("lastSyncTime", payload.syncTimestamp);
+        updateSyncStatus("Synced " + new Date(payload.syncTimestamp).toLocaleTimeString(), "success");
+        return { ok: true };
+      } catch (error) {
+        console.error("Cloud clean error:", error);
+        return { ok: false, error: error.message || "Cloud delete failed" };
+      }
+    }
+
+    async function cleanUserData() {
+      if (state.cleaningUserData) return;
+      if (!isCloudLinked()) {
+        showNotification("Link a cloud account before cleaning your data.", "error");
         return;
       }
-      suppressCloudPush = false;
 
-      const cloud = await deleteUserDataFromCloud();
-      if (!cloud.ok && cloud.error && cloud.error !== "offline") {
-        showNotification("Local data cleared, but cloud backup failed: " + cloud.error, "error");
-      } else {
-        showNotification("Your data has been cleared. You can now login with a new email.");
+      setCleanUserDataBusy(true);
+      const previous = snapshotUserDataState();
+      let localSaved = false;
+      suppressCloudPush = true;
+
+      try {
+        applyCleanUserDataInMemory();
+
+        if (idbReady) {
+          try {
+            setSaveStatus("Saving...", "saving");
+            await persistUserDataStores();
+            markSaved();
+            localSaved = true;
+          } catch (error) {
+            console.error("IndexedDB clean failed", error);
+            restoreUserDataState(previous);
+            try {
+              await persistUserDataStores();
+            } catch (rollbackError) {
+              console.error("IndexedDB clean rollback failed", rollbackError);
+            }
+            setSaveStatus("Save failed", "error");
+            showNotification("Something went wrong clearing your data. Please try again.", "error");
+            return;
+          }
+        } else {
+          localSaved = true;
+        }
+
+        if (localSaved) {
+          try {
+            const cloud = await deleteUserDataFromCloud();
+            if (!cloud.ok) {
+              showNotification("Local data cleared, but cloud sync failed. Your data will resync when you're back online.", "error");
+            } else {
+              showNotification("Your data has been cleared. You can now login with a new email.");
+            }
+          } catch (error) {
+            console.error("Firebase clean failed", error);
+            showNotification("Local data cleared, but cloud sync failed. Your data will resync when you're back online.", "error");
+          }
+        }
+      } catch (error) {
+        console.error("Clean user data failed", error);
+        restoreUserDataState(previous);
+        showNotification("Something went wrong clearing your data. Please try again.", "error");
+      } finally {
+        suppressCloudPush = false;
+        clearTimeout(persistEditorTimer);
+        clearTimeout(persistPrefsTimer);
+        state.cleaningUserData = false;
+        closeModal();
+        setCleanUserDataBusy(false);
+        navigateTo("dashboard");
+        refreshViewsAfterUserDataClean();
       }
-      navigateTo("dashboard");
     }
 
     /* ==================================================
@@ -5584,8 +5727,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <p style="margin-top:8px;color:var(--text-muted);">${escapeHtml(formatLastSavedRelative())}${idbReady ? "" : " · Persistence unavailable"}</p>
             <div class="cloud-sync-actions" style="margin-top:12px;">
               <button type="button" class="btn" id="btn-reset-local-data">Restore seed data</button>
-              <button type="button" class="btn btn-warning-solid" id="btn-clean-user-data" ${linked ? "" : "disabled"} title="${linked ? "Delete your products, materials, services, and BOMs. Formulas and system data stay." : "Link a cloud account to clean your data."}">
-                Clean My Data
+              <button type="button" class="btn btn-warning-solid" id="btn-clean-user-data" ${linked && !state.cleaningUserData ? "" : "disabled"} aria-busy="${state.cleaningUserData ? "true" : "false"}" title="${linked ? "Delete your products, materials, services, and BOMs. Formulas and system data stay." : "Link a cloud account to clean your data."}">
+                ${state.cleaningUserData ? "Cleaning..." : "Clean My Data"}
               </button>
             </div>
             <p class="stat-hint" style="margin-top:8px;">Clean My Data removes your products, materials, services, rates, and BOMs. Formulas, dimensions, styles, and variables are kept. Requires a linked account.</p>
@@ -6293,7 +6436,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (list) list.classList.add("open");
     }
 
-    function resetBomEditor() {
+    function resetBomEditor(options) {
+      const opts = options || {};
       state.selectedFinishedGoodId = null;
       state.currentBOM = null;
       state.bomMaterials = [];
@@ -6307,8 +6451,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.searches.bomFinishedGood = "";
       state.fgSelectorOpen = false;
       state.workflowError = "";
-      closeModal();
-      persistEditorState();
+      if (!opts.keepModal) closeModal();
+      if (!opts.skipPersist) persistEditorState();
     }
 
     function handleFinishedGoodChange(id) {
@@ -7111,6 +7255,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function closeModal() {
+      if (state.cleaningUserData) return;
       state.modal = {
         type: null,
         selectedId: null,
@@ -9457,8 +9602,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <p>${body}</p>
         </div>
         <div class="modal-footer">
-          <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn ${isClean ? "btn-warning-solid" : "btn-danger-solid"}" id="btn-confirm-master-delete">${action}</button>
+          <button type="button" class="btn" data-modal-close ${isClean && state.cleaningUserData ? "disabled" : ""}>Cancel</button>
+          <button type="button" class="btn ${isClean ? "btn-warning-solid" : "btn-danger-solid"}" id="btn-confirm-master-delete" ${isClean && state.cleaningUserData ? "disabled" : ""} aria-busy="${isClean && state.cleaningUserData ? "true" : "false"}">${isClean && state.cleaningUserData ? "Cleaning..." : action}</button>
         </div>
       `;
     }
@@ -9475,7 +9620,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       if (entity === "user-data") {
-        closeModal();
+        if (state.cleaningUserData) return;
         cleanUserData();
         return;
       }
@@ -11639,6 +11784,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (event.target.closest("#btn-clean-user-data")) {
+          if (state.cleaningUserData) return;
           if (!isCloudLinked()) {
             showNotification("Link a cloud account before cleaning your data.", "error");
             return;

@@ -1186,6 +1186,11 @@
     .btn-danger-solid:hover { background: #991b1b; }
     .btn-warning-solid { background: #c2410c; border-color: #c2410c; color: #fff; }
     .btn-warning-solid:hover { background: #9a3412; }
+    .btn-warning-solid[aria-busy="true"],
+    .btn-warning-solid:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
     .section-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
     .section-tab {
       border: 1px solid var(--border);
