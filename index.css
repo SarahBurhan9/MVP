@@ -1184,6 +1184,8 @@
     .btn-danger { color: var(--danger); }
     .btn-danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
     .btn-danger-solid:hover { background: #991b1b; }
+    .btn-warning-solid { background: #c2410c; border-color: #c2410c; color: #fff; }
+    .btn-warning-solid:hover { background: #9a3412; }
     .section-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
     .section-tab {
       border: 1px solid var(--border);

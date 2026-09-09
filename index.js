@@ -1705,6 +1705,100 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
     }
 
+    const USER_DATA_STORES = [
+      "finishedGoods",
+      "rawMaterials",
+      "materialRates",
+      "services",
+      "serviceRates",
+      "boms",
+      "serviceDimensions",
+      "materialDimensions"
+    ];
+
+    async function deleteUserDataFromCloud() {
+      const userId = getCurrentUser().uid;
+      if (!userId) return { ok: false, error: "Not signed in" };
+      if (!navigator.onLine) return { ok: false, error: "offline" };
+      try {
+        const payload = collectCloudBackupPayload();
+        await setDoc(doc(db, "users", userId, "data", "backup"), payload);
+        localStorage.setItem("lastSyncTime", payload.syncTimestamp);
+        updateSyncStatus("Synced " + new Date(payload.syncTimestamp).toLocaleTimeString(), "success");
+        return { ok: true };
+      } catch (error) {
+        console.error("Cloud clean error:", error);
+        return { ok: false, error: error.message || "Cloud delete failed" };
+      }
+    }
+
+    async function cleanUserData() {
+      if (!isCloudLinked()) {
+        showNotification("Link a cloud account before cleaning your data.", "error");
+        return;
+      }
+
+      replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
+      replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
+      replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
+      replaceArrayContents(services, snapshotData(SEED_DATA.services));
+      replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
+      replaceArrayContents(boms, snapshotData(SEED_DATA.boms));
+      replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
+      replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
+      sanitizeNumericMasters();
+      resetBomEditor();
+      state.costCalculator = defaultCostCalculatorState();
+      bomLineSeq = 1;
+      bomSeq = 1;
+      state.searches.finishedGoods = "";
+      state.searches.rawMaterials = "";
+      state.searches.materialRates = "";
+      state.searches.services = "";
+      state.searches.serviceRates = "";
+      state.searches.bomFinishedGood = "";
+      state.searches.boms = "";
+      state.materialRateFilter = "all";
+      state.materialRateSort = "name";
+      state.serviceRateFilter = "all";
+      state.serviceRateSort = "name";
+      state.bomListFilter = "all";
+      ensureSeedServiceDimensions();
+      ensureSeedMaterialDimensions();
+      ensureSeedCostCalculatorData();
+
+      if (!idbReady) {
+        showNotification("Your data has been cleared. You can now login with a new email.");
+        navigateTo("dashboard");
+        return;
+      }
+
+      setSaveStatus("Saving...", "saving");
+      suppressCloudPush = true;
+      try {
+        await Promise.all(USER_DATA_STORES.map((name) => saveToIndexedDB(name, getCollectionArray(name))));
+        await persistSequencesNow();
+        await persistEditorNow();
+        await persistPrefsNow();
+        markSaved();
+      } catch (error) {
+        console.error("Failed to clean local data", error);
+        setSaveStatus("Save failed", "error");
+        showNotification("Failed to clear local data", "error");
+        suppressCloudPush = false;
+        return;
+      }
+      suppressCloudPush = false;
+
+      const cloud = await deleteUserDataFromCloud();
+      if (!cloud.ok && cloud.error && cloud.error !== "offline") {
+        showNotification("Local data cleared, but cloud backup failed: " + cloud.error, "error");
+      } else {
+        showNotification("Your data has been cleared. You can now login with a new email.");
+      }
+      navigateTo("dashboard");
+    }
+
     /* ==================================================
        Utility functions
        ================================================== */
@@ -5488,9 +5582,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               are available in this local file. All products, materials, services, formulas, BOMs, and editor work are saved in the browser (IndexedDB) and reload automatically after refresh.
             </p>
             <p style="margin-top:8px;color:var(--text-muted);">${escapeHtml(formatLastSavedRelative())}${idbReady ? "" : " · Persistence unavailable"}</p>
-            <div style="margin-top:12px;">
+            <div class="cloud-sync-actions" style="margin-top:12px;">
               <button type="button" class="btn" id="btn-reset-local-data">Restore seed data</button>
+              <button type="button" class="btn btn-warning-solid" id="btn-clean-user-data" ${linked ? "" : "disabled"} title="${linked ? "Delete your products, materials, services, and BOMs. Formulas and system data stay." : "Link a cloud account to clean your data."}">
+                Clean My Data
+              </button>
             </div>
+            <p class="stat-hint" style="margin-top:8px;">Clean My Data removes your products, materials, services, rates, and BOMs. Formulas, dimensions, styles, and variables are kept. Requires a linked account.</p>
           </div>
         </div>
       `;
@@ -9339,22 +9437,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderMasterDeleteModal() {
       const isReset = state.modal.entity === "local-data";
+      const isClean = state.modal.entity === "user-data";
+      const title = isReset ? "Reset local data" : (isClean ? "Clean My Data" : "Delete Confirmation");
+      const body = isReset
+        ? "Delete all locally saved products, materials, services, formulas, BOMs, and preferences, then restore the original seed data? This cannot be undone."
+        : isClean
+          ? "Delete all your products, materials, services, and BOMs? This cannot be undone. Formulas and system data will remain."
+          : "Are you sure you want to delete " + escapeHtml(state.modal.label) + "? This action cannot be undone.";
+      const action = isReset ? "Reset data" : (isClean ? "Clean My Data" : "Delete");
       return `
         <div class="modal-header">
           <div>
             <div class="section-kicker">Confirm</div>
-            <strong>${isReset ? "Reset local data" : "Delete Confirmation"}</strong>
+            <strong>${title}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
-          <p>${isReset
-            ? "Delete all locally saved products, materials, services, formulas, BOMs, and preferences, then restore the original seed data? This cannot be undone."
-            : "Are you sure you want to delete " + escapeHtml(state.modal.label) + "? This action cannot be undone."}</p>
+          <p>${body}</p>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-danger-solid" id="btn-confirm-master-delete">${isReset ? "Reset data" : "Delete"}</button>
+          <button type="button" class="btn ${isClean ? "btn-warning-solid" : "btn-danger-solid"}" id="btn-confirm-master-delete">${action}</button>
         </div>
       `;
     }
@@ -9368,6 +9472,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           navigateTo("dashboard");
           showNotification("Local data cleared. Seed data restored.");
         });
+        return;
+      }
+      if (entity === "user-data") {
+        closeModal();
+        cleanUserData();
         return;
       }
       if (entity === "finished-good") {
@@ -11527,6 +11636,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-reset-local-data")) {
           openMasterDeleteModal("local-data", 0, "all locally saved data");
+          return;
+        }
+        if (event.target.closest("#btn-clean-user-data")) {
+          if (!isCloudLinked()) {
+            showNotification("Link a cloud account before cleaning your data.", "error");
+            return;
+          }
+          openMasterDeleteModal("user-data", 0, "your products, materials, services, and BOMs");
           return;
         }
         if (event.target.closest("#btn-link-cloud")) {
