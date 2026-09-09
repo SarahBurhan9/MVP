@@ -2175,6 +2175,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { context, units, sources, style, dimUnit };
     }
 
+    function buildFlatStyleFormulaVariables(finishedGood) {
+      const { context, style } = resolveBomDimensionContext(finishedGood);
+      const vars = { ...getFormulaVariableDefaults(), ...context };
+      if (style) {
+        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
+          const n = numericOrNull(row.value);
+          if (n !== null) vars[row.variableCode] = n;
+        });
+      }
+      return vars;
+    }
+
     function calculateBomDimensions(finishedGood) {
       if (!finishedGood) return [];
       const { context, units, sources, style, dimUnit } = resolveBomDimensionContext(finishedGood);
@@ -2184,15 +2196,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const rows = BOM_DIMENSION_DISPLAY.map((def) => {
         if (def.kind === "derived" && def.code === "AREA") {
           const coveredAreaFormula = getFormulaByCode("COVERED_AREA");
-          const areaVars = { ...getFormulaVariableDefaults(), ...context };
-          if (style) {
-            getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
-              const n = numericOrNull(row.value);
-              if (n !== null) areaVars[row.variableCode] = n;
-            });
-          }
           const areaEval = coveredAreaFormula
-            ? evaluateFormula(coveredAreaFormula.expression, areaVars, ["COVERED_AREA"])
+            ? evaluateFormula(coveredAreaFormula.expression, buildFlatStyleFormulaVariables(finishedGood), ["COVERED_AREA"])
             : { success: false, result: null };
           return {
             code: def.code,
@@ -2279,22 +2284,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function buildStyleFormulaVariables(finishedGood) {
-      const vars = buildFormulaVariables(finishedGood, null, DEFAULT_WASTAGE_PERCENT);
-      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
-      if (style) {
-        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
-          const n = numericOrNull(row.value);
-          if (n !== null) vars[row.variableCode] = n;
-        });
-      }
-      return vars;
+      return buildFlatStyleFormulaVariables(finishedGood);
     }
 
     function evaluateStyleFormulasForFinishedGood(finishedGood) {
       if (!finishedGood) return [];
       const style = findStyleByName(finishedGood.style);
       if (!style) return [];
-      const variables = buildStyleFormulaVariables(finishedGood);
+      const variables = buildFlatStyleFormulaVariables(finishedGood);
       return getStyleFormulaLinks(style.id).map((link) => {
         const formula = getFormula(link.formulaId);
         if (!formula) {
