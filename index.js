@@ -648,6 +648,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     let persistPrefsTimer = null;
     let hydratedFromSeed = false;
     let userClearedAllData = false;
+    let pendingCloudInit = false;
+    let lastCloudUserId = null;
     let cloudUser = null;
     let cloudSyncTimer = null;
     let cloudReconcileInFlight = false;
@@ -819,7 +821,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         key: "meta",
         initialized: true,
         lastSavedAt: stamp,
-        userClearedAllData: Boolean(userClearedAllData)
+        userClearedAllData: Boolean(userClearedAllData),
+        hydratedFromSeed: Boolean(hydratedFromSeed),
+        lastCloudUserId: lastCloudUserId || null
       });
     }
 
@@ -851,7 +855,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function afterDataChange(...storeNames) {
-      if (!idbReady || idbHydrating) return Promise.resolve();
+      if (!idbReady || idbHydrating || pendingCloudInit) return Promise.resolve();
       const unique = [...new Set(storeNames.filter(Boolean))];
       if (!unique.length) return Promise.resolve();
       setSaveStatus("Saving...", "saving");
@@ -869,7 +873,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function persistEditorState() {
-      if (!idbReady || idbHydrating) return;
+      if (!idbReady || idbHydrating || pendingCloudInit) return;
       clearTimeout(persistEditorTimer);
       persistEditorTimer = setTimeout(() => {
         setSaveStatus("Saving...", "saving");
@@ -887,7 +891,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function persistPrefs() {
-      if (!idbReady || idbHydrating) return;
+      if (!idbReady || idbHydrating || pendingCloudInit) return;
       clearTimeout(persistPrefsTimer);
       persistPrefsTimer = setTimeout(() => {
         persistPrefsNow().catch((error) => console.error("Failed to save preferences", error));
@@ -918,6 +922,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       lastReconciledUid = null;
       localStorage.removeItem("firebaseUserId");
       localStorage.removeItem("firebaseUserEmail");
+      // Do not reset userClearedAllData or hydratedFromSeed here. Clearing
+      // those flags would let ensureSeed* refill an empty catalog on refresh.
     }
 
     function parseStamp(value) {
@@ -953,6 +959,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           bomServices: state.bomServices
         },
         userClearedAllData: Boolean(userClearedAllData),
+        hydratedFromSeed: Boolean(hydratedFromSeed),
         syncTimestamp: new Date().toISOString()
       });
     }
@@ -966,9 +973,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function applyCloudPayload(cloudData) {
+      const cloudCleared = cloudData.userClearedAllData === true;
       const restoringSeed = cloudData.userClearedAllData === false;
-      if (userClearedAllData && !restoringSeed && cloudData.userClearedAllData !== true) {
+      if (userClearedAllData && !restoringSeed && !cloudCleared) {
         return;
+      }
+      if (cloudCleared) userClearedAllData = true;
+      else if (cloudData.userClearedAllData === false) userClearedAllData = false;
+      if (typeof cloudData.hydratedFromSeed === "boolean") {
+        hydratedFromSeed = cloudData.hydratedFromSeed;
       }
       replaceArrayContents(finishedGoods, cloudData.finishedGoods || []);
       replaceArrayContents(rawMaterials, cloudData.rawMaterials || []);
@@ -997,9 +1010,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
       }
       syncSequencesFromData();
-      if (cloudData.userClearedAllData === true) userClearedAllData = true;
-      else if (cloudData.userClearedAllData === false) userClearedAllData = false;
-      if (!userClearedAllData) {
+      if (cloudCleared) {
+        pendingCloudInit = false;
+        hydratedFromSeed = false;
+      } else if (!userClearedAllData) {
         ensureSeedStyleFormulas();
         ensureSeedServiceDimensions();
         ensureSeedMaterialDimensions();
@@ -1068,7 +1082,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     async function syncAllDataToCloud() {
-      if (!isCloudLinked() || suppressCloudPush || idbHydrating) return;
+      if (!isCloudLinked() || suppressCloudPush || idbHydrating || pendingCloudInit) return;
       const userId = getCurrentUser().uid;
       if (!userId) return;
       if (!navigator.onLine) {
@@ -1093,7 +1107,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function syncDataChangeToCloud() {
-      if (!isCloudLinked() || suppressCloudPush || idbHydrating) return;
+      if (!isCloudLinked() || suppressCloudPush || idbHydrating || pendingCloudInit) return;
       clearTimeout(cloudSyncTimer);
       cloudSyncTimer = setTimeout(() => {
         syncAllDataToCloud();
@@ -1107,7 +1121,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         applyCloudPayload(cloudData);
         lastSavedAt = cloudData.syncTimestamp ? new Date(cloudData.syncTimestamp) : new Date();
         await saveAllDataToIndexedDB();
-        hydratedFromSeed = false;
+        pendingCloudInit = false;
         if (cloudData.syncTimestamp) localStorage.setItem("lastSyncTime", cloudData.syncTimestamp);
         updateSyncStatus("Synced", "success");
         if (options && options.notify) showNotification("Data restored from cloud");
@@ -1146,15 +1160,55 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       try {
         updateSyncStatus("Syncing...", "info");
         const docSnap = await getDoc(doc(db, "users", userId, "data", "backup"));
+        const switchedAccount = Boolean(lastCloudUserId && lastCloudUserId !== userId);
+
         if (!docSnap.exists()) {
+          lastCloudUserId = userId;
+          if (switchedAccount) {
+            wipeWorkingDataInMemory();
+            userClearedAllData = false;
+            hydratedFromSeed = false;
+          }
+          pendingCloudInit = false;
+          if (idbReady) await persistUserDataStores();
           await syncAllDataToCloud();
           return;
         }
+
         const cloudData = docSnap.data();
-        if (userClearedAllData && cloudData.userClearedAllData !== false) {
+
+        if (pendingCloudInit) {
+          lastCloudUserId = userId;
+          await applyCloudData(cloudData, { notify: true });
+          return;
+        }
+
+        if (switchedAccount) {
+          lastCloudUserId = userId;
+          await applyCloudData(cloudData, { notify: true });
+          return;
+        }
+
+        if (cloudData.userClearedAllData === true) {
+          lastCloudUserId = userId;
+          await applyCloudData(cloudData, { notify: true });
+          return;
+        }
+
+        if (userClearedAllData === true) {
+          lastCloudUserId = userId;
+          if (idbReady) await persistMetaNow();
           await syncAllDataToCloud();
           return;
         }
+
+        if (!hydratedFromSeed && !catalogHasPersistedData()) {
+          lastCloudUserId = userId;
+          await applyCloudData(cloudData, { notify: true });
+          return;
+        }
+
+        lastCloudUserId = userId;
         const cloudTime = parseStamp(cloudData.syncTimestamp);
         const localTime = lastSavedAt ? lastSavedAt.getTime() : 0;
         if (hydratedFromSeed || cloudTime > localTime + 1500) {
@@ -1162,6 +1216,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         } else {
           await syncAllDataToCloud();
         }
+        if (idbReady) await persistMetaNow();
       } catch (error) {
         console.error("Cloud reconcile error:", error);
         updateSyncStatus("Sync failed", "error");
@@ -1241,15 +1296,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       try {
         const meta = await getAppStateRecord("meta");
         if (!meta || !meta.initialized) {
-          sanitizeNumericMasters();
-          await persistAllCollections();
-          await persistSequencesNow();
-          await persistEditorNow();
-          await persistPrefsNow();
-          lastSavedAt = new Date();
-          await persistMetaNow();
-          setSaveStatus("✓ Saved", "saved");
-          return { fromSeed: true };
+          pendingCloudInit = true;
+          userClearedAllData = false;
+          hydratedFromSeed = false;
+          wipeWorkingDataInMemory();
+          return { fromSeed: false, needsCloudCheck: true };
         }
 
         const loaded = {};
@@ -1262,6 +1313,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
         sanitizeNumericMasters();
         userClearedAllData = Boolean(meta.userClearedAllData);
+        hydratedFromSeed = Boolean(meta.hydratedFromSeed);
+        lastCloudUserId = meta.lastCloudUserId || null;
+        pendingCloudInit = false;
 
         try {
           const sequences = await getAppStateRecord("sequences");
@@ -1327,13 +1381,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
         lastSavedAt = meta.lastSavedAt ? new Date(meta.lastSavedAt) : new Date();
         setSaveStatus(formatLastSavedRelative(), "saved");
-        return { fromSeed: false };
+        return { fromSeed: Boolean(hydratedFromSeed) };
       } finally {
         idbHydrating = false;
       }
     }
 
+    function catalogHasPersistedData() {
+      return IDB_COLLECTION_STORES.some((name) => (getCollectionArray(name) || []).length > 0);
+    }
+
+    function seedCatalogBlocked() {
+      return userClearedAllData === true || pendingCloudInit || !hydratedFromSeed;
+    }
+
     function ensureSeedStyleFormulas() {
+      if (seedCatalogBlocked()) return false;
       const seeds = (SEED_DATA.formulas || []).filter((item) => item.type === "Style");
       let added = false;
       seeds.forEach((seed) => {
@@ -1372,6 +1435,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureSeedServiceDimensions() {
+      if (seedCatalogBlocked()) return false;
       if (serviceDimensions.length) return false;
       let added = false;
       (SEED_DATA.serviceDimensions || []).forEach((seedLink) => {
@@ -1397,6 +1461,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureSeedMaterialDimensions() {
+      if (seedCatalogBlocked()) return false;
       if (materialDimensions.length) return false;
       let added = false;
       (SEED_DATA.materialDimensions || []).forEach((seedLink) => {
@@ -1422,6 +1487,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureSeedStyleWastageVariables() {
+      if (seedCatalogBlocked()) return false;
       const style = styles.find((item) => item.id === 101) || findStyleByName("WINDOW LID");
       if (!style) return false;
       let added = false;
@@ -1442,6 +1508,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureSeedWindowLidSheetVariables() {
+      if (seedCatalogBlocked()) return false;
       const style = styles.find((item) => item.id === 101) || findStyleByName("WINDOW LID");
       if (!style) return false;
       let added = false;
@@ -1481,6 +1548,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureCalculatedSheetAreaCatalog() {
+      if (seedCatalogBlocked()) return false;
       const item = getFormulaVariableByCode("SHEET_AREA");
       if (!item) return false;
       let changed = false;
@@ -1497,6 +1565,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureSeedCostCalculatorData() {
+      if (seedCatalogBlocked()) return false;
       let added = false;
       const sheetWeight = getFormulaByCode("SHEET_WEIGHT");
       const printingQty = getFormulaByCode("PRINTING_QTY");
@@ -1597,6 +1666,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureServiceRates() {
+      if (seedCatalogBlocked()) return false;
       let added = false;
       const now = "2026-01-01T00:00:00.000Z";
       services.forEach((service) => {
@@ -1635,6 +1705,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureMaterialRates() {
+      if (seedCatalogBlocked()) return false;
       let added = false;
       const now = "2026-01-01T00:00:00.000Z";
       rawMaterials.forEach((material) => {
@@ -1667,27 +1738,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
-    async function resetToSeedData() {
-      replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
-      replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
-      replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
-      replaceArrayContents(services, snapshotData(SEED_DATA.services));
-      replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
-      replaceArrayContents(formulas, snapshotData(SEED_DATA.formulas));
-      replaceArrayContents(boms, snapshotData(SEED_DATA.boms));
-      replaceArrayContents(styles, snapshotData(SEED_DATA.styles));
-      replaceArrayContents(dimensions, snapshotData(SEED_DATA.dimensions));
-      replaceArrayContents(formulaVariables, snapshotData(SEED_DATA.formulaVariables));
-      replaceArrayContents(styleVariables, snapshotData(SEED_DATA.styleVariables));
-      replaceArrayContents(styleFormulas, snapshotData(SEED_DATA.styleFormulas));
-      replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
-      replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
-      sanitizeNumericMasters();
-      resetBomEditor();
-      state.costCalculator = defaultCostCalculatorState();
-      bomLineSeq = 1;
-      bomSeq = 1;
-      formulaSeq = formulas.reduce((max, item) => Math.max(max, item.id), 300) + 1;
+    function resetSearchAndFilterState() {
       state.searches = {
         finishedGoods: "",
         rawMaterials: "",
@@ -1707,16 +1758,64 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.serviceRateFilter = "all";
       state.serviceRateSort = "name";
       state.bomListFilter = "all";
+    }
+
+    function wipeWorkingDataInMemory() {
+      IDB_COLLECTION_STORES.forEach((name) => {
+        replaceArrayContents(getCollectionArray(name), []);
+      });
+      sanitizeNumericMasters();
+      resetBomEditor({ keepModal: true, skipPersist: true });
+      state.costCalculator = defaultCostCalculatorState();
+      bomLineSeq = 1;
+      bomSeq = 1;
+      formulaSeq = 1;
+      resetSearchAndFilterState();
+    }
+
+    function applySeedDataInMemory() {
+      replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
+      replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
+      replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
+      replaceArrayContents(services, snapshotData(SEED_DATA.services));
+      replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
+      replaceArrayContents(formulas, snapshotData(SEED_DATA.formulas));
+      replaceArrayContents(boms, snapshotData(SEED_DATA.boms));
+      replaceArrayContents(styles, snapshotData(SEED_DATA.styles));
+      replaceArrayContents(dimensions, snapshotData(SEED_DATA.dimensions));
+      replaceArrayContents(formulaVariables, snapshotData(SEED_DATA.formulaVariables));
+      replaceArrayContents(styleVariables, snapshotData(SEED_DATA.styleVariables));
+      replaceArrayContents(styleFormulas, snapshotData(SEED_DATA.styleFormulas));
+      replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
+      replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
+      sanitizeNumericMasters();
+      resetBomEditor({ skipPersist: true });
+      state.costCalculator = defaultCostCalculatorState();
+      bomLineSeq = 1;
+      bomSeq = 1;
+      formulaSeq = formulas.reduce((max, item) => Math.max(max, item.id), 300) + 1;
+      resetSearchAndFilterState();
       userClearedAllData = false;
+      pendingCloudInit = false;
+      hydratedFromSeed = true;
+    }
+
+    async function initializeWithSeedData() {
+      applySeedDataInMemory();
       if (!idbReady) return;
       setSaveStatus("Saving...", "saving");
+      await persistAllCollections();
+      await persistSequencesNow();
+      await persistEditorNow();
+      await persistPrefsNow();
+      lastSavedAt = new Date();
+      await persistMetaNow();
+      setSaveStatus("✓ Saved", "saved");
+    }
+
+    async function resetToSeedData() {
       try {
-        await persistAllCollections();
-        await persistSequencesNow();
-        await persistEditorNow();
-        await persistPrefsNow();
-        markSaved();
-        hydratedFromSeed = true;
+        await initializeWithSeedData();
         await syncAllDataToCloud();
       } catch (error) {
         console.error("Failed to save offline data", error);
@@ -1733,6 +1832,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         collections,
         userClearedAllData,
+        hydratedFromSeed,
         bomLineSeq,
         bomSeq,
         formulaSeq,
@@ -1774,6 +1874,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         replaceArrayContents(materialDimensions, snap.materialDimensions);
       }
       if (typeof snap.userClearedAllData === "boolean") userClearedAllData = snap.userClearedAllData;
+      if (typeof snap.hydratedFromSeed === "boolean") hydratedFromSeed = snap.hydratedFromSeed;
       bomLineSeq = snap.bomLineSeq;
       bomSeq = snap.bomSeq;
       if (Number.isFinite(snap.formulaSeq)) formulaSeq = snap.formulaSeq;
@@ -1799,41 +1900,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function applyCleanUserDataInMemory() {
-      IDB_COLLECTION_STORES.forEach((name) => {
-        replaceArrayContents(getCollectionArray(name), []);
-      });
-      sanitizeNumericMasters();
-      resetBomEditor({ keepModal: true, skipPersist: true });
-      state.costCalculator = defaultCostCalculatorState();
-      bomLineSeq = 1;
-      bomSeq = 1;
-      formulaSeq = 1;
+      wipeWorkingDataInMemory();
       userClearedAllData = true;
+      pendingCloudInit = false;
       hydratedFromSeed = false;
-      state.searches.finishedGoods = "";
-      state.searches.rawMaterials = "";
-      state.searches.materialRates = "";
-      state.searches.services = "";
-      state.searches.serviceRates = "";
-      state.searches.style = "";
-      state.searches.formulaVariables = "";
-      state.searches.dimensions = "";
-      state.searches.formulas = "";
-      state.searches.bomFinishedGood = "";
-      state.searches.boms = "";
-      state.formulaFilter = "all";
-      state.materialRateFilter = "all";
-      state.materialRateSort = "name";
-      state.serviceRateFilter = "all";
-      state.serviceRateSort = "name";
-      state.bomListFilter = "all";
     }
 
     function setCleanUserDataBusy(busy) {
       state.cleaningUserData = Boolean(busy);
       const dashBtn = document.getElementById("btn-clean-user-data");
       if (dashBtn) {
-        dashBtn.disabled = busy || !isCloudLinked();
+        dashBtn.disabled = busy;
         dashBtn.setAttribute("aria-busy", busy ? "true" : "false");
         dashBtn.textContent = busy ? "Cleaning..." : "Clean My Data";
       }
@@ -1897,14 +1974,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     async function cleanUserData() {
       if (state.cleaningUserData) return;
-      if (!isCloudLinked()) {
-        showNotification("Link a cloud account before cleaning your data.", "error");
-        return;
-      }
 
       setCleanUserDataBusy(true);
       const previous = snapshotUserDataState();
       let localSaved = false;
+      const linked = isCloudLinked();
       suppressCloudPush = true;
 
       try {
@@ -1932,18 +2006,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           localSaved = true;
         }
 
-        if (localSaved) {
-          try {
-            const cloud = await deleteUserDataFromCloud();
-            if (!cloud.ok) {
-              showNotification("Local data cleared, but cloud sync failed. Your data will resync when you're back online.", "error");
-            } else {
-              showNotification("All data has been cleared. Add your formulas, dimensions, and styles to begin setup.");
+        if (localSaved && linked) {
+          const cloud = await deleteUserDataFromCloud();
+          if (!cloud.ok) {
+            restoreUserDataState(previous);
+            if (idbReady) {
+              try {
+                await persistUserDataStores();
+                markSaved();
+              } catch (rollbackError) {
+                console.error("IndexedDB clean rollback failed", rollbackError);
+              }
             }
-          } catch (error) {
-            console.error("Firebase clean failed", error);
-            showNotification("Local data cleared, but cloud sync failed. Your data will resync when you're back online.", "error");
+            const offline = cloud.error === "offline";
+            showNotification(
+              offline
+                ? "Could not sync to cloud while offline. Data was not cleared. Try again when you're online."
+                : "Failed to sync to cloud. Data was not cleared. Try again.",
+              "error"
+            );
+            return;
           }
+          showNotification("All data has been cleared and synced to cloud. Add your formulas, dimensions, and styles to begin setup.");
+        } else if (localSaved) {
+          showNotification("All data has been cleared. Add your formulas, dimensions, and styles to begin setup.");
         }
       } catch (error) {
         console.error("Clean user data failed", error);
@@ -5746,11 +5832,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <p style="margin-top:8px;color:var(--text-muted);">${escapeHtml(formatLastSavedRelative())}${idbReady ? "" : " · Persistence unavailable"}</p>
             <div class="cloud-sync-actions" style="margin-top:12px;">
               <button type="button" class="btn" id="btn-reset-local-data">Restore seed data</button>
-              <button type="button" class="btn btn-warning-solid" id="btn-clean-user-data" ${linked && !state.cleaningUserData ? "" : "disabled"} aria-busy="${state.cleaningUserData ? "true" : "false"}" title="${linked ? "Delete everything, including formulas, dimensions, styles, and variables." : "Link a cloud account to clean your data."}">
+              <button type="button" class="btn btn-warning-solid" id="btn-clean-user-data" ${state.cleaningUserData ? "disabled" : ""} aria-busy="${state.cleaningUserData ? "true" : "false"}" title="Delete everything, including formulas, dimensions, styles, and variables.">
                 ${state.cleaningUserData ? "Cleaning..." : "Clean My Data"}
               </button>
             </div>
-            <p class="stat-hint" style="margin-top:8px;">Clean My Data wipes the entire app: products, materials, services, BOMs, formulas, dimensions, styles, and variables. Requires a linked account. Use Restore seed data to bring demo data back.</p>
+            <p class="stat-hint" style="margin-top:8px;">Clean My Data wipes the entire app: products, materials, services, BOMs, formulas, dimensions, styles, and variables. Use Restore seed data to bring demo data back.</p>
           </div>
         </div>
       `;
@@ -11804,10 +11890,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-clean-user-data")) {
           if (state.cleaningUserData) return;
-          if (!isCloudLinked()) {
-            showNotification("Link a cloud account before cleaning your data.", "error");
-            return;
-          }
           openMasterDeleteModal("user-data", 0, "your products, materials, services, and BOMs");
           return;
         }
@@ -12442,6 +12524,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         console.error("Could not load saved data", error);
         showNotification("Could not load saved data, using defaults", "warning");
         setSaveStatus("Using defaults", "error");
+      }
+      try {
+        if (typeof auth.authStateReady === "function") await auth.authStateReady();
+      } catch (error) {
+        console.error("Auth initialization failed", error);
+      }
+      if (auth.currentUser) {
+        rememberCloudUser(auth.currentUser);
+        lastReconciledUid = auth.currentUser.uid;
+        try {
+          await reconcileCloudOnLogin();
+        } catch (error) {
+          console.error("Cloud reconcile on boot failed", error);
+        }
+      } else if (pendingCloudInit) {
+        try {
+          userClearedAllData = false;
+          hydratedFromSeed = false;
+          pendingCloudInit = false;
+          if (idbReady) await persistUserDataStores();
+        } catch (error) {
+          console.error("Failed to initialize empty catalog", error);
+        }
       }
       startCloudAuthListener();
       window.addEventListener("online", () => {
