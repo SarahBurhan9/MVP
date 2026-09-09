@@ -6127,7 +6127,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="fg-combo-control">
             <div class="fg-combo-wrap">
               <i data-lucide="search"></i>
-              <input id="fg-combo-search" type="search" autocomplete="off" placeholder="Search product, variant, style, ply, dimensions..." value="${escapeHtml(inputValue)}" />
+              <input id="fg-combo-search" type="search" autocomplete="off" placeholder="Search product, variant, style, ply, dimensions..." value="${escapeHtml(inputValue)}" title="${escapeHtml(inputValue)}" />
             </div>
             <button type="button" class="fg-combo-toggle" id="fg-combo-toggle" aria-label="Toggle finished good list">
               <i data-lucide="chevron-down"></i>
