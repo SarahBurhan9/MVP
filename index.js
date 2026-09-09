@@ -2335,17 +2335,52 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const rows = evaluatedStyleFormulas || evaluateStyleFormulasForFinishedGood(finishedGood);
       let serviceL = null;
       let serviceW = null;
+      let serviceLCode = null;
+      let serviceWCode = null;
       rows.forEach((row) => {
         if (row.serviceLength && row.success) {
           const n = numericOrNull(row.result);
-          if (n !== null) serviceL = n;
+          if (n !== null) {
+            serviceL = n;
+            serviceLCode = row.code;
+          }
         }
         if (row.serviceWidth && row.success) {
           const n = numericOrNull(row.result);
-          if (n !== null) serviceW = n;
+          if (n !== null) {
+            serviceW = n;
+            serviceWCode = row.code;
+          }
         }
       });
-      return { serviceL, serviceW };
+      return { serviceL, serviceW, serviceLCode, serviceWCode };
+    }
+
+    function isUsableStyleServiceDim(value) {
+      const n = numericOrNull(value);
+      return n !== null && n !== 0;
+    }
+
+    function resolveStyleServiceDimUsage(finishedGood, formula) {
+      const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
+      const warnings = [];
+      if (formula && formula.serviceLength && styleDims.serviceL === 0) {
+        warnings.push("⚠️ Service Length formula evaluated to 0. Check style formula.");
+      }
+      if (formula && formula.serviceWidth && styleDims.serviceW === 0) {
+        warnings.push("⚠️ Service Width formula evaluated to 0. Check style formula.");
+      }
+      const useL = Boolean(formula && formula.serviceLength && isUsableStyleServiceDim(styleDims.serviceL));
+      const useW = Boolean(formula && formula.serviceWidth && isUsableStyleServiceDim(styleDims.serviceW));
+      return {
+        serviceL: styleDims.serviceL,
+        serviceW: styleDims.serviceW,
+        serviceLCode: styleDims.serviceLCode,
+        serviceWCode: styleDims.serviceWCode,
+        useL,
+        useW,
+        warnings
+      };
     }
 
     function getStyleVariableValue(styleId, variableCode, ply) {
@@ -3441,11 +3476,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const sheet = getSheetDimensions(finishedGood);
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       const fgDims = finishedGood?.dimensions ?? {};
-      const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
+      const styleUsage = resolveStyleServiceDimUsage(finishedGood, formulaRec);
       let L = dim?.L ?? fgDims.L ?? defaults.L;
       let W = dim?.W ?? fgDims.W ?? defaults.W;
-      if (formulaRec && formulaRec.serviceLength && styleDims.serviceL !== null) L = styleDims.serviceL;
-      if (formulaRec && formulaRec.serviceWidth && styleDims.serviceW !== null) W = styleDims.serviceW;
+      if (styleUsage.useL) L = styleUsage.serviceL;
+      if (styleUsage.useW) W = styleUsage.serviceW;
       L = roundTo(L, 2);
       W = roundTo(W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
@@ -3643,8 +3678,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const fgDims = finishedGood?.dimensions ?? {};
       const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
-      const baseL = styleDims.serviceL !== null ? styleDims.serviceL : (dim?.L ?? fgDims.L ?? defaults.L);
-      const baseW = styleDims.serviceW !== null ? styleDims.serviceW : (dim?.W ?? fgDims.W ?? defaults.W);
+      const baseL = isUsableStyleServiceDim(styleDims.serviceL) ? styleDims.serviceL : (dim?.L ?? fgDims.L ?? defaults.L);
+      const baseW = isUsableStyleServiceDim(styleDims.serviceW) ? styleDims.serviceW : (dim?.W ?? fgDims.W ?? defaults.W);
       const L = roundTo(override.L !== null ? override.L : baseL, 2);
       const W = roundTo(override.W !== null ? override.W : baseW, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
@@ -4144,7 +4179,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: null,
         wastagePercent: DEFAULT_WASTAGE_PERCENT,
         rateUOM: "",
-        uom: ""
+        uom: "",
+        usedServiceL: false,
+        usedServiceW: false,
+        serviceL: null,
+        serviceW: null,
+        serviceLCode: null,
+        serviceWCode: null,
+        dimWarnings: []
       };
       const fg = getCostCalculatorFinishedGood();
       if (!fg || !layerRow) return empty;
@@ -4175,6 +4217,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
       const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
+      const styleUsage = resolveStyleServiceDimUsage(fg, formula);
       const calcContext = { finishedGood: fg, useEnteredDimensions: true };
       const line = calculateMaterialCost({
         rawMaterialId: material.id,
@@ -4195,7 +4238,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           error: formatCostCalculatorFormulaError(line.error),
           formulaId: formula.id,
           dimensionId: link.dimensionId,
-          wastagePercent: wastage
+          wastagePercent: wastage,
+          dimWarnings: styleUsage.warnings
         };
       }
       const variables = buildFormulaVariables(fg, material, wastage, null, formula);
@@ -4212,7 +4256,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: link.dimensionId,
         wastagePercent: wastage,
         rateUOM: rateRow?.rateUOM || "",
-        uom: material.uom
+        uom: material.uom,
+        usedServiceL: styleUsage.useL,
+        usedServiceW: styleUsage.useW,
+        serviceL: styleUsage.serviceL,
+        serviceW: styleUsage.serviceW,
+        serviceLCode: styleUsage.serviceLCode,
+        serviceWCode: styleUsage.serviceWCode,
+        dimWarnings: styleUsage.warnings
       };
     }
 
@@ -4308,6 +4359,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function renderCostCalculatorMaterialDimHint(calc) {
+      if (!calc) return "";
+      const parts = [];
+      const tips = [];
+      if (calc.usedServiceL) {
+        parts.push("Service Length = " + formatFormulaResult(calc.serviceL));
+        tips.push("This material qty uses Service Length from style formula " + (calc.serviceLCode || ""));
+      }
+      if (calc.usedServiceW) {
+        parts.push("Service Width = " + formatFormulaResult(calc.serviceW));
+        tips.push("This material qty uses Service Width from style formula " + (calc.serviceWCode || ""));
+      }
+      if (!parts.length) return "";
+      return `<span class="cc-dim-override" title="${escapeHtml(tips.join(" "))}">[Using ${escapeHtml(parts.join(", "))}]</span>`;
+    }
+
     function renderCostCalculator() {
       const page = document.getElementById("page-cost-calculator");
       if (!page) return;
@@ -4332,8 +4399,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               `).join("")}
             </select>
             ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
+            ${(calc.dimWarnings || []).map((msg) => `<div class="field-error cc-dim-warn">${escapeHtml(msg)}</div>`).join("")}
             <div class="cc-metrics">
-              <div><span>Qty</span><strong class="formula-cell">${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}${row.rawMaterialId ? formulaHelpButton("cc-material", row.layer, "Explain quantity") : ""}</strong></div>
+              <div><span>Qty</span><strong class="formula-cell">${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}${row.rawMaterialId && !calc.error ? renderCostCalculatorMaterialDimHint(calc) : ""}${row.rawMaterialId ? formulaHelpButton("cc-material", row.layer, "Explain quantity") : ""}</strong></div>
               <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM)) : "—"}</strong></div>
               <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.rawMaterialId && calc.error ? "Error" : "—")}</strong></div>
               <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>

@@ -425,11 +425,20 @@
       margin-top: 12px;
     }
 
-    .cc-metrics span {
+    .cc-metrics > div > span {
       display: block;
       font-size: 12px;
       color: var(--text-muted);
     }
+    .cc-dim-override {
+      display: inline;
+      margin-left: 6px;
+      font-size: 11px;
+      font-family: ui-monospace, Consolas, monospace;
+      font-weight: 500;
+      color: var(--text-muted);
+    }
+    .cc-dim-warn { margin-top: 6px; }
 
     .cc-total-line,
     .cc-summary-line {
