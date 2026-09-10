@@ -7,6 +7,7 @@ import {
   onAuthStateChanged
 } from "firebase/auth";
 import { getFirestore, setDoc, doc, getDoc } from "firebase/firestore";
+import * as XLSX from "xlsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -506,6 +507,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     };
 
     const FORMULA_TYPES = ["Material", "Service", "Style"];
+    const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Consumable"];
+    const MATERIAL_UOMS = ["kg", "gm", "sheet", "sq.meter"];
 
     const BASE_VARIABLES = [
       "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY",
@@ -1036,6 +1039,132 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         },
         syncTimestamp: new Date().toISOString()
       });
+    }
+
+    const EXCEL_EXPORT_SHEETS = [
+      { name: "Finished Goods", key: "finishedGoods" },
+      { name: "Raw Materials", key: "rawMaterials" },
+      { name: "Material Rates", key: "materialRates" },
+      { name: "Material Dimensions", key: "materialDimensions" },
+      { name: "Other Raw Materials", key: "otherRawMaterials" },
+      { name: "Other Material Rates", key: "otherMaterialRates" },
+      { name: "Other Material Dims", key: "otherMaterialDimensions" },
+      { name: "Formulas", key: "formulas" },
+      { name: "Formula Variables", key: "formulaVariables" },
+      { name: "Services", key: "services" },
+      { name: "Service Rates", key: "serviceRates" },
+      { name: "Service Dimensions", key: "serviceDimensions" },
+      { name: "Styles", key: "styles" },
+      { name: "Style Formulas", key: "styleFormulas" },
+      { name: "Style Variables", key: "styleVariables" },
+      { name: "Dimensions", key: "dimensions" }
+    ];
+
+    function excelCellValue(value) {
+      if (value === null || value === undefined) return "";
+      if (typeof value === "number" || typeof value === "boolean" || typeof value === "string") return value;
+      try {
+        return JSON.stringify(value);
+      } catch (error) {
+        return String(value);
+      }
+    }
+
+    function flattenRecordForExcel(record) {
+      if (!record || typeof record !== "object" || Array.isArray(record)) {
+        return { value: excelCellValue(record) };
+      }
+      const row = {};
+      Object.keys(record).forEach((key) => {
+        const value = record[key];
+        const isPlainObject = value && typeof value === "object" && !Array.isArray(value);
+        const canFlatten = isPlainObject && Object.values(value).every((nested) =>
+          nested == null || typeof nested === "number" || typeof nested === "boolean" || typeof nested === "string"
+        );
+        if (canFlatten) {
+          Object.keys(value).forEach((nestedKey) => {
+            row[key + "." + nestedKey] = excelCellValue(value[nestedKey]);
+          });
+          return;
+        }
+        row[key] = excelCellValue(value);
+      });
+      return row;
+    }
+
+    function rowsForExcelSheet(items) {
+      if (!Array.isArray(items) || !items.length) return [];
+      return items.map((item) => flattenRecordForExcel(item));
+    }
+
+    function appendExcelSheet(workbook, name, rows) {
+      const sheet = rows.length
+        ? XLSX.utils.json_to_sheet(rows)
+        : XLSX.utils.aoa_to_sheet([["(no records)"]]);
+      XLSX.utils.book_append_sheet(workbook, sheet, name.slice(0, 31));
+    }
+
+    function flattenBomLineRows(boms, lineKey) {
+      const rows = [];
+      (boms || []).forEach((bom) => {
+        (bom[lineKey] || []).forEach((line, lineIndex) => {
+          rows.push(flattenRecordForExcel({
+            bomId: bom.id,
+            bomNo: bom.bomNo,
+            version: bom.version,
+            status: bom.status,
+            finishedGoodId: bom.finishedGoodId,
+            lineIndex,
+            ...line
+          }));
+        });
+      });
+      return rows;
+    }
+
+    function excelExportFilename(date) {
+      const stamp = date instanceof Date ? date : new Date();
+      const pad = (n) => String(n).padStart(2, "0");
+      return "packaging-erp-data-" +
+        stamp.getFullYear() +
+        pad(stamp.getMonth() + 1) +
+        pad(stamp.getDate()) +
+        "-" +
+        pad(stamp.getHours()) +
+        pad(stamp.getMinutes()) +
+        pad(stamp.getSeconds()) +
+        ".xlsx";
+    }
+
+    function buildExcelWorkbookFromPayload(payload) {
+      const workbook = XLSX.utils.book_new();
+      const data = payload || {};
+      EXCEL_EXPORT_SHEETS.forEach((sheet) => {
+        appendExcelSheet(workbook, sheet.name, rowsForExcelSheet(data[sheet.key]));
+      });
+      appendExcelSheet(workbook, "BOMs", rowsForExcelSheet(data.boms));
+      appendExcelSheet(workbook, "BOM Materials", flattenBomLineRows(data.boms, "materials"));
+      appendExcelSheet(workbook, "BOM Services", flattenBomLineRows(data.boms, "services"));
+      const sequences = data.sequences || {};
+      appendExcelSheet(workbook, "Sequences", [flattenRecordForExcel({
+        bomSeq: sequences.bomSeq,
+        formulaSeq: sequences.formulaSeq,
+        bomLineSeq: sequences.bomLineSeq
+      })]);
+      return workbook;
+    }
+
+    function downloadAllDataAsExcel() {
+      try {
+        const payload = collectCloudBackupPayload();
+        const filename = excelExportFilename(new Date());
+        const workbook = buildExcelWorkbookFromPayload(payload);
+        XLSX.writeFile(workbook, filename);
+        showNotification("✓ Downloaded");
+      } catch (error) {
+        console.error("Excel export failed", error);
+        showNotification("Excel export failed. Please try again.", "error");
+      }
     }
 
     async function saveAllDataToIndexedDB() {
@@ -6203,6 +6332,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             }</div>
           </div>
         </div>
+        <div class="card cloud-sync-card">
+          <div class="card-body">
+            <div class="section-kicker">Export</div>
+            <div class="section-title">Download All Data</div>
+            <p style="margin-top:8px;color:var(--text-muted);line-height:1.5;">
+              Save every master and BOM from this browser as an Excel workbook. Works offline.
+            </p>
+            <div class="cloud-sync-actions">
+              <button type="button" class="btn btn-primary" id="btn-download-excel">
+                <i data-lucide="download"></i> Download Excel
+              </button>
+            </div>
+            ${auth.currentUser ? "" : `<p class="stat-hint" style="margin-top:10px;">💾 Downloading local data only. Sign in with Google to sync your data to the cloud.</p>`}
+          </div>
+        </div>
         <div class="stat-grid">
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="finished-goods">
             <div class="stat-label">Total Finished Goods</div>
@@ -8262,13 +8406,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="rm-category">Category</label>
               <select id="rm-category" class="full-select">
-                ${["Paper", "Board", "Sheet", "Film", "Consumable"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
+                ${MATERIAL_CATEGORIES.map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
               </select>
             </div>
             <div>
               <label class="form-label" for="rm-uom">UOM</label>
               <select id="rm-uom" class="full-select">
-                ${["kg", "gm", "sheet", "sq.meter"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+                ${MATERIAL_UOMS.map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
               </select>
             </div>
             <div>
@@ -8794,13 +8938,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="orm-category">Category</label>
               <select id="orm-category" class="full-select">
-                ${["Paper", "Board", "Sheet", "Film", "Consumable"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
+                ${MATERIAL_CATEGORIES.map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
               </select>
             </div>
             <div>
               <label class="form-label" for="orm-uom">UOM</label>
               <select id="orm-uom" class="full-select">
-                ${["kg", "gm", "sheet", "sq.meter"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+                ${MATERIAL_UOMS.map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
               </select>
             </div>
             <div>
@@ -13009,6 +13153,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.closest("#btn-clean-user-data")) {
           if (state.cleaningUserData) return;
           openMasterDeleteModal("user-data", 0, "your products, materials, services, and BOMs");
+          return;
+        }
+        if (event.target.closest("#btn-download-excel")) {
+          downloadAllDataAsExcel();
           return;
         }
         if (event.target.closest("#btn-link-cloud")) {
