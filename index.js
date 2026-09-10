@@ -3208,26 +3208,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getServiceDimensionLink(serviceId, dimensionId, ply) {
       if (serviceId == null || dimensionId == null || dimensionId === "") return null;
-      const targetPly = ply == null || ply === "" ? null : Number(ply);
-      return serviceDimensions.find((item) =>
+      const matches = serviceDimensions.filter((item) =>
         item.serviceId === Number(serviceId) &&
-        Number(item.dimensionId) === Number(dimensionId) &&
-        (targetPly == null || Number(item.ply) === targetPly)
-      ) || null;
+        Number(item.dimensionId) === Number(dimensionId)
+      );
+      if (!matches.length) return null;
+      const targetPly = ply == null || ply === "" ? null : Number(ply);
+      if (targetPly != null) {
+        const exact = matches.find((item) => Number(item.ply) === targetPly);
+        if (exact) return exact;
+      }
+      return matches[0];
     }
 
-    function getServiceLinkedDimensionIds(service, ply) {
+    function getServiceLinkedDimensionIds(service) {
       if (!service) return [];
-      let links = getServiceDimensionLinks(service.id);
-      const hasLinks = links.length > 0;
-      if (ply != null && ply !== "") {
-        links = links.filter((row) => Number(row.ply) === Number(ply));
-      }
-      const fromLinks = links
+      const fromLinks = getServiceDimensionLinks(service.id)
         .map((row) => Number(row.dimensionId))
         .filter((id) => getDimension(id));
       if (fromLinks.length) return normalizeDimensionIds(fromLinks);
-      if (hasLinks && ply != null && ply !== "") return [];
       return normalizeDimensionIds(service.dimensionIds);
     }
 
@@ -3237,8 +3236,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function serviceMissingPlyFormula(service, dimensionId, ply) {
       if (!serviceHasDimensionLinks(service)) return false;
-      const plyLinks = getServiceDimensionLinks(service.id).filter((row) => Number(row.ply) === Number(ply));
-      if (!plyLinks.length) return true;
       if (dimensionId == null || dimensionId === "") return false;
       const link = getServiceDimensionLink(service.id, dimensionId, ply);
       return !link || !link.formulaId;
@@ -3255,10 +3252,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function formatServiceDimensionSummary(service) {
       const links = getServiceDimensionLinks(service && service.id);
       if (links.length) {
-        return links.map((row) => {
-          const label = formatDimensionChipLabel(getDimension(row.dimensionId));
-          return label + " (" + normalizeStylePly(row.ply, 3) + " ply)";
-        }).join(", ") || "—";
+        return formatLinkedDimensionSummary(links.map((row) => Number(row.dimensionId)));
       }
       return formatLinkedDimensionSummary(service && service.dimensionIds);
     }
@@ -3272,59 +3266,48 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getMaterialDimensionLink(rawMaterialId, dimensionId, ply) {
       if (rawMaterialId == null || dimensionId == null || dimensionId === "") return null;
-      const targetPly = ply == null || ply === "" ? null : Number(ply);
-      return materialDimensions.find((item) =>
+      const matches = materialDimensions.filter((item) =>
         item.rawMaterialId === Number(rawMaterialId) &&
-        Number(item.dimensionId) === Number(dimensionId) &&
-        (targetPly == null || Number(item.ply) === targetPly)
-      ) || null;
+        Number(item.dimensionId) === Number(dimensionId)
+      );
+      if (!matches.length) return null;
+      const targetPly = ply == null || ply === "" ? null : Number(ply);
+      if (targetPly != null) {
+        const exact = matches.find((item) => Number(item.ply) === targetPly);
+        if (exact) return exact;
+      }
+      return matches[0];
     }
 
-    function getMaterialLinkedDimensionIds(material, ply) {
+    function getMaterialLinkedDimensionIds(material) {
       if (!material) return [];
-      let links = getMaterialDimensionLinks(material.id);
-      const hasLinks = links.length > 0;
-      if (ply != null && ply !== "") {
-        links = links.filter((row) => Number(row.ply) === Number(ply));
-      }
-      const fromLinks = links
+      const fromLinks = getMaterialDimensionLinks(material.id)
         .map((row) => Number(row.dimensionId))
         .filter((id) => getDimension(id));
       if (fromLinks.length) return normalizeDimensionIds(fromLinks);
-      if (hasLinks && ply != null && ply !== "") return [];
       return normalizeDimensionIds(material.dimensionIds);
     }
 
-    function describeBomMaterialDimensionSelect(material, ply) {
-      const linkedIds = material ? getMaterialLinkedDimensionIds(material, ply) : [];
+    function describeBomMaterialDimensionSelect(material) {
+      const linkedIds = material ? getMaterialLinkedDimensionIds(material) : [];
       if (!material) {
         return {
           linkedIds: [],
-          emptyLabel: "No dimensions for this ply",
+          emptyLabel: "No dimensions linked",
           hint: ""
         };
       }
-      const allLinks = getMaterialDimensionLinks(material.id);
-      const plyLinks = allLinks.filter((row) => Number(row.ply) === Number(ply));
       if (linkedIds.length) {
         return {
           linkedIds,
-          emptyLabel: "No dimensions for this ply",
-          hint: "Optional. Select a dimension to load the formula linked for this material and ply."
-        };
-      }
-      const plyLabel = ply != null && ply !== "" ? ply + "-ply" : "this ply";
-      if (allLinks.length && !plyLinks.length) {
-        return {
-          linkedIds,
-          emptyLabel: "No dimensions for this ply",
-          hint: "No dimension linked yet for this material + " + plyLabel + ". Go to Raw Material → Dimensions tab to add one."
+          emptyLabel: "No dimensions linked",
+          hint: "Optional. Select a dimension to load the formula linked for this material."
         };
       }
       return {
         linkedIds,
         emptyLabel: "No dimensions linked",
-        hint: "No dimension linked yet for this material + ply. Go to Raw Material → Dimensions tab to add one."
+        hint: "No dimension linked yet for this material. Go to Raw Material → Dimensions tab to add one."
       };
     }
 
@@ -3334,8 +3317,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function materialMissingPlyFormula(material, dimensionId, ply) {
       if (!materialHasDimensionLinks(material)) return false;
-      const plyLinks = getMaterialDimensionLinks(material.id).filter((row) => Number(row.ply) === Number(ply));
-      if (!plyLinks.length) return true;
       if (dimensionId == null || dimensionId === "") return false;
       const link = getMaterialDimensionLink(material.id, dimensionId, ply);
       return !link || !link.formulaId;
@@ -3352,10 +3333,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function formatMaterialDimensionSummary(material) {
       const links = getMaterialDimensionLinks(material && material.id);
       if (links.length) {
-        return links.map((row) => {
-          const label = formatDimensionChipLabel(getDimension(row.dimensionId));
-          return label + " (" + normalizeStylePly(row.ply, 3) + " ply)";
-        }).join(", ") || "—";
+        return formatLinkedDimensionSummary(links.map((row) => Number(row.dimensionId)));
       }
       return formatLinkedDimensionSummary(material && material.dimensionIds);
     }
@@ -3447,7 +3425,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const disabled = locked || !linked.length;
       const placeholder = locked
         ? (opts.lockedLabel || "Select an item first")
-        : (linked.length ? "Select a dimension..." : (opts.emptyLabel || "No dimensions for this ply"));
+        : (linked.length ? "Select a dimension..." : (opts.emptyLabel || "No dimensions linked"));
       return `
         <div>
           <label class="form-label" for="${selectId}">Dimension</label>
@@ -3470,10 +3448,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (draft.calculationMethod === "formula") draft.formulaId = null;
         return;
       }
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const linkedIds = getMaterialLinkedDimensionIds(material, ply);
+      if (draft.calculationMethod !== "formula") return;
+      const linkedIds = getMaterialLinkedDimensionIds(material);
       if (draft.dimensionId && !linkedIds.includes(Number(draft.dimensionId))) {
         draft.dimensionId = null;
+      }
+      if (!draft.dimensionId) {
+        draft.dimensionId = pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
       }
       if (draft.dimensionId) {
         applyMaterialDimensionFormula(draft);
@@ -3502,8 +3483,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (draft.calculationMethod === "formula") draft.formulaId = null;
         return;
       }
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const linkedIds = getServiceLinkedDimensionIds(service, ply);
+      const linkedIds = getServiceLinkedDimensionIds(service);
       if (draft.dimensionId && !linkedIds.includes(Number(draft.dimensionId))) {
         draft.dimensionId = null;
       }
@@ -4481,19 +4461,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function findCostCalculatorMaterialLink(rawMaterialId, ply, finishedGood) {
-      const links = getMaterialDimensionLinks(rawMaterialId).filter((row) => Number(row.ply) === Number(ply));
+      const links = getMaterialDimensionLinks(rawMaterialId);
       if (!links.length) return null;
       const ids = links.map((row) => Number(row.dimensionId));
       const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
-      return links.find((row) => Number(row.dimensionId) === Number(picked)) || links[0];
+      return getMaterialDimensionLink(rawMaterialId, picked, ply) || links[0];
     }
 
     function findCostCalculatorServiceLink(serviceId, ply, finishedGood) {
-      const links = getServiceDimensionLinks(serviceId).filter((row) => Number(row.ply) === Number(ply));
+      const links = getServiceDimensionLinks(serviceId);
       if (!links.length) return null;
       const ids = links.map((row) => Number(row.dimensionId));
       const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
-      return links.find((row) => Number(row.dimensionId) === Number(picked)) || links[0];
+      return getServiceDimensionLink(serviceId, picked, ply) || links[0];
     }
 
     function formatCostCalculatorFormulaError(error) {
@@ -7684,7 +7664,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             return `
               <tr>
                 <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
-                <td>${escapeHtml(String(normalizeStylePly(row.ply, 3)))}</td>
                 <td>
                   <div>${escapeHtml(formula ? formula.name : "Missing formula")}</div>
                   <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}</div>
@@ -7693,12 +7672,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(4, "No dimensions linked to this material yet.");
+        : emptyRow(3, "No dimensions linked to this material yet.");
       const dimsForm = `
         <div class="section-head">
           <div>
             <div class="section-kicker">Material dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension, ply, and Material qty formula. BOM uses the formula for that dimension and the finished good's ply.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension and Material qty formula. BOM uses the formula linked to that dimension.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-material-dimension">
             <i data-lucide="plus"></i> Add Dimension to Material
@@ -7709,7 +7688,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <thead>
               <tr>
                 <th>Dimension Name</th>
-                <th>Ply</th>
                 <th>Formula (Qty Calculate)</th>
                 <th>Actions</th>
               </tr>
@@ -8014,13 +7992,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
             </div>
             <div>
-              <label class="form-label" for="rm-dim-ply">Ply</label>
-              <select id="rm-dim-ply" class="full-select ${errors.ply ? "input-invalid" : ""}">
-                ${renderStylePlyOptions(draft.ply)}
-              </select>
-              ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
-            </div>
-            <div>
               <label class="form-label" for="rm-dim-formula">Formula (Qty Calculate)</label>
               <select id="rm-dim-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
                 <option value="">Select a Material formula...</option>
@@ -8049,8 +8020,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         type: "material-dimension",
         mode: existing ? "edit" : "add",
         draft: existing
-          ? { id: existing.id, dimensionId: existing.dimensionId, ply: normalizeStylePly(existing.ply, 3), formulaId: existing.formulaId }
-          : { dimensionId: "", ply: 1, formulaId: "" },
+          ? { id: existing.id, dimensionId: existing.dimensionId, ply: existing.ply, formulaId: existing.formulaId }
+          : { dimensionId: "", formulaId: "" },
         errors: {}
       };
       renderModal();
@@ -8070,18 +8041,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       const rawMaterialId = Number(state.modal.draft.id);
       const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
-      const ply = normalizeStylePly(draft.ply, NaN);
       const formulaId = draft.formulaId ? Number(draft.formulaId) : null;
       if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
-      if (![1, 2, 3].includes(ply)) errors.ply = "Ply must be 1, 2, or 3.";
       const formula = getFormula(formulaId);
       if (!formulaId || !formula || formula.type !== "Material" || !formula.isActive) {
         errors.formulaId = "Select an active Material formula.";
       }
-      if (dimensionId && [1, 2, 3].includes(ply) && materialDimensions.some((row) =>
-        row.rawMaterialId === rawMaterialId && Number(row.dimensionId) === dimensionId && Number(row.ply) === ply && row.id !== draft.id
+      if (dimensionId && materialDimensions.some((row) =>
+        row.rawMaterialId === rawMaterialId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
       )) {
-        errors.ply = "This dimension is already linked for this ply.";
+        errors.dimensionId = "This dimension is already linked.";
       }
       sub.errors = errors;
       if (Object.keys(errors).length) {
@@ -8095,7 +8064,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             id: materialDimensions[index].id,
             rawMaterialId: materialDimensions[index].rawMaterialId,
             dimensionId,
-            ply,
+            ply: materialDimensions[index].ply,
             formulaId,
             createdAt: materialDimensions[index].createdAt
           };
@@ -8106,7 +8075,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           id: nextMasterId(materialDimensions),
           rawMaterialId,
           dimensionId,
-          ply,
+          ply: 1,
           formulaId,
           createdAt: new Date().toISOString()
         });
@@ -8145,10 +8114,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.sub.draft;
       if (target.id === "rm-dim-select") {
         draft.dimensionId = target.value ? Number(target.value) : "";
-        return "rerender";
-      }
-      if (target.id === "rm-dim-ply") {
-        draft.ply = Number(target.value);
         return "rerender";
       }
       if (target.id === "rm-dim-formula") {
@@ -8232,7 +8197,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             return `
               <tr>
                 <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
-                <td>${escapeHtml(String(normalizeStylePly(row.ply, 3)))}</td>
                 <td>
                   <div>${escapeHtml(formula ? formula.name : "Missing formula")}</div>
                   <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}</div>
@@ -8241,12 +8205,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(4, "No dimensions linked to this service yet.");
+        : emptyRow(3, "No dimensions linked to this service yet.");
       const dimsForm = `
         <div class="section-head">
           <div>
             <div class="section-kicker">Service dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension, ply, and Service qty formula. BOM uses the formula for that dimension and the finished good's ply.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension and Service qty formula. BOM uses the formula linked to that dimension.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-service-dimension">
             <i data-lucide="plus"></i> Add Dimension to Service
@@ -8257,7 +8221,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <thead>
               <tr>
                 <th>Dimension Name</th>
-                <th>Ply</th>
                 <th>Formula (Qty Calculate)</th>
                 <th>Actions</th>
               </tr>
@@ -8570,13 +8533,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
             </div>
             <div>
-              <label class="form-label" for="srv-dim-ply">Ply</label>
-              <select id="srv-dim-ply" class="full-select ${errors.ply ? "input-invalid" : ""}">
-                ${renderStylePlyOptions(draft.ply)}
-              </select>
-              ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
-            </div>
-            <div>
               <label class="form-label" for="srv-dim-formula">Formula (Qty Calculate)</label>
               <select id="srv-dim-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
                 <option value="">Select a Service formula...</option>
@@ -8605,8 +8561,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         type: "service-dimension",
         mode: existing ? "edit" : "add",
         draft: existing
-          ? { id: existing.id, dimensionId: existing.dimensionId, ply: normalizeStylePly(existing.ply, 3), formulaId: existing.formulaId }
-          : { dimensionId: "", ply: 1, formulaId: "" },
+          ? { id: existing.id, dimensionId: existing.dimensionId, ply: existing.ply, formulaId: existing.formulaId }
+          : { dimensionId: "", formulaId: "" },
         errors: {}
       };
       renderModal();
@@ -8626,18 +8582,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       const serviceId = Number(state.modal.draft.id);
       const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
-      const ply = normalizeStylePly(draft.ply, NaN);
       const formulaId = draft.formulaId ? Number(draft.formulaId) : null;
       if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
-      if (![1, 2, 3].includes(ply)) errors.ply = "Ply must be 1, 2, or 3.";
       const formula = getFormula(formulaId);
       if (!formulaId || !formula || formula.type !== "Service" || !formula.isActive) {
         errors.formulaId = "Select an active Service formula.";
       }
-      if (dimensionId && [1, 2, 3].includes(ply) && serviceDimensions.some((row) =>
-        row.serviceId === serviceId && Number(row.dimensionId) === dimensionId && Number(row.ply) === ply && row.id !== draft.id
+      if (dimensionId && serviceDimensions.some((row) =>
+        row.serviceId === serviceId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
       )) {
-        errors.ply = "This dimension is already linked for this ply.";
+        errors.dimensionId = "This dimension is already linked.";
       }
       sub.errors = errors;
       if (Object.keys(errors).length) {
@@ -8651,7 +8605,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             id: serviceDimensions[index].id,
             serviceId: serviceDimensions[index].serviceId,
             dimensionId,
-            ply,
+            ply: serviceDimensions[index].ply,
             formulaId,
             createdAt: serviceDimensions[index].createdAt
           };
@@ -8662,7 +8616,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           id: nextMasterId(serviceDimensions),
           serviceId,
           dimensionId,
-          ply,
+          ply: 1,
           formulaId,
           createdAt: new Date().toISOString()
         });
@@ -8701,10 +8655,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.sub.draft;
       if (target.id === "srv-dim-select") {
         draft.dimensionId = target.value ? Number(target.value) : "";
-        return "rerender";
-      }
-      if (target.id === "srv-dim-ply") {
-        draft.ply = Number(target.value);
         return "rerender";
       }
       if (target.id === "srv-dim-formula") {
@@ -9888,6 +9838,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function validateMaterialDraft(draft, lineId) {
       const errors = {};
+      applyMaterialFormulaBindings(draft);
       const ply = getFinishedGoodPly(getSelectedFinishedGood());
       if (!getSelectedFinishedGood()) errors.finishedGood = "Select a Finished Good before adding materials.";
       if (!draft.rawMaterialId) errors.rawMaterialId = "Raw Material is required.";
@@ -9903,18 +9854,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else if (material && !Number.isFinite(Number(getMaterialRate(material.id)?.rate))) {
         errors.rate = "Purchasing rate from Raw Material Rates is not valid.";
       }
-      const linkedDims = material ? getMaterialLinkedDimensionIds(material, ply) : [];
+      const linkedDims = material ? getMaterialLinkedDimensionIds(material) : [];
       if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
-        errors.dimensionId = "Selected dimension is not linked to this material for this ply.";
+        errors.dimensionId = "Selected dimension is not linked to this material.";
       } else if (draft.dimensionId && !getDimension(draft.dimensionId)) {
         errors.dimensionId = "Selected dimension is not valid.";
       }
       if (draft.calculationMethod === "formula") {
         if (!errors.dimensionId && material && draft.dimensionId && materialMissingPlyFormula(material, draft.dimensionId, ply)) {
-          errors.formulaId = "Formula not linked for this material+dimension+ply";
+          errors.formulaId = "Formula not linked for this material and dimension.";
         } else if (!errors.dimensionId) {
           const selectedFormula = getFormula(draft.formulaId);
-          if (!draft.formulaId) errors.formulaId = "Formula is required when Formula method is selected.";
+          if (!draft.formulaId) errors.formulaId = "A valid material formula is required. Link a formula on the Raw Material master.";
           else if (!selectedFormula || !selectedFormula.isActive) errors.formulaId = "Selected formula is not valid or is inactive.";
         }
       } else {
@@ -10666,9 +10617,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
-      const material = getRawMaterial(draft.rawMaterialId);
-      const formula = getFormula(draft.formulaId);
-      const dimSelect = describeBomMaterialDimensionSelect(material, getFinishedGoodPly(getSelectedFinishedGood()));
       return `
         <section aria-label="Material selection and inputs">
           <div class="form-grid">
@@ -10691,59 +10639,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.layer ? `<div class="field-error">${escapeHtml(errors.layer)}</div>` : ""}
             </div>
-            ${renderBomDimensionSelect(
-              dimSelect.linkedIds,
-              draft.dimensionId,
-              "modal-line-dimension",
-              errors.dimensionId,
-              dimSelect.hint,
-              {
-                disabled: !material,
-                lockedLabel: "Select a raw material first",
-                emptyLabel: dimSelect.emptyLabel
-              }
-            )}
-            <div>
-              <label class="form-label" for="modal-method-select">Calculation Method</label>
-              <select id="modal-method-select" class="full-select">
-                <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
-                <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
-              </select>
-            </div>
-            ${draft.calculationMethod === "formula" ? `
-              <div>
-                <label class="form-label" for="modal-formula-select">Quantity Formula</label>
-                <select id="modal-formula-select" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
-                  <option value="">Select a formula...</option>
-                  ${getMaterialFormulas().map((item) => `
-                    <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
-                      ${escapeHtml(item.name)} (${escapeHtml(item.code)})
-                    </option>
-                  `).join("")}
-                </select>
-                ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-                ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
-                ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
-              </div>
-            ` : `
-              <div>
-                <label class="form-label" for="modal-manual-qty">Net Quantity</label>
-                <input id="modal-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" aria-invalid="${errors.manualQty ? "true" : "false"}" />
-                ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
-              </div>
-            `}
-            <div>
-              <label class="form-label" for="modal-wastage">Wastage %</label>
-              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(draft.wastagePercent === "" || draft.wastagePercent == null ? "" : formatDecimal(draft.wastagePercent, 2, false))}" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
-              ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
-            </div>
           </div>
+          ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
+          ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+          ${errors.dimensionId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.dimensionId)}</div>` : ""}
+          ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
+          ${errors.wastagePercent ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.wastagePercent)}</div>` : ""}
+          ${errors.manualQty ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.manualQty)}</div>` : ""}
           ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
           ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
         </section>
         <div class="modal-left-actions">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-material">Save</button>
+          <button type="button" class="btn btn-primary" id="btn-save-material">${state.modal.mode === "edit" ? "Save" : "Add"}</button>
         </div>
       `;
     }
@@ -11005,12 +10913,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function openMaterialModal(lineId) {
       if (!getSelectedFinishedGood()) return;
       const line = lineId ? state.bomMaterials.find((item) => item.id === Number(lineId)) : null;
+      const draft = defaultMaterialDraft(line);
+      if (draft.rawMaterialId) applyMaterialFormulaBindings(draft);
       state.modal = {
         type: "material",
         selectedId: line ? line.rawMaterialId : null,
         mode: line ? "edit" : "add",
         lineId: line ? line.id : null,
-        draft: defaultMaterialDraft(line),
+        draft,
         errors: {}
       };
       renderModal();
@@ -11042,6 +10952,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function saveMaterialFromModal() {
       const draft = state.modal.draft;
+      applyMaterialFormulaBindings(draft);
       const errors = validateMaterialDraft(draft, state.modal.lineId);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
@@ -11169,15 +11080,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.serviceId && !service) errors.serviceId = "Service must exist in the Service Master.";
       if (service && !getServiceRate(service.id)) errors.rate = "No rate configured for this service.";
       else if (service && !Number.isFinite(Number(getServiceRate(service.id)?.rate))) errors.rate = "Service rate is not valid.";
-      const linkedDims = service ? getServiceLinkedDimensionIds(service, ply) : [];
+      const linkedDims = service ? getServiceLinkedDimensionIds(service) : [];
       if (draft.dimensionId && linkedDims.length && !linkedDims.includes(Number(draft.dimensionId))) {
-        errors.dimensionId = "Selected dimension is not linked to this service for this ply.";
+        errors.dimensionId = "Selected dimension is not linked to this service.";
       } else if (draft.dimensionId && !getDimension(draft.dimensionId)) {
         errors.dimensionId = "Selected dimension is not valid.";
       }
       if (draft.calculationMethod === "formula") {
         if (!errors.dimensionId && service && draft.dimensionId && serviceMissingPlyFormula(service, draft.dimensionId, ply)) {
-          errors.formulaId = "Formula not linked for this service+dimension+ply";
+          errors.formulaId = "Formula not linked for this service and dimension.";
         } else if (!errors.dimensionId) {
           const selectedFormula = getFormula(draft.formulaId);
           if (!draft.formulaId) errors.formulaId = "Formula is required when Formula method is selected.";
@@ -11232,17 +11143,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : ""}
             </div>
             ${renderBomDimensionSelect(
-              service ? getServiceLinkedDimensionIds(service, getFinishedGoodPly(getSelectedFinishedGood())) : [],
+              service ? getServiceLinkedDimensionIds(service) : [],
               draft.dimensionId,
               "modal-service-dimension",
               errors.dimensionId,
               service
-                ? "Optional. Select a dimension to load the formula linked for this service and ply."
+                ? "Optional. Select a dimension to load the formula linked for this service."
                 : "",
               {
                 disabled: !service,
                 lockedLabel: "Select a service first",
-                emptyLabel: "No dimensions for this ply"
+                emptyLabel: "No dimensions linked"
               }
             )}
             <div>
