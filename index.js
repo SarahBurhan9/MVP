@@ -906,7 +906,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const user = auth.currentUser;
       return {
         uid: (user && user.uid) || localStorage.getItem("firebaseUserId"),
-        email: (user && user.email) || localStorage.getItem("firebaseUserEmail")
+        email: (user && user.email) || localStorage.getItem("firebaseUserEmail"),
+        photoURL: (user && user.photoURL) || localStorage.getItem("firebaseUserPhotoURL") || ""
       };
     }
 
@@ -915,6 +916,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       cloudUser = user;
       localStorage.setItem("firebaseUserId", user.uid);
       localStorage.setItem("firebaseUserEmail", user.email || "");
+      localStorage.setItem("firebaseUserPhotoURL", user.photoURL || "");
     }
 
     function forgetCloudUser() {
@@ -922,6 +924,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       lastReconciledUid = null;
       localStorage.removeItem("firebaseUserId");
       localStorage.removeItem("firebaseUserEmail");
+      localStorage.removeItem("firebaseUserPhotoURL");
       // Do not reset userClearedAllData or hydratedFromSeed here. Clearing
       // those flags would let ensureSeed* refill an empty catalog on refresh.
     }
@@ -1052,6 +1055,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
     }
 
+    function cloudAuthStatusMarkup(linked, user) {
+      if (!linked) return "Not connected to cloud";
+      const email = (user && (user.email || user.uid)) || "";
+      const letter = escapeHtml((String(email).trim().charAt(0) || "?").toUpperCase());
+      const photoURL = user && user.photoURL;
+      const avatar = photoURL
+        ? `<img class="cloud-auth-avatar-img" src="${escapeHtml(photoURL)}" alt="" referrerpolicy="no-referrer" onerror="this.hidden=true;var n=this.nextElementSibling;if(n)n.hidden=false;"><span class="cloud-auth-avatar-fallback" hidden>${letter}</span>`
+        : `<span class="cloud-auth-avatar-fallback">${letter}</span>`;
+      return `<span class="cloud-auth-identity"><span class="cloud-auth-avatar">${avatar}</span><span class="cloud-auth-copy">Signed in as: <strong class="cloud-auth-email">${escapeHtml(email)}</strong></span></span>`;
+    }
+
     function updateAuthUI() {
       updateHeaderCloudBadge();
       const linkBtn = document.getElementById("btn-link-cloud");
@@ -1063,9 +1077,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (linkBtn) linkBtn.hidden = linked;
       if (unlinkBtn) unlinkBtn.hidden = !linked;
       if (statusDiv) {
-        statusDiv.innerHTML = linked
-          ? "Signed in as: <strong>" + escapeHtml(user.email || user.uid || "") + "</strong>"
-          : "Not connected to cloud";
+        statusDiv.className = linked ? "cloud-auth-status" : "stat-hint";
+        statusDiv.style.marginTop = "8px";
+        statusDiv.innerHTML = cloudAuthStatusMarkup(linked, user);
       }
       const last = localStorage.getItem("lastSyncTime");
       const syncDiv = document.getElementById("syncStatus");
@@ -5750,11 +5764,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-kicker">Cloud backup</div>
             <div class="section-title">Cloud Sync</div>
-            <p id="authStatus" class="stat-hint" style="margin-top:8px;">${
-              linked
-                ? "Signed in as: <strong>" + escapeHtml(user.email || user.uid || "") + "</strong>"
-                : "Not connected to cloud"
-            }</p>
+            <p id="authStatus" class="${linked ? "cloud-auth-status" : "stat-hint"}" style="margin-top:8px;">${cloudAuthStatusMarkup(linked, user)}</p>
             <p style="margin-top:8px;color:var(--text-muted);line-height:1.5;">
               IndexedDB stays primary on this device. When an account is linked, changes upload to Firestore after a short delay and restore on other devices after Google sign-in.
             </p>
@@ -5772,35 +5782,75 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
         </div>
         <div class="stat-grid">
-          <article class="stat-card">
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="finished-goods">
             <div class="stat-label">Total Finished Goods</div>
             <div class="stat-value">${finishedGoods.length}</div>
             <div class="stat-hint">Product / variant masters</div>
           </article>
-          <article class="stat-card">
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="raw-materials">
             <div class="stat-label">Total Raw Materials</div>
             <div class="stat-value">${rawMaterials.length}</div>
             <div class="stat-hint">Purchasing rate source</div>
           </article>
-          <article class="stat-card">
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="services">
             <div class="stat-label">Total Services</div>
             <div class="stat-value">${services.length}</div>
             <div class="stat-hint">Process rate source</div>
           </article>
-          <article class="stat-card">
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="formulas">
             <div class="stat-label">Formula Definitions</div>
             <div class="stat-value">${formulas.length}</div>
             <div class="stat-hint">${activeFormulas} active</div>
           </article>
-          <article class="stat-card">
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-list">
             <div class="stat-label">Saved BOMs</div>
             <div class="stat-value">${boms.length}</div>
             <div class="stat-hint">Draft and Active versions</div>
           </article>
-          <article class="stat-card">
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-list">
             <div class="stat-label">Active BOMs</div>
             <div class="stat-value">${activeBoms}</div>
             <div class="stat-hint">Only BOMs with Active status</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="formula-variables">
+            <div class="stat-label">Variables</div>
+            <div class="stat-value">${formulaVariables.length}</div>
+            <div class="stat-hint">Shared formula variables</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="dimensions">
+            <div class="stat-label">Dimension</div>
+            <div class="stat-value">${dimensions.length}</div>
+            <div class="stat-hint">Dimension master</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="style">
+            <div class="stat-label">Style</div>
+            <div class="stat-value">${styles.length}</div>
+            <div class="stat-hint">Style master</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="raw-material-rates">
+            <div class="stat-label">Raw Material Rates</div>
+            <div class="stat-value">${materialRates.length}</div>
+            <div class="stat-hint">Purchasing rates</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="service-rates">
+            <div class="stat-label">Service Rates</div>
+            <div class="stat-value">${serviceRates.length}</div>
+            <div class="stat-hint">Process pricing</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-costing">
+            <div class="stat-label">BOM &amp; Costing</div>
+            <div class="stat-value">Editor</div>
+            <div class="stat-hint">Build a BOM</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-list">
+            <div class="stat-label">BOM List</div>
+            <div class="stat-value">Open</div>
+            <div class="stat-hint">View drafts and versions</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="cost-calculator">
+            <div class="stat-label">Cost Calculator</div>
+            <div class="stat-value">Estimate</div>
+            <div class="stat-hint">Quick cost by style and size</div>
           </article>
         </div>
         <div class="card">
@@ -6445,12 +6495,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBOMPage() {
-      const chips = BOM_FLOW_SECTIONS.map((section, index) => {
+      const chips = BOM_FLOW_SECTIONS.map((section) => {
         const active = (state.bomFlowSection || BOM_FLOW_SECTIONS[0].id) === section.id ? " active" : "";
-        const arrow = index < BOM_FLOW_SECTIONS.length - 1 ? `<span class="flow-arrow" aria-hidden="true">↓</span>` : "";
         return `
           <button type="button" class="bom-flow-tab${active}" data-bom-section="${section.id}">${escapeHtml(section.label)}</button>
-          ${arrow}
         `;
       }).join("");
       document.getElementById("page-bom-costing").innerHTML = `
@@ -11712,6 +11760,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.querySelector(".content").addEventListener("click", (event) => {
+        const dashboardNav = event.target.closest("[data-dashboard-nav]");
+        if (dashboardNav && dashboardNav.closest("#page-dashboard")) {
+          navigateTo(dashboardNav.dataset.dashboardNav);
+          return;
+        }
+
         if (event.target.closest("#fg-combo")) {
           event.stopPropagation();
         }
@@ -12048,6 +12102,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && state.modal && state.modal.type) {
           closeModal();
+        }
+        if (event.key === "Enter" || event.key === " ") {
+          const dashboardNav = event.target.closest("[data-dashboard-nav]");
+          if (dashboardNav && dashboardNav.closest("#page-dashboard")) {
+            event.preventDefault();
+            navigateTo(dashboardNav.dataset.dashboardNav);
+          }
         }
       });
 

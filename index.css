@@ -171,6 +171,58 @@
       margin-top: 12px;
     }
 
+    .cloud-auth-status {
+      margin-top: 10px;
+    }
+
+    .cloud-auth-identity {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .cloud-auth-avatar {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--primary-soft);
+    }
+
+    .cloud-auth-avatar-img {
+      width: 100%;
+      height: 100%;
+      display: block;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+
+    .cloud-auth-avatar-fallback {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 650;
+    }
+
+    .cloud-auth-copy {
+      min-width: 0;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .cloud-auth-email {
+      font-size: 16px;
+      font-weight: 650;
+      color: var(--text);
+    }
+
     #syncStatus.is-success { color: var(--success); }
     #syncStatus.is-error { color: var(--danger); }
     #syncStatus.is-info { color: var(--warning); }
@@ -567,6 +619,20 @@
       box-shadow: var(--shadow);
     }
 
+    .stat-card-nav {
+      cursor: pointer;
+    }
+
+    .stat-card-nav:hover {
+      background: #f8fafc;
+      border-color: var(--primary);
+    }
+
+    .stat-card-nav:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
+    }
+
     .stat-label {
       font-size: 12px;
       color: var(--text-muted);
@@ -654,22 +720,28 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 6px 8px;
-      margin-bottom: 14px;
+      gap: 8px 10px;
+      margin: 0 0 14px;
+      padding: 8px 0;
       color: var(--text-muted);
-      font-size: 12px;
+      font-size: 14px;
+      position: sticky;
+      top: var(--header-height);
+      z-index: 18;
+      background: var(--bg);
     }
 
     .bom-flow-tab {
       background: #e2e8f0;
       color: #334155;
-      padding: 3px 8px;
+      padding: 10px 18px;
       border: 1px solid transparent;
       border-radius: 999px;
       font-weight: 600;
-      font-size: 12px;
+      font-size: 14px;
       font-family: inherit;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .bom-flow-tab:hover {
@@ -682,15 +754,13 @@
       color: #fff;
     }
 
-    .bom-flow .flow-arrow { background: transparent; color: var(--text-muted); padding: 0; }
-
     #fg-selector-root,
     #bom-product-root,
     #bom-style-formulas-root,
     #bom-materials-root,
     #bom-services-root,
     #bom-cost-root {
-      scroll-margin-top: calc(var(--header-height) + 12px);
+      scroll-margin-top: calc(var(--header-height) + 72px);
     }
 
     .bom-layout {
@@ -991,6 +1061,12 @@
     .ply-flute { background: #fff7ed; color: #9a3412; }
     .ply-bottom { background: #f1f5f9; color: #334155; }
     .ply-arrow { text-align: center; color: var(--text-muted); font-size: 12px; line-height: 1; }
+
+    #bom-cost-root {
+      position: sticky;
+      top: calc(var(--header-height) + 72px);
+      z-index: 10;
+    }
 
     .cost-summary {
       position: sticky;
