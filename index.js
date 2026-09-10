@@ -10774,7 +10774,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="fvar-category">Category</label>
               <select id="fvar-category" class="full-select">
-                ${["Dimension", "Material", "Costing", "Sheet", "Area", "Service", "Other"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
+                ${["Dimension", "Material", "Costing", "Sheet", "Area", "Service", "Other", "Cost", "Finishing", "Percentage", "Printing", "Quantity", "Rate", "System"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
               </select>
             </div>
             <div>
@@ -10787,7 +10787,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="fvar-unit">Unit</label>
               <select id="fvar-unit" class="full-select">
-                ${["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", ""].map((unit) => `<option value="${escapeHtml(unit)}" ${String(draft.unit) === unit ? "selected" : ""}>${unit || "(none)"}</option>`).join("")}
+                ${["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", "factor", "gram", "Other", "pcs", "Rs./kg", "Rs./pc", "sq.ft", "sq.in", "Type", ""].map((unit) => `<option value="${escapeHtml(unit)}" ${String(draft.unit) === unit ? "selected" : ""}>${unit || "(none)"}</option>`).join("")}
               </select>
             </div>
             <div>
