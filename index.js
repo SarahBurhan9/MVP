@@ -263,6 +263,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "FLAT_LENGTH",
         name: "Flat Length",
         type: "Material",
+        purpose: null,
         description: "Unfolded carton length including glue flap.",
         expression: "2 * L + 2 * W + GLUE_FLAP",
         isActive: true
@@ -272,6 +273,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "FLAT_WIDTH",
         name: "Flat Width",
         type: "Material",
+        purpose: null,
         description: "Unfolded carton width from height and base width.",
         expression: "2 * H + W",
         isActive: true
@@ -281,6 +283,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "FLAT_AREA",
         name: "Flat Area",
         type: "Material",
+        purpose: null,
         description: "Blank area from flat length and width.",
         expression: "FLAT_LENGTH * FLAT_WIDTH",
         isActive: true
@@ -290,6 +293,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "COVERED_AREA",
         name: "Covered Area",
         type: "Material",
+        purpose: null,
         description: "Material coverage area for the finished blank.",
         expression: "FLAT_AREA",
         isActive: true
@@ -299,6 +303,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "SHEET_WEIGHT",
         name: "Sheet Weight",
         type: "Material",
+        purpose: "Quantity",
         description: "Weight from covered area and GSM.",
         expression: "COVERED_AREA * GSM * SQ_IN_TO_SQ_M / 1000",
         isActive: true
@@ -308,6 +313,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "GROSS_QTY",
         name: "Gross Quantity With Wastage",
         type: "Material",
+        purpose: null,
         description: "Net quantity inflated by wastage percent.",
         expression: "NET_QTY * (1 + WASTAGE / 100)",
         isActive: true
@@ -317,6 +323,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "PIECES_PER_SHEET",
         name: "Pieces From Sheet",
         type: "Material",
+        purpose: null,
         description: "How many pieces nest on one sheet.",
         expression: "SHEET_AREA / PIECE_AREA",
         isActive: true
@@ -326,6 +333,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "REQUIRED_SHEETS",
         name: "Required Sheets",
         type: "Material",
+        purpose: null,
         description: "Sheets needed for the order quantity.",
         expression: "ORDER_QTY / PIECES_PER_SHEET",
         isActive: true
@@ -335,6 +343,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "PRINTING_COST",
         name: "Printing Cost",
         type: "Service",
+        purpose: null,
         description: "Printing charge from print area and service rate.",
         expression: "PRINT_AREA * SERVICE_RATE",
         isActive: true
@@ -344,6 +353,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "PIECE_COST",
         name: "Per Piece Cost",
         type: "Service",
+        purpose: null,
         description: "Rolled-up material and service cost per piece.",
         expression: "MATERIAL_COST + SERVICE_COST",
         isActive: true
@@ -353,6 +363,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "PRINTING_QTY",
         name: "Printing Qty",
         type: "Service",
+        purpose: "Quantity",
         description: "Printing quantity per finished piece.",
         expression: "1",
         isActive: true
@@ -362,6 +373,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "DIE_CUTTING_QTY",
         name: "Die Cutting Qty",
         type: "Service",
+        purpose: "Quantity",
         description: "Die cutting quantity per finished piece.",
         expression: "1",
         isActive: true
@@ -371,6 +383,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "WINDOW_PASTING_QTY",
         name: "Window Pasting Qty",
         type: "Service",
+        purpose: null,
         description: "Window pasting quantity per finished piece.",
         expression: "1",
         isActive: true
@@ -380,6 +393,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "PASTING_QTY",
         name: "Pasting Qty",
         type: "Service",
+        purpose: "Quantity",
         description: "Pasting quantity per finished piece.",
         expression: "1",
         isActive: true
@@ -389,6 +403,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "GLUE_CALC",
         name: "Glue Amount",
         type: "Style",
+        purpose: null,
         description: "Glue flap allowance doubled for this style.",
         expression: "GLUE_FLAP * 2",
         isActive: true
@@ -398,6 +413,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "AREA_CALC",
         name: "Covered Area",
         type: "Style",
+        purpose: null,
         description: "Simple length times width for the style blank.",
         expression: "L * W",
         isActive: true
@@ -507,6 +523,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     };
 
     const FORMULA_TYPES = ["Material", "Service", "Style"];
+    const FORMULA_PURPOSES = ["Rate", "Quantity"];
     const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Consumable"];
     const MATERIAL_UOMS = ["kg", "gm", "sheet", "sq.meter"];
 
@@ -602,9 +619,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       selectedFinishedGoodId: null,
       currentBOM: null,
       bomMaterials: [],
+      bomOtherMaterials: [],
       bomServices: [],
       bomStyleResults: [],
       totalMaterialCost: 0,
+      totalOtherMaterialCost: 0,
       totalServiceCost: 0,
       finalCostPerPiece: 0,
       costPer100: 0,
@@ -631,6 +650,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         H: "",
         ply: "",
         layers: [],
+        otherLayers: [],
         services: [],
         removedServices: [],
         nextServiceKey: 1,
@@ -834,6 +854,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedFinishedGoodId: state.selectedFinishedGoodId,
         currentBOM: state.currentBOM,
         bomMaterials: state.bomMaterials,
+        bomOtherMaterials: state.bomOtherMaterials,
         bomServices: state.bomServices,
         bomProfitPercent: state.bomProfitPercent,
         bomOverheadPercent: state.bomOverheadPercent
@@ -1025,6 +1046,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           selectedFinishedGoodId: state.selectedFinishedGoodId,
           currentBOM: state.currentBOM,
           bomMaterials: state.bomMaterials,
+          bomOtherMaterials: state.bomOtherMaterials,
           bomServices: state.bomServices,
           bomProfitPercent: state.bomProfitPercent,
           bomOverheadPercent: state.bomOverheadPercent
@@ -1221,7 +1243,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (editor) {
         state.selectedFinishedGoodId = editor.selectedFinishedGoodId || null;
         state.currentBOM = editor.currentBOM || null;
-        state.bomMaterials = Array.isArray(editor.bomMaterials) ? editor.bomMaterials : [];
+        hydrateBomEditorMaterials(editor.bomMaterials, editor.bomOtherMaterials);
         state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
         state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
         state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
@@ -1253,6 +1275,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.selectedFinishedGoodId = null;
         state.currentBOM = null;
         state.bomMaterials = [];
+        state.bomOtherMaterials = [];
         state.bomServices = [];
         state.bomStyleResults = [];
       }
@@ -1505,11 +1528,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomMaterials.forEach((line) => {
         maxLineId = Math.max(maxLineId, Number(line.id) || 0);
       });
+      state.bomOtherMaterials.forEach((line) => {
+        maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+      });
       state.bomServices.forEach((line) => {
         maxLineId = Math.max(maxLineId, Number(line.id) || 0);
       });
       boms.forEach((record) => {
         (record.materials || []).forEach((line) => {
+          maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+        });
+        (record.otherMaterials || []).forEach((line) => {
           maxLineId = Math.max(maxLineId, Number(line.id) || 0);
         });
         (record.services || []).forEach((line) => {
@@ -1570,7 +1599,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (editor) {
             state.selectedFinishedGoodId = editor.selectedFinishedGoodId || null;
             state.currentBOM = editor.currentBOM || null;
-            state.bomMaterials = Array.isArray(editor.bomMaterials) ? editor.bomMaterials : [];
+            hydrateBomEditorMaterials(editor.bomMaterials, editor.bomOtherMaterials);
             state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
             state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
             state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
@@ -1605,6 +1634,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             state.selectedFinishedGoodId = null;
             state.currentBOM = null;
             state.bomMaterials = [];
+            state.bomOtherMaterials = [];
             state.bomServices = [];
           }
 
@@ -1652,6 +1682,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           code: seed.code,
           name: seed.name,
           type: "Style",
+          purpose: null,
           description: seed.description,
           expression: seed.expression,
           serviceLength: Boolean(seed.serviceLength),
@@ -2136,9 +2167,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedFinishedGoodId: state.selectedFinishedGoodId,
         currentBOM: snapshotData(state.currentBOM),
         bomMaterials: snapshotData(state.bomMaterials),
+        bomOtherMaterials: snapshotData(state.bomOtherMaterials),
         bomServices: snapshotData(state.bomServices),
         bomStyleResults: snapshotData(state.bomStyleResults),
         totalMaterialCost: state.totalMaterialCost,
+        totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
@@ -2186,10 +2219,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (Number.isFinite(snap.formulaSeq)) formulaSeq = snap.formulaSeq;
       state.selectedFinishedGoodId = snap.selectedFinishedGoodId;
       state.currentBOM = snap.currentBOM;
-      state.bomMaterials = Array.isArray(snap.bomMaterials) ? snap.bomMaterials : [];
+      hydrateBomEditorMaterials(snap.bomMaterials, snap.bomOtherMaterials);
       state.bomServices = Array.isArray(snap.bomServices) ? snap.bomServices : [];
       state.bomStyleResults = Array.isArray(snap.bomStyleResults) ? snap.bomStyleResults : [];
       state.totalMaterialCost = snap.totalMaterialCost;
+      state.totalOtherMaterialCost = snap.totalOtherMaterialCost;
       state.totalServiceCost = snap.totalServiceCost;
       state.finalCostPerPiece = snap.finalCostPerPiece;
       state.costPer100 = snap.costPer100;
@@ -2514,11 +2548,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       materialRates.forEach((item) => {
         item.rate = roundTo(item.rate, 2);
         item.rateUOM = normalizeMaterialRateUom(item.rateUOM) || item.rateUOM;
+        item.formulaId = normalizeFormulaBinding(item.formulaId);
         if (!item.status) item.status = "Active";
       });
       otherMaterialRates.forEach((item) => {
         item.rate = roundTo(item.rate, 2);
         item.rateUOM = normalizeMaterialRateUom(item.rateUOM) || item.rateUOM;
+        item.formulaId = normalizeFormulaBinding(item.formulaId);
         if (!item.status) item.status = "Active";
       });
       services.forEach((item) => {
@@ -2532,6 +2568,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.formulaId = normalizeFormulaBinding(item.formulaId);
         item.rateUOM = normalizeServiceRateUom(item.rateUOM) || item.rateUOM;
         if (!item.status) item.status = "Active";
+      });
+      formulas.forEach((item) => {
+        if (item.type === "Style") {
+          item.purpose = null;
+          return;
+        }
+        if (item.purpose === undefined) {
+          const seed = (SEED_DATA.formulas || []).find((row) => row.code === item.code);
+          item.purpose = seed ? seed.purpose : null;
+        }
       });
       styleVariables.forEach((item) => {
         if (item.value != null && item.value !== "") item.value = roundTo(item.value, 4);
@@ -2563,7 +2609,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (item.dataType === "numeric" && item.defaultValue != null && item.defaultValue !== "") {
           const n = Number(item.defaultValue);
-          if (Number.isFinite(n)) item.defaultValue = roundTo(n, 4);
+          if (Number.isFinite(n)) item.defaultValue = roundTo(n, 8);
         }
       });
     }
@@ -3497,7 +3543,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getBomsUsingOtherMaterial(otherRawMaterialId) {
       const id = Number(otherRawMaterialId);
-      return boms.filter((bom) => (bom.materials || []).some((line) => Number(line.otherRawMaterialId) === id));
+      return boms.filter((bom) =>
+        (bom.otherMaterials || []).some((line) => Number(line.otherRawMaterialId) === id) ||
+        (bom.materials || []).some((line) => Number(line.otherRawMaterialId) === id)
+      );
     }
 
     function otherMaterialBomUsageMessage(otherRawMaterialId) {
@@ -3560,8 +3609,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function copyLinesForEditor(record) {
+      const split = splitBomRecordMaterials(record);
       return {
-        materials: cloneData(record.materials || []).map((line) => ({
+        materials: cloneData(split.materials).map((line) => ({
+          ...line,
+          id: nextBomLineId(),
+          netQty: 0,
+          grossQty: 0,
+          rate: 0,
+          costPerPiece: 0
+        })),
+        otherMaterials: cloneData(split.otherMaterials).map((line) => ({
           ...line,
           id: nextBomLineId(),
           netQty: 0,
@@ -3577,6 +3635,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           costPerPiece: 0
         }))
       };
+    }
+
+    function splitBomRecordMaterials(record) {
+      const storedOther = Array.isArray(record && record.otherMaterials) ? record.otherMaterials : [];
+      const materials = [];
+      const fromMain = [];
+      (record && record.materials ? record.materials : []).forEach((line) => {
+        if (Number(line && line.otherRawMaterialId)) fromMain.push(line);
+        else materials.push(line);
+      });
+      return { materials, otherMaterials: storedOther.concat(fromMain) };
+    }
+
+    function hydrateBomEditorMaterials(materials, otherMaterials) {
+      const split = splitBomRecordMaterials({ materials: materials || [], otherMaterials: otherMaterials || [] });
+      state.bomMaterials = Array.isArray(split.materials) ? split.materials : [];
+      state.bomOtherMaterials = Array.isArray(split.otherMaterials) ? split.otherMaterials : [];
     }
 
     function showNotification(message, type) {
@@ -3657,8 +3732,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return services.find((item) => item.id === Number(id)) || null;
     }
 
-    function getServiceFormulas() {
-      return formulas.filter((item) => item.type === "Service" && item.isActive);
+    function getServiceFormulas(purpose) {
+      return formulas.filter((item) =>
+        item.type === "Service" &&
+        item.isActive &&
+        (!purpose || item.purpose === purpose)
+      );
     }
 
     function getFormula(id) {
@@ -3684,10 +3763,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formula ? formula.code : "—";
     }
 
-    function renderBoundFormulaOptions(type, selectedId) {
+    function renderBoundFormulaOptions(type, selectedId, purpose) {
       const selected = selectedId ? getFormula(selectedId) : null;
-      const active = formulas.filter((item) => item.type === type && item.isActive);
-      const list = selected && !active.some((item) => item.id === selected.id)
+      const active = formulas.filter((item) =>
+        item.type === type &&
+        item.isActive &&
+        (!purpose || item.purpose === purpose)
+      );
+      const selectedMatches = selected && (!purpose || selected.purpose === purpose);
+      const list = selectedMatches && !active.some((item) => item.id === selected.id)
         ? [selected].concat(active)
         : active;
       return `<option value="">None</option>` + list.map((item) => `
@@ -3816,6 +3900,71 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getMaterialQtyFormula(material) {
       return getFormula(material && material.qtyFormulaId);
+    }
+
+    function getOtherMaterialQtyFormula(material) {
+      return getFormula(material && material.qtyFormulaId);
+    }
+
+    function getOtherMaterialLinkedDimensionIds(material) {
+      if (!material) return [];
+      const fromLinks = getOtherMaterialDimensionLinks(material.id)
+        .map((row) => Number(row.dimensionId))
+        .filter((id) => getDimension(id));
+      if (fromLinks.length) return normalizeDimensionIds(fromLinks);
+      return normalizeDimensionIds(material.dimensionIds);
+    }
+
+    function getOtherMaterialDimensionLink(otherRawMaterialId, dimensionId, ply) {
+      if (otherRawMaterialId == null || dimensionId == null || dimensionId === "") return null;
+      const matches = otherMaterialDimensions.filter((item) =>
+        item.otherRawMaterialId === Number(otherRawMaterialId) &&
+        Number(item.dimensionId) === Number(dimensionId)
+      );
+      if (!matches.length) return null;
+      const targetPly = ply == null || ply === "" ? null : Number(ply);
+      if (targetPly != null) {
+        const exact = matches.find((item) => Number(item.ply) === targetPly);
+        if (exact) return exact;
+      }
+      return matches[0];
+    }
+
+    function describeOtherMaterialDimensionSelect(material) {
+      const linkedIds = material ? getOtherMaterialLinkedDimensionIds(material) : [];
+      if (!material) {
+        return { linkedIds: [], emptyLabel: "No dimensions linked", hint: "" };
+      }
+      if (linkedIds.length) {
+        return {
+          linkedIds,
+          emptyLabel: "No dimensions linked",
+          hint: "Optional. Select a dimension used for this other material quantity."
+        };
+      }
+      return {
+        linkedIds,
+        emptyLabel: "No dimensions linked",
+        hint: "No dimension linked yet for this other material. Go to Other Raw Material → Dimensions tab to add one."
+      };
+    }
+
+    function applyOtherMaterialFormulaBindings(draft) {
+      const material = getOtherRawMaterial(draft.otherRawMaterialId);
+      if (!material) {
+        draft.dimensionId = null;
+        if (draft.calculationMethod === "formula") draft.formulaId = null;
+        return;
+      }
+      if (draft.calculationMethod !== "formula") return;
+      const linkedIds = getOtherMaterialLinkedDimensionIds(material);
+      if (draft.dimensionId && !linkedIds.includes(Number(draft.dimensionId))) {
+        draft.dimensionId = null;
+      }
+      if (!draft.dimensionId) {
+        draft.dimensionId = pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
+      }
+      draft.formulaId = material.qtyFormulaId ? Number(material.qtyFormulaId) : null;
     }
 
     function syncMaterialDimensionIds(rawMaterialId) {
@@ -4343,6 +4492,48 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function buildOtherMaterialFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula) {
+      const defaults = getFormulaVariableDefaults();
+      const dim = getDimension(dimensionId);
+      const styleVals = {};
+      const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
+      if (style) {
+        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
+          const n = numericOrNull(row.value);
+          if (n !== null) styleVals[row.variableCode] = n;
+        });
+      }
+      const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
+      const sheet = getSheetDimensions(finishedGood);
+      const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
+      const fgDims = finishedGood?.dimensions ?? {};
+      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      const L = roundTo(resolvedDims.L, 2);
+      const W = roundTo(resolvedDims.W, 2);
+      const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
+      return {
+        ...defaults,
+        ...styleVals,
+        L,
+        W,
+        H,
+        PLY: Number(finishedGood?.ply ?? defaults.PLY),
+        GSM: material?.gsm != null ? roundTo(material.gsm, 1) : resolveVariableValue("GSM", finishedGood, defaults.GSM),
+        GLUE_FLAP: glueFlap,
+        WASTAGE: roundTo(wastagePercent, 2),
+        MATERIAL_RATE: material ? roundTo((getOtherMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
+        ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
+        NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
+        SHEET_LENGTH: sheet.length,
+        SHEET_WIDTH: sheet.width,
+        SHEET_AREA: sheet.area,
+        PIECE_AREA: pieceArea,
+        SQ_IN_TO_SQ_M,
+        GRAM_TO_KG,
+        CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
+      };
+    }
+
     function calculateMaterialCost(materialLine, context) {
       const line = { ...materialLine, error: null };
       const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
@@ -4478,6 +4669,143 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function calculateTotalMaterialCost() {
       return state.bomMaterials.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+    }
+
+    function calculateOtherMaterialCost(materialLine, context) {
+      const line = { ...materialLine, error: null };
+      const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
+      const material = getOtherRawMaterial(line.otherRawMaterialId);
+      const formulaDimensionId = (context && context.useEnteredDimensions) ? null : line.dimensionId;
+
+      if (!finishedGood) {
+        line.error = "A finished good is required before other materials can be calculated.";
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.rate = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+
+      if (!material) {
+        line.error = "This material does not exist in the Other Raw Material Master.";
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.rate = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+
+      const rateRow = getOtherMaterialRate(material.id);
+      if (!rateRow) {
+        line.error = "No rate configured for other material " + (material.code || material.id);
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.rate = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+      const masterRate = Number(rateRow?.rate);
+      if (!Number.isFinite(masterRate) || masterRate <= 0) {
+        line.error = "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0.";
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.rate = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+
+      line.rate = roundTo(masterRate, 2);
+      line.rateSource = "master";
+      const wastage = Number(line.wastagePercent);
+      if (Number.isNaN(wastage) || wastage < 0) {
+        line.error = "Wastage cannot be negative.";
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.costPerPiece = 0;
+        return line;
+      }
+
+      let netQty = 0;
+      if (line.calculationMethod === "manual") {
+        netQty = Number(line.manualQty);
+        if (!Number.isFinite(netQty) || netQty <= 0) {
+          line.error = "Manual quantity must be greater than 0.";
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+      } else {
+        const formula = getOtherMaterialQtyFormula(material);
+        if (formula) line.formulaId = formula.id;
+        if (!formula || !formula.isActive) {
+          line.error = formula && !formula.isActive
+            ? "The selected material formula is inactive."
+            : "A valid material formula is required. Set Default Quantity Formula on the Other Raw Material master.";
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        const variables = buildOtherMaterialFormulaVariables(finishedGood, material, wastage, formulaDimensionId, formula);
+        const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
+        if (!calculated.success) {
+          line.error = calculated.error;
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        netQty = calculated.result;
+      }
+
+      const qtyFormula = line.calculationMethod === "formula" ? getOtherMaterialQtyFormula(material) : null;
+      const variables = buildOtherMaterialFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula);
+      const grossFormula = getFormulaByCode("GROSS_QTY");
+      let grossQty;
+      if (grossFormula && grossFormula.isActive) {
+        const grossEval = evaluateFormula(
+          grossFormula.expression,
+          { ...variables, NET_QTY: netQty, WASTAGE: wastage },
+          [grossFormula.code]
+        );
+        if (!grossEval.success) {
+          line.error = grossEval.error;
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        grossQty = grossEval.result;
+      } else {
+        grossQty = netQty * (1 + wastage / 100);
+      }
+      line.netQty = roundTo(netQty, 4);
+      line.grossQty = roundTo(grossQty, 4);
+      delete line.rateFormulaId;
+      line.rate = roundTo(masterRate, 2);
+      line.rateSource = "master";
+      line.dimensionVolume = null;
+      try {
+        const qtyForRate = convertQuantity(grossQty, material?.uom, formatRateUnit(rateRow?.rateUOM) || material?.uom, {
+          gsm: material?.gsm,
+          sheetArea: getSheetDimensions(finishedGood).area
+        });
+        if (!Number.isFinite(qtyForRate) || qtyForRate < 0) {
+          throw new Error("Quantity could not be converted to the purchasing rate unit.");
+        }
+        line.qtyForRate = roundTo(qtyForRate, 4);
+        line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
+      } catch (error) {
+        line.error = error && error.message ? error.message : "Unsupported unit conversion";
+        line.costPerPiece = 0;
+        return line;
+      }
+      return line;
+    }
+
+    function calculateTotalOtherMaterialCost() {
+      return (state.bomOtherMaterials || []).reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
     }
 
     function getServiceFormulaDimOverride(formula, service, line) {
@@ -4657,9 +4985,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function recalculateBOMCosts() {
       state.bomMaterials = state.bomMaterials.map((line) => calculateMaterialCost(line));
       state.totalMaterialCost = roundTo(calculateTotalMaterialCost(), 2);
+      state.bomOtherMaterials = (state.bomOtherMaterials || []).map((line) => calculateOtherMaterialCost(line));
+      state.totalOtherMaterialCost = roundTo(calculateTotalOtherMaterialCost(), 2);
       state.bomServices = state.bomServices.map((line) => calculateServiceCost(line));
       state.totalServiceCost = roundTo(calculateTotalServiceCost(), 2);
-      state.finalCostPerPiece = roundTo(state.totalMaterialCost + state.totalServiceCost, 2);
+      state.finalCostPerPiece = roundTo(state.totalMaterialCost + state.totalOtherMaterialCost + state.totalServiceCost, 2);
       state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
       state.costPer500 = roundTo(state.finalCostPerPiece * 500, 2);
       state.costPer1000 = roundTo(state.finalCostPerPiece * 1000, 2);
@@ -4678,6 +5008,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         H: "",
         ply: "",
         layers: [],
+        otherLayers: [],
         services: [],
         removedServices: [],
         nextServiceKey: 1,
@@ -4855,6 +5186,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return rawMaterials.filter((item) => item.status !== "Inactive" && ids.has(item.id));
     }
 
+    function getBomOtherMaterialsForPly(ply) {
+      const ids = new Set(
+        otherMaterialDimensions
+          .filter((row) => Number(row.ply) === Number(ply))
+          .map((row) => Number(row.otherRawMaterialId))
+      );
+      return otherRawMaterials.filter((item) => item.status !== "Inactive" && ids.has(item.id));
+    }
+
+    function getCostCalculatorOtherMaterials(ply) {
+      return getBomOtherMaterialsForPly(ply);
+    }
+
+    function getCostCalculatorOtherMaterialOptions(ply, selectedId) {
+      const options = getCostCalculatorOtherMaterials(ply).slice();
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getOtherRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
     function getCostCalculatorServices(ply) {
       const seen = new Set();
       const linked = [];
@@ -4976,6 +5330,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return getMaterialDimensionLink(rawMaterialId, picked, ply) || links[0];
     }
 
+    function findCostCalculatorOtherMaterialLink(otherRawMaterialId, ply, finishedGood) {
+      const links = getOtherMaterialDimensionLinks(otherRawMaterialId);
+      if (!links.length) return null;
+      const ids = links.map((row) => Number(row.dimensionId));
+      const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
+      return getOtherMaterialDimensionLink(otherRawMaterialId, picked, ply) || links[0];
+    }
+
     function findCostCalculatorServiceLink(serviceId, ply, finishedGood) {
       const links = getServiceDimensionLinks(serviceId);
       if (!links.length) return null;
@@ -5005,6 +5367,90 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (options && options.notify && !getCostCalculatorMaterials(ply).length) {
         showNotification("No material configured for " + ply + "-ply " + names[0], "error");
       }
+    }
+
+    function loadCostCalculatorOtherLayers(ply) {
+      const names = getStructuralLayers(ply);
+      const prev = Array.isArray(state.costCalculator.otherLayers) ? state.costCalculator.otherLayers : [];
+      state.costCalculator.otherLayers = names.map((layer) => {
+        const existing = prev.find((row) => row.layer === layer);
+        return { layer, otherRawMaterialId: existing && existing.otherRawMaterialId ? existing.otherRawMaterialId : "" };
+      });
+    }
+
+    function calculateCostCalculatorOtherMaterial(layerRow) {
+      const empty = {
+        qty: 0,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        cost: 0,
+        error: null,
+        formulaId: null,
+        dimensionId: null,
+        wastagePercent: DEFAULT_WASTAGE_PERCENT,
+        rateUOM: "",
+        uom: ""
+      };
+      const fg = getCostCalculatorFinishedGood();
+      if (!fg || !layerRow) return empty;
+      if (!layerRow.otherRawMaterialId) return empty;
+      const material = getOtherRawMaterial(layerRow.otherRawMaterialId);
+      const ply = Number(fg?.ply);
+      if (!material) {
+        return { ...empty, error: "This material does not exist in the Other Raw Material Master." };
+      }
+      const formula = getOtherMaterialQtyFormula(material);
+      if (!formula || !formula.isActive) {
+        return { ...empty, error: "Formula not configured for " + material.name + ". Set Default Quantity Formula on the Other Raw Material master." };
+      }
+      const rateRow = getOtherMaterialRate(material.id);
+      const masterRate = Number(rateRow?.rate);
+      if (!rateRow) {
+        return { ...empty, error: "No rate configured for other material " + (material.code || material.id) };
+      }
+      if (!Number.isFinite(masterRate) || masterRate <= 0) {
+        return { ...empty, error: "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0." };
+      }
+      const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
+      const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
+      const link = findCostCalculatorOtherMaterialLink(material.id, ply, fg);
+      const calcContext = { finishedGood: fg, useEnteredDimensions: true };
+      const line = calculateOtherMaterialCost({
+        otherRawMaterialId: material.id,
+        layer: layerRow.layer,
+        calculationMethod: "formula",
+        formulaId: formula.id,
+        dimensionId: link ? link.dimensionId : null,
+        manualQty: null,
+        wastagePercent: wastage,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      }, calcContext);
+      if (line.error) {
+        return {
+          ...empty,
+          error: formatCostCalculatorFormulaError(line.error),
+          formulaId: formula.id,
+          dimensionId: link ? link.dimensionId : null,
+          wastagePercent: wastage
+        };
+      }
+      return {
+        qty: line.grossQty,
+        netQty: line.netQty,
+        grossQty: line.grossQty,
+        rate: line.rate,
+        cost: line.costPerPiece,
+        error: null,
+        formulaId: formula.id,
+        dimensionId: link ? link.dimensionId : null,
+        wastagePercent: wastage,
+        rateUOM: rateRow?.rateUOM || "",
+        uom: material.uom
+      };
     }
 
     function calculateCostCalculatorMaterial(layerRow) {
@@ -5175,28 +5621,36 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const calc = calculateCostCalculatorMaterial(row);
         return { ...row, calc };
       });
+      const otherLayers = (state.costCalculator.otherLayers || []).map((row) => {
+        const calc = calculateCostCalculatorOtherMaterial(row);
+        return { ...row, calc };
+      });
       const services = (state.costCalculator.services || []).map((row) => {
         const calc = calculateCostCalculatorService(row);
         return { ...row, calc };
       });
       const materialCost = roundTo(layers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
+      const otherMaterialCost = roundTo(otherLayers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
       const serviceCost = roundTo(services.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
-      const perPiece = roundTo(materialCost + serviceCost, 2);
+      const perPiece = roundTo(materialCost + otherMaterialCost + serviceCost, 2);
       const materialsComplete = layers.length > 0 && layers.every((row) => row.rawMaterialId && !row.calc.error);
+      const otherError = otherLayers.find((row) => row.otherRawMaterialId && row.calc.error);
       const serviceError = services.find((row) => row.calc.error);
       return {
         layers,
+        otherLayers,
         services,
         materialCost,
+        otherMaterialCost,
         serviceCost,
         perPiece,
         per100: roundTo(perPiece * 100, 2),
         per1000: roundTo(perPiece * 1000, 2),
         materialsComplete,
-        canSave: materialsComplete && !serviceError,
+        canSave: materialsComplete && !otherError && !serviceError,
         saveError: !layers.length
           ? "Select ply and materials before saving."
-          : (!materialsComplete ? "Select a valid material for each layer before saving." : (serviceError ? serviceError.calc.error : ""))
+          : (!materialsComplete ? "Select a valid material for each layer before saving." : (otherError ? otherError.calc.error : (serviceError ? serviceError.calc.error : "")))
       };
     }
 
@@ -5221,7 +5675,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!page) return;
       const cc = state.costCalculator;
       const steps = getCostCalculatorStepState();
-      if (steps.hasPly) loadCostCalculatorServices(steps.ply);
+      if (steps.hasPly) {
+        loadCostCalculatorOtherLayers(steps.ply);
+        loadCostCalculatorServices(steps.ply);
+      }
       const summary = updateCostCalculatorSummary();
       const styleOptions = styles.filter((item) => item.status !== "Inactive");
       const materials = steps.hasPly ? getCostCalculatorMaterials(steps.ply) : [];
@@ -5246,6 +5703,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM)) : "—"}</strong></div>
               <div><span>Cost</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.rawMaterialId && calc.error ? "Error" : "—")}</strong></div>
               <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const otherLayerRows = summary.otherLayers.map((row, index) => {
+        const material = getOtherRawMaterial(row.otherRawMaterialId);
+        const calc = row.calc;
+        const otherMaterials = steps.hasPly ? getCostCalculatorOtherMaterialOptions(steps.ply, row.otherRawMaterialId) : [];
+        const keptUnlinked = Number(row.otherRawMaterialId) && !getCostCalculatorOtherMaterials(steps.ply).some((item) => item.id === Number(row.otherRawMaterialId));
+        return `
+          <div class="cc-layer">
+            <div class="cc-layer-title">${escapeHtml(row.layer)}</div>
+            <label class="form-label" for="cc-other-layer-mat-${index}">Other Material</label>
+            <select id="cc-other-layer-mat-${index}" class="full-select" data-cc-other-layer-material="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} other material">
+              <option value="">Select Other Material</option>
+              ${otherMaterials.map((item) => `
+                <option value="${item.id}" ${Number(row.otherRawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+              `).join("")}
+            </select>
+            ${keptUnlinked ? `<p class="stat-hint">This material is not linked to ${escapeHtml(String(steps.ply))}-ply. It stays selected so the estimate is not cleared.</p>` : ""}
+            ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
+            <div class="cc-metrics">
+              <div><span>Qty</span><strong>${row.otherRawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
+              <div><span>Rate</span><strong>${row.otherRawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getOtherMaterialRate(material && material.id) && getOtherMaterialRate(material && material.id).rateUOM)) : "—"}</strong></div>
+              <div><span>Cost</span><strong>${row.otherRawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.otherRawMaterialId && calc.error ? "Error" : "—")}</strong></div>
             </div>
           </div>
         `;
@@ -5326,8 +5809,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
             <section class="card cc-card">
               <div class="card-body">
+                <div class="cc-step">Step 5: Select Other Raw Materials</div>
+                ${steps.hasPly ? (otherLayerRows || `<p class="stat-hint">No other-material layers for this ply.</p>`) : `<p class="stat-hint">Complete style, dimensions, and ply to load other material layers.</p>`}
+                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Other Material Cost</span><strong>${formatRupees(summary.otherMaterialCost)}</strong></div>` : ""}
+              </div>
+            </section>
+
+            <section class="card cc-card">
+              <div class="card-body">
                 <div class="cc-step-row">
-                  <div class="cc-step">Step 5: Select Services</div>
+                  <div class="cc-step">Step 6: Select Services</div>
                   <select id="cc-restore-service" class="full-select cc-add-service" ${steps.hasPly && removedOptions.length ? "" : "disabled"} aria-label="Add a removed service">
                     <option value="">+ Add Service</option>
                     ${removedOptions.map((item) => `<option value="${item.id}">${escapeHtml(item.name)}</option>`).join("")}
@@ -5341,11 +5832,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
           <aside class="card cc-card cost-calc-summary" id="cost-calc-print">
             <div class="card-body">
-              <div class="cc-step">Step 6: Final Cost Summary</div>
-              ${summary.layers.some((row) => row.calc.error) || summary.services.some((row) => row.calc.error)
+              <div class="cc-step">Step 7: Final Cost Summary</div>
+              ${summary.layers.some((row) => row.calc.error) || summary.otherLayers.some((row) => row.calc.error) || summary.services.some((row) => row.calc.error)
                 ? `<div class="field-error" style="margin-bottom:8px;">⚠ Error calculating cost</div>`
                 : ""}
               <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
+              <div class="cc-summary-line"><span>Other Material Cost</span><strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
               <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
               <div class="cc-summary-line cc-summary-total"><span>Cost Per Piece</span><strong>${formatRupees(summary.perPiece)}</strong></div>
               <div class="cc-summary-line"><span>Cost Per 100</span><strong>${formatRupees(summary.per100)}</strong></div>
@@ -5382,6 +5874,258 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rate: 0,
         costPerPiece: 0
       });
+    }
+
+    function getBomMaterialSlotLayout(finishedGood, materials) {
+      const rows = Array.isArray(materials) ? materials : [];
+      const ply = getFinishedGoodPly(finishedGood);
+      const layers = getStructuralLayers(ply);
+      const claimed = new Set();
+      const slots = layers.map((layer) => {
+        const line = rows.find((item) => item.layer === layer && !claimed.has(item.id));
+        if (line) claimed.add(line.id);
+        return { layer, line: line || null };
+      });
+      const extras = rows.filter((item) => !claimed.has(item.id));
+      return { ply, layers, slots, extras };
+    }
+
+    function warnBomMaterialSlotLayout(finishedGood, layout, source) {
+      if (!layout) return;
+      const emptySlots = layout.slots.filter((slot) => !slot.line).map((slot) => slot.layer);
+      if (!emptySlots.length && !layout.extras.length) return;
+      console.warn("BOM raw materials do not match structural ply slots", {
+        source: source || "unknown",
+        finishedGoodId: finishedGood && finishedGood.id,
+        ply: layout.ply,
+        expectedLayers: layout.layers,
+        emptySlots,
+        extraLines: layout.extras.map((line) => ({
+          id: line.id,
+          layer: line.layer,
+          rawMaterialId: line.rawMaterialId
+        }))
+      });
+    }
+
+    function isBomPlyLinkedMaterial(rawMaterialId, ply) {
+      return getCostCalculatorMaterials(ply).some((item) => item.id === Number(rawMaterialId));
+    }
+
+    function getBomSlotMaterialOptions(ply, selectedId) {
+      const options = getCostCalculatorMaterials(ply).slice();
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
+    function getBomExtraMaterialOptions(selectedId) {
+      const options = rawMaterials.filter((item) => item.status !== "Inactive");
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
+    function orderBomMaterialsBySlots(finishedGood, materials) {
+      const layout = getBomMaterialSlotLayout(finishedGood, materials);
+      return layout.slots.map((slot) => slot.line).filter(Boolean).concat(layout.extras);
+    }
+
+    function rebuildBomMaterialLine(prev, patch) {
+      const draft = {
+        rawMaterialId: patch.rawMaterialId,
+        layer: patch.layer,
+        calculationMethod: patch.calculationMethod != null ? patch.calculationMethod : (prev && prev.calculationMethod) || "formula",
+        formulaId: patch.formulaId != null ? patch.formulaId : (prev ? prev.formulaId : null),
+        dimensionId: Object.prototype.hasOwnProperty.call(patch, "dimensionId") ? patch.dimensionId : (prev ? prev.dimensionId : null),
+        manualQty: Object.prototype.hasOwnProperty.call(patch, "manualQty") ? patch.manualQty : (prev ? prev.manualQty : null),
+        wastagePercent: patch.wastagePercent != null ? patch.wastagePercent : ((prev && prev.wastagePercent) ?? DEFAULT_WASTAGE_PERCENT)
+      };
+      applyMaterialFormulaBindings(draft);
+      return calculateMaterialCost({
+        id: prev && prev.id ? prev.id : nextBomLineId(),
+        rawMaterialId: Number(draft.rawMaterialId),
+        layer: draft.layer,
+        calculationMethod: draft.calculationMethod,
+        formulaId: draft.calculationMethod === "formula" ? draft.formulaId : null,
+        dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
+        manualQty: draft.calculationMethod === "manual" ? draft.manualQty : null,
+        wastagePercent: draft.wastagePercent,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      });
+    }
+
+    function assignBomSlotMaterial(layer, rawMaterialId) {
+      const fg = getSelectedFinishedGood();
+      if (!fg) return;
+      const layout = getBomMaterialSlotLayout(fg, state.bomMaterials);
+      const slot = layout.slots.find((item) => item.layer === layer);
+      if (!slot) return;
+      const value = rawMaterialId ? Number(rawMaterialId) : null;
+      if (!value) {
+        if (slot.line) {
+          state.bomMaterials = state.bomMaterials.filter((line) => line.id !== slot.line.id);
+          recalculateBOMCosts();
+          refreshBomViews();
+          persistEditorState();
+        }
+        return;
+      }
+      const next = rebuildBomMaterialLine(slot.line, { rawMaterialId: value, layer });
+      if (slot.line) {
+        state.bomMaterials = state.bomMaterials.map((line) => line.id === next.id ? next : line);
+      } else {
+        state.bomMaterials = orderBomMaterialsBySlots(fg, state.bomMaterials.concat([next]));
+      }
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+      if (next.error) showNotification(next.error, "error");
+      else {
+        const material = getRawMaterial(next.rawMaterialId);
+        showNotification((material ? material.name : "Material") + " selected for " + layer);
+      }
+    }
+
+    function assignBomExtraMaterial(lineId, rawMaterialId) {
+      const line = state.bomMaterials.find((item) => item.id === Number(lineId));
+      if (!line) return;
+      if (!rawMaterialId) {
+        refreshBomViews();
+        return;
+      }
+      const next = rebuildBomMaterialLine(line, { rawMaterialId: Number(rawMaterialId), layer: line.layer });
+      state.bomMaterials = state.bomMaterials.map((item) => item.id === next.id ? next : item);
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+      if (next.error) showNotification(next.error, "error");
+    }
+
+    function warnBomOtherMaterialPlyCatalog(ply) {
+      const catalog = getBomOtherMaterialsForPly(ply);
+      if (catalog.length) return;
+      const linkedPlys = Array.from(new Set(otherMaterialDimensions.map((row) => Number(row.ply)).filter((n) => Number.isFinite(n))));
+      console.warn("No otherMaterialDimensions links for ply " + ply + ". Catalog is empty.", {
+        ply,
+        linkedPlys,
+        note: "New Other Raw Material dimension links are saved with ply: 1."
+      });
+    }
+
+    function isBomPlyLinkedOtherMaterial(otherRawMaterialId, ply) {
+      return getBomOtherMaterialsForPly(ply).some((item) => item.id === Number(otherRawMaterialId));
+    }
+
+    function getBomOtherSlotMaterialOptions(ply, selectedId) {
+      const options = getBomOtherMaterialsForPly(ply).slice();
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getOtherRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
+    function getBomOtherExtraMaterialOptions(selectedId) {
+      const options = otherRawMaterials.filter((item) => item.status !== "Inactive");
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getOtherRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
+    function rebuildBomOtherMaterialLine(prev, patch) {
+      const draft = {
+        otherRawMaterialId: patch.otherRawMaterialId,
+        layer: patch.layer,
+        calculationMethod: patch.calculationMethod != null ? patch.calculationMethod : (prev && prev.calculationMethod) || "formula",
+        formulaId: patch.formulaId != null ? patch.formulaId : (prev ? prev.formulaId : null),
+        dimensionId: Object.prototype.hasOwnProperty.call(patch, "dimensionId") ? patch.dimensionId : (prev ? prev.dimensionId : null),
+        manualQty: Object.prototype.hasOwnProperty.call(patch, "manualQty") ? patch.manualQty : (prev ? prev.manualQty : null),
+        wastagePercent: patch.wastagePercent != null ? patch.wastagePercent : ((prev && prev.wastagePercent) ?? DEFAULT_WASTAGE_PERCENT)
+      };
+      applyOtherMaterialFormulaBindings(draft);
+      return calculateOtherMaterialCost({
+        id: prev && prev.id ? prev.id : nextBomLineId(),
+        otherRawMaterialId: Number(draft.otherRawMaterialId),
+        layer: draft.layer,
+        calculationMethod: draft.calculationMethod,
+        formulaId: draft.calculationMethod === "formula" ? draft.formulaId : null,
+        dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
+        manualQty: draft.calculationMethod === "manual" ? draft.manualQty : null,
+        wastagePercent: draft.wastagePercent,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      });
+    }
+
+    function assignBomOtherSlotMaterial(layer, otherRawMaterialId) {
+      const fg = getSelectedFinishedGood();
+      if (!fg) return;
+      const layout = getBomMaterialSlotLayout(fg, state.bomOtherMaterials);
+      const slot = layout.slots.find((item) => item.layer === layer);
+      if (!slot) return;
+      const value = otherRawMaterialId ? Number(otherRawMaterialId) : null;
+      if (!value) {
+        if (slot.line) {
+          state.bomOtherMaterials = state.bomOtherMaterials.filter((line) => line.id !== slot.line.id);
+          recalculateBOMCosts();
+          refreshBomViews();
+          persistEditorState();
+        }
+        return;
+      }
+      const next = rebuildBomOtherMaterialLine(slot.line, { otherRawMaterialId: value, layer });
+      if (slot.line) {
+        state.bomOtherMaterials = state.bomOtherMaterials.map((line) => line.id === next.id ? next : line);
+      } else {
+        state.bomOtherMaterials = orderBomMaterialsBySlots(fg, state.bomOtherMaterials.concat([next]));
+      }
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+      if (next.error) showNotification(next.error, "error");
+      else {
+        const material = getOtherRawMaterial(next.otherRawMaterialId);
+        showNotification((material ? material.name : "Other material") + " selected for " + layer);
+      }
+    }
+
+    function assignBomOtherExtraMaterial(lineId, otherRawMaterialId) {
+      const line = (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId));
+      if (!line) return;
+      if (!otherRawMaterialId) {
+        refreshBomViews();
+        return;
+      }
+      const next = rebuildBomOtherMaterialLine(line, { otherRawMaterialId: Number(otherRawMaterialId), layer: line.layer });
+      state.bomOtherMaterials = state.bomOtherMaterials.map((item) => item.id === next.id ? next : item);
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+      if (next.error) showNotification(next.error, "error");
+    }
+
+    function costCalculatorOtherLayerRows(summary) {
+      if (summary && Array.isArray(summary.otherLayers)) return summary.otherLayers;
+      if (state.costCalculator && Array.isArray(state.costCalculator.otherLayers)) {
+        return state.costCalculator.otherLayers;
+      }
+      return [];
     }
 
     function openCostCalculatorServiceModal() {
@@ -5510,6 +6254,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rate: 0,
         costPerPiece: 0
       }));
+      state.bomOtherMaterials = costCalculatorOtherLayerRows(summary)
+        .filter((row) => row && row.otherRawMaterialId)
+        .map((row) => calculateOtherMaterialCost({
+          id: nextBomLineId(),
+          otherRawMaterialId: Number(row.otherRawMaterialId),
+          layer: row.layer,
+          calculationMethod: "formula",
+          formulaId: row.calc && row.calc.formulaId,
+          dimensionId: row.calc && row.calc.dimensionId,
+          manualQty: null,
+          wastagePercent: (row.calc && row.calc.wastagePercent) ?? DEFAULT_WASTAGE_PERCENT,
+          netQty: 0,
+          grossQty: 0,
+          rate: 0,
+          costPerPiece: 0
+        }));
       recalculateBOMCosts();
       const record = persistNewDraftFromEditor(getBomNoForFinishedGood(fg), fg.id);
       showNotification("BOM " + record.bomNo + " saved as draft from Cost Calculator");
@@ -5552,6 +6312,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             `;
           }).join("")
         : `<tr><td colspan="5">No materials selected.</td></tr>`;
+      const otherMaterialRows = (summary.otherLayers || []).length
+        ? summary.otherLayers.map((row) => {
+            const material = getOtherRawMaterial(row.otherRawMaterialId);
+            const calc = row.calc || {};
+            const ok = row.otherRawMaterialId && !calc.error;
+            return `
+              <tr>
+                <td>${escapeHtml(row.layer)}</td>
+                <td>${escapeHtml(material ? material.name : (row.otherRawMaterialId ? "Missing material" : "—"))}</td>
+                <td class="num">${ok ? escapeHtml(formatQty(calc.qty) + (calc.uom ? " " + calc.uom : "")) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getOtherMaterialRate(material && material.id) && getOtherMaterialRate(material && material.id).rateUOM))) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : (calc.error ? "Error" : "—")}</td>
+              </tr>
+            `;
+          }).join("")
+        : `<tr><td colspan="5">No other materials selected.</td></tr>`;
       const serviceRows = (summary.services || []).length
         ? summary.services.map((row) => {
             const service = getService(row.serviceId);
@@ -5591,6 +6367,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </table>
         </section>
         <section class="cc-pdf-section">
+          <h2>Other materials</h2>
+          <table>
+            <thead>
+              <tr><th>Layer</th><th>Material</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Cost</th></tr>
+            </thead>
+            <tbody>${otherMaterialRows}</tbody>
+          </table>
+        </section>
+        <section class="cc-pdf-section">
           <h2>Services</h2>
           <table>
             <thead>
@@ -5604,6 +6389,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <table class="cc-pdf-totals">
             <tbody>
               <tr><td>Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.materialCost))}</td></tr>
+              <tr><td>Other Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.otherMaterialCost))}</td></tr>
               <tr><td>Service Cost</td><td class="num">${escapeHtml(formatRupees(summary.serviceCost))}</td></tr>
               <tr><td>Cost Per Piece</td><td class="num">${escapeHtml(formatRupees(summary.perPiece))}</td></tr>
               <tr><td>Cost Per 100</td><td class="num">${escapeHtml(formatRupees(summary.per100))}</td></tr>
@@ -5658,8 +6444,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function loadSampleBomMaterials(finishedGoodId) {
-      const configs = sampleBomMaterials[finishedGoodId] || [];
-      state.bomMaterials = configs.map((config) => createMaterialLineFromConfig(config));
+      const fg = finishedGoods.find((item) => item.id === Number(finishedGoodId)) || getSelectedFinishedGood();
+      const remaining = (sampleBomMaterials[finishedGoodId] || []).slice();
+      const slotConfigs = getStructuralLayers(getFinishedGoodPly(fg)).map((layer) => {
+        const index = remaining.findIndex((config) => config.layer === layer);
+        if (index < 0) return null;
+        return remaining.splice(index, 1)[0];
+      }).filter(Boolean);
+      state.bomMaterials = slotConfigs.concat(remaining).map((config) => createMaterialLineFromConfig(config));
+      warnBomMaterialSlotLayout(fg, getBomMaterialSlotLayout(fg, state.bomMaterials), "sample");
     }
 
     function createServiceLineFromConfig(config) {
@@ -5691,6 +6484,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function loadSampleBom(finishedGoodId) {
       loadSampleBomMaterials(finishedGoodId);
       loadSampleBomServices(finishedGoodId);
+      state.bomOtherMaterials = [];
       recalculateBOMCosts();
     }
 
@@ -5719,6 +6513,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function currentBomHasCalculationErrors() {
       return (state.bomMaterials || []).some((line) => line.error)
+        || (state.bomOtherMaterials || []).some((line) => line.error)
         || (state.bomServices || []).some((line) => line.error);
     }
 
@@ -5736,6 +6531,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       for (const line of state.bomMaterials) {
         if (!getRawMaterial(line.rawMaterialId)) return "A BOM material does not reference a valid raw material master record.";
         if (line.calculationMethod === "formula" && !getMaterialQtyFormula(getRawMaterial(line.rawMaterialId))) return "A BOM material formula is missing or invalid. Set Default Quantity Formula on the Raw Material master.";
+      }
+
+      for (const line of state.bomOtherMaterials || []) {
+        if (!getOtherRawMaterial(line.otherRawMaterialId)) return "A BOM other material does not reference a valid Other Raw Material master record.";
+        if (line.calculationMethod === "formula" && !getOtherMaterialQtyFormula(getOtherRawMaterial(line.otherRawMaterialId))) return "A BOM other material formula is missing or invalid. Set Default Quantity Formula on the Other Raw Material master.";
       }
 
       for (const line of state.bomServices) {
@@ -5772,8 +6572,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         version: state.currentBOM.version,
         status,
         materials: state.bomMaterials,
+        otherMaterials: state.bomOtherMaterials,
         services: state.bomServices,
         totalMaterialCost: state.totalMaterialCost,
+        totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
@@ -5791,7 +6593,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const copy = cloneData(record);
       state.selectedFinishedGoodId = copy.finishedGoodId;
       syncEditorBomMeta(copy);
-      state.bomMaterials = cloneData(copy.materials || []);
+      hydrateBomEditorMaterials(copy.materials, copy.otherMaterials);
       state.bomServices = cloneData(copy.services || []);
       state.bomProfitPercent = storedBomPercent(copy.bomProfitPercent ?? copy.profitPercent);
       state.bomOverheadPercent = storedBomPercent(copy.bomOverheadPercent ?? copy.overheadPercent);
@@ -5799,6 +6601,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.fgSelectorOpen = false;
       state.workflowError = "";
       recalculateBOMCosts();
+      warnBomMaterialSlotLayout(getSelectedFinishedGood(), getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomMaterials), "saved-bom");
+      warnBomMaterialSlotLayout(getSelectedFinishedGood(), getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials), "saved-bom-other");
+      warnBomOtherMaterialPlyCatalog(getFinishedGoodPly(getSelectedFinishedGood()));
       persistEditorState();
     }
 
@@ -5842,6 +6647,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const lines = copyLinesForEditor(original);
       state.selectedFinishedGoodId = fg.id;
       state.bomMaterials = lines.materials;
+      state.bomOtherMaterials = lines.otherMaterials || [];
       state.bomServices = lines.services;
       state.bomProfitPercent = storedBomPercent(original.bomProfitPercent ?? original.profitPercent);
       state.bomOverheadPercent = storedBomPercent(original.bomOverheadPercent ?? original.overheadPercent);
@@ -5862,8 +6668,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         version: nextVersionForBomNo(original.bomNo),
         status: "Draft",
         materials: state.bomMaterials,
+        otherMaterials: state.bomOtherMaterials,
         services: state.bomServices,
         totalMaterialCost: state.totalMaterialCost,
+        totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
@@ -6039,6 +6847,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderProductInformation();
       renderStyleFormulasSection();
       renderMaterialSection();
+      renderOtherMaterialSection();
       renderServiceSection();
       renderCostSummary();
       refreshIcons();
@@ -6953,7 +7762,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
               <td>${escapeHtml(item.unit || "—")}</td>
               <td>${escapeHtml(item.dataType)}</td>
-              <td>${item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : escapeHtml(item.dataType === "numeric" ? formatDecimal(item.defaultValue, 4, false) : item.defaultValue)}</td>
+              <td>${item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : escapeHtml(item.dataType === "numeric" ? formatDecimal(item.defaultValue, 8, false) : item.defaultValue)}</td>
               <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
               ${masterRowActions("data-edit-fvar", item.id, "data-delete-fvar", item.id)}
             </tr>
@@ -7022,15 +7831,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = getFormula(formulaId);
       const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
         || otherRawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
-        || services.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || services.some((item) => bindingUsesFormula(item.formulaId, formula) || bindingUsesFormula(item.qtyFormulaId, formula))
+        || materialRates.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || otherMaterialRates.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || serviceRates.some((item) => bindingUsesFormula(item.formulaId, formula))
         || styleFormulas.some((item) => bindingUsesFormula(item.formulaId, formula))
         || serviceDimensions.some((item) => bindingUsesFormula(item.formulaId, formula))
         || materialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula))
         || otherMaterialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula));
       const usedInEditor = state.bomMaterials.some((line) => lineUsesFormula(line, formula)) ||
+        (state.bomOtherMaterials || []).some((line) => lineUsesFormula(line, formula)) ||
         state.bomServices.some((line) => lineUsesFormula(line, formula));
       const usedInSaved = boms.some((bom) =>
         (bom.materials || []).some((line) => lineUsesFormula(line, formula)) ||
+        (bom.otherMaterials || []).some((line) => lineUsesFormula(line, formula)) ||
         (bom.services || []).some((line) => lineUsesFormula(line, formula))
       );
       return usedInMasters || usedInEditor || usedInSaved;
@@ -7147,6 +7961,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-product-root", label: "Product Information" },
       { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
+      { id: "bom-other-materials-root", label: "Other Raw Materials" },
       { id: "bom-services-root", label: "Services" }
     ];
 
@@ -7159,6 +7974,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         steps.product = n++;
         if (hasStyle) steps.style = n++;
         steps.materials = n++;
+        steps.otherMaterials = n++;
         steps.services = n++;
       }
       return steps;
@@ -7224,6 +8040,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div id="bom-product-root"></div>
             <div id="bom-style-formulas-root"></div>
             <div id="bom-materials-root"></div>
+            <div id="bom-other-materials-root"></div>
             <div id="bom-services-root"></div>
           </div>
           <aside id="bom-cost-root"></aside>
@@ -7234,6 +8051,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderProductInformation();
       renderStyleFormulasSection();
       renderMaterialSection();
+      renderOtherMaterialSection();
       renderServiceSection();
       renderCostSummary();
     }
@@ -7283,9 +8101,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.selectedFinishedGoodId = null;
       state.currentBOM = null;
       state.bomMaterials = [];
+      state.bomOtherMaterials = [];
       state.bomServices = [];
       state.bomStyleResults = [];
       state.totalMaterialCost = 0;
+      state.totalOtherMaterialCost = 0;
       state.totalServiceCost = 0;
       state.finalCostPerPiece = 0;
       state.costPer100 = 0;
@@ -7322,6 +8142,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomOverheadPercent = 0;
       closeModal();
       loadSampleBom(item.id);
+      warnBomOtherMaterialPlyCatalog(getFinishedGoodPly(item));
       recalculateBOMCosts();
       renderFinishedGoodSelector();
       refreshBomViews();
@@ -7545,100 +8366,231 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderBomMaterialCard(options) {
+      const line = options.line;
+      const layer = options.layer;
+      const ply = options.ply;
+      const extra = Boolean(options.extra);
+      const index = options.index;
+      const material = line ? getRawMaterial(line.rawMaterialId) : null;
+      const formula = line
+        ? (line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId))
+        : null;
+      const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
+      const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
+      const materials = extra
+        ? getBomExtraMaterialOptions(line && line.rawMaterialId)
+        : getBomSlotMaterialOptions(ply, line && line.rawMaterialId);
+      const unlinked = !extra && line && line.rawMaterialId && !isBomPlyLinkedMaterial(line.rawMaterialId, ply);
+      const selectId = extra ? "bom-extra-mat-" + line.id : "bom-layer-mat-" + index;
+      const selectAttr = extra
+        ? `data-bom-extra-material="${line.id}"`
+        : `data-bom-layer-material="${escapeHtml(layer)}"`;
+      const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
+      return `
+        <div class="cc-layer">
+          <div class="cc-layer-head">
+            <div class="cc-layer-title">${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
+            ${line ? `
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit calculation details">
+                  <i data-lucide="pencil"></i>
+                </button>
+                ${extra ? `
+                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                ` : ""}
+              </div>
+            ` : ""}
+          </div>
+          <label class="form-label" for="${selectId}">Material</label>
+          <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} material">
+            <option value="">Select Material</option>
+            ${materials.map((item) => `
+              <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+            `).join("")}
+          </select>
+          ${unlinked ? `<p class="stat-hint">This material is not linked in Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
+          ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
+          ${line ? `
+            <div class="cc-metrics">
+              <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
+              <div><span>Formula</span><strong class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("material", line.id, "Explain quantity")}</strong></div>
+              <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
+              <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
+              <div><span>Net Qty</span><strong>${line.error ? "—" : formatQty(line.netQty)}</strong></div>
+              <div>
+                <span>Wastage %</span>
+                <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
+              </div>
+              <div><span>Gross Qty</span><strong>${line.error ? "—" : formatQty(line.grossQty)}</strong></div>
+              <div>
+                <span>Rate</span>
+                <strong>${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</strong>
+              </div>
+              <div><span>Cost / Piece</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
+            </div>
+          ` : `<p class="stat-hint">Select a material for this ply layer. Calculation details become available after a material is chosen.</p>`}
+        </div>
+      `;
+    }
+
     function renderMaterialSection() {
       const root = document.getElementById("bom-materials-root");
       if (!root) return;
-      const hasFg = Boolean(getSelectedFinishedGood());
-      if (!hasFg) {
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
         root.innerHTML = "";
         return;
       }
-      const rows = state.bomMaterials;
-
-      const body = rows.length
-          ? rows.map((line, index) => {
-              const material = getRawMaterial(line.rawMaterialId);
-              const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId);
-              const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
-              const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
-              return `
-                <tr>
-                  <td>${index + 1}</td>
-                  <td>
-                    <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
-                    <div class="stat-hint">${escapeHtml(material ? material.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
-                    ${line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
-                  </td>
-                  <td>${escapeHtml(line.layer)}</td>
-                  <td>${escapeHtml(methodLabel)}</td>
-                  <td>
-                    <span class="formula-cell">
-                      ${escapeHtml(formulaLabel)}
-                      ${formulaHelpButton("material", line.id, "Explain quantity")}
-                    </span>
-                  </td>
-                  <td>${formatQty(line.netQty)}</td>
-                  <td>
-                    <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" />
-                  </td>
-                  <td>${formatQty(line.grossQty)}</td>
-                  <td>
-                    ${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}
-                    <div class="stat-hint">Material Rates</div>
-                  </td>
-                  <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
-                  <td>
-                    <div class="row-actions">
-                      <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
-                        <i data-lucide="calculator"></i>
-                      </button>
-                      <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit">
-                        <i data-lucide="pencil"></i>
-                      </button>
-                      <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
-                        <i data-lucide="trash-2"></i>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              `;
-            }).join("")
-          : emptyRow(11, "No raw materials added yet.");
-
+      const layout = getBomMaterialSlotLayout(fg, state.bomMaterials);
+      const slotCards = layout.slots.map((slot, index) => renderBomMaterialCard({
+        layer: slot.layer,
+        line: slot.line,
+        ply: layout.ply,
+        extra: false,
+        index
+      })).join("");
+      const extraCards = layout.extras.map((line, index) => renderBomMaterialCard({
+        layer: line.layer || "Additional",
+        line,
+        ply: layout.ply,
+        extra: true,
+        index
+      })).join("");
+      const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
       root.innerHTML = `
-        <div class="card">
+        <section class="card cc-card">
           <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Raw Materials</div>
-                <div class="section-title">BOM consumption</div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-add-material" ${hasFg ? "" : "disabled"}>
-                <i data-lucide="plus"></i> Add Raw Material
-              </button>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table" style="min-width:1100px;">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Material</th>
-                    <th>Layer</th>
-                    <th>Calculation</th>
-                    <th>Formula</th>
-                    <th>Net Qty</th>
-                    <th>Wastage</th>
-                    <th>Gross Qty</th>
-                    <th>Rate</th>
-                    <th>Cost / Piece</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
+            <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including extras.</p>
+            ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
+            ${layout.extras.length ? `
+              <div class="section-title" style="margin:16px 0 8px;">Additional materials</div>
+              <p class="stat-hint" style="margin:0 0 12px;">These lines are not structural ply slots (legacy or extra). They are kept so saved BOM data is not dropped.</p>
+              ${extraCards}
+            ` : ""}
+            <div class="cc-total-line"><span>Total Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
+        </section>
+      `;
+    }
+
+    function renderBomOtherMaterialCard(options) {
+      const line = options.line;
+      const layer = options.layer;
+      const ply = options.ply;
+      const extra = Boolean(options.extra);
+      const index = options.index;
+      const material = line ? getOtherRawMaterial(line.otherRawMaterialId) : null;
+      const formula = line
+        ? (line.calculationMethod === "formula" ? getOtherMaterialQtyFormula(material) : getFormula(line.formulaId))
+        : null;
+      const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
+      const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
+      const materials = extra
+        ? getBomOtherExtraMaterialOptions(line && line.otherRawMaterialId)
+        : getBomOtherSlotMaterialOptions(ply, line && line.otherRawMaterialId);
+      const unlinked = !extra && line && line.otherRawMaterialId && !isBomPlyLinkedOtherMaterial(line.otherRawMaterialId, ply);
+      const selectId = extra ? "bom-other-extra-mat-" + line.id : "bom-other-layer-mat-" + index;
+      const selectAttr = extra
+        ? `data-bom-other-extra-material="${line.id}"`
+        : `data-bom-other-layer-material="${escapeHtml(layer)}"`;
+      const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
+      return `
+        <div class="cc-layer">
+          <div class="cc-layer-head">
+            <div class="cc-layer-title">${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
+            ${line ? `
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon" data-breakdown-other-line="${line.id}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon" data-edit-other-line="${line.id}" title="Edit calculation details">
+                  <i data-lucide="pencil"></i>
+                </button>
+                ${extra ? `
+                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-other-line="${line.id}" title="Delete">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                ` : ""}
+              </div>
+            ` : ""}
+          </div>
+          <label class="form-label" for="${selectId}">Other Material</label>
+          <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} other material">
+            <option value="">Select Other Material</option>
+            ${materials.map((item) => `
+              <option value="${item.id}" ${line && Number(line.otherRawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+            `).join("")}
+          </select>
+          ${unlinked ? `<p class="stat-hint">This material is not linked in Other Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
+          ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
+          ${line ? `
+            <div class="cc-metrics">
+              <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
+              <div><span>Formula</span><strong class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("other-material", line.id, "Explain quantity")}</strong></div>
+              <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
+              <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
+              <div><span>Net Qty</span><strong>${line.error ? "—" : formatQty(line.netQty)}</strong></div>
+              <div>
+                <span>Wastage %</span>
+                <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-other-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} other material wastage percent" />
+              </div>
+              <div><span>Gross Qty</span><strong>${line.error ? "—" : formatQty(line.grossQty)}</strong></div>
+              <div>
+                <span>Rate</span>
+                <strong>${material ? formatRatePkr(line.rate, (getOtherMaterialRate(material.id) && getOtherMaterialRate(material.id).rateUOM) || "") : "—"}</strong>
+              </div>
+              <div><span>Cost / Piece</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
+            </div>
+          ` : `<p class="stat-hint">Optional. Select an other raw material for this ply layer, or leave empty.</p>`}
         </div>
+      `;
+    }
+
+    function renderOtherMaterialSection() {
+      const root = document.getElementById("bom-other-materials-root");
+      if (!root) return;
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
+        root.innerHTML = "";
+        return;
+      }
+      const layout = getBomMaterialSlotLayout(fg, state.bomOtherMaterials);
+      const slotCards = layout.slots.map((slot, index) => renderBomOtherMaterialCard({
+        layer: slot.layer,
+        line: slot.line,
+        ply: layout.ply,
+        extra: false,
+        index
+      })).join("");
+      const extraCards = layout.extras.map((line, index) => renderBomOtherMaterialCard({
+        layer: line.layer || "Additional",
+        line,
+        ply: layout.ply,
+        extra: true,
+        index
+      })).join("");
+      const hasCalcErrors = (state.bomOtherMaterials || []).some((line) => line.error);
+      root.innerHTML = `
+        <section class="card cc-card">
+          <div class="card-body">
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().otherMaterials}: Select Other Raw Materials</div>
+            <p class="stat-hint" style="margin:0 0 12px;">Optional ply slots for other raw materials. Empty slots do not block activation. New dimension links are currently stored as 1-ply.</p>
+            ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
+            ${layout.extras.length ? `
+              <div class="section-title" style="margin:16px 0 8px;">Additional other materials</div>
+              <p class="stat-hint" style="margin:0 0 12px;">These lines are not structural ply slots (legacy or extra). They are kept so saved BOM data is not dropped.</p>
+              ${extraCards}
+            ` : ""}
+            <div class="cc-total-line"><span>Total Other Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalOtherMaterialCost)}</strong></div>
+          </div>
+        </section>
       `;
     }
 
@@ -7739,6 +8691,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const hasCalcErrors = currentBomHasCalculationErrors();
       const total = Number(state.finalCostPerPiece) || 0;
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
+      const otherPct = total > 0 ? roundTo((Number(state.totalOtherMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
       root.innerHTML = `
         <div class="card cost-summary">
@@ -7749,6 +8702,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cost-row">
               <span>Material Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
+            </div>
+            <div class="cost-row">
+              <span>Other Material Cost</span>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalOtherMaterialCost)}</strong>
             </div>
             <div class="cost-row">
               <span>Service Cost</span>
@@ -7785,14 +8742,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cost-bars">
               <div class="cost-bar">
                 <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
+                <div class="cost-bar-other" style="width:${escapeHtml(otherPct)}%;"></div>
                 <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
               </div>
               <div class="cost-legend">
                 <span>Material ${formatNumber(materialPct, 1)}%</span>
+                <span>Other ${formatNumber(otherPct, 1)}%</span>
                 <span>Service ${formatNumber(servicePct, 1)}%</span>
               </div>
             </div>
-            <p class="stat-hint">Final cost is Material Cost + Service Cost in Pakistani Rupees (Rs.). Rates come from master data after unit conversion.</p>
+            <p class="stat-hint">Final cost is Material Cost + Other Material Cost + Service Cost in Pakistani Rupees (Rs.). Rates come from master data after unit conversion.</p>
           </div>
         </div>
       `;
@@ -7804,6 +8763,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: formula ? formula.name : "",
         code: formula ? formula.code : "",
         type: formula ? formula.type : "Material",
+        purpose: formula ? formula.purpose : null,
         description: formula ? formula.description : "",
         expression: formula ? formula.expression : "",
         serviceLength: Boolean(formula && formula.serviceLength),
@@ -7894,6 +8854,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </select>
                 ${errors.type ? `<div class="field-error">${escapeHtml(errors.type)}</div>` : ""}
               </div>
+              ${draft.type === "Style" ? "" : `
+              <div>
+                <label class="form-label" for="fb-purpose">Purpose</label>
+                <select id="fb-purpose" class="full-select ${errors.purpose ? "input-invalid" : ""}">
+                  <option value="">Select purpose...</option>
+                  <option value="Quantity" ${draft.purpose === "Quantity" ? "selected" : ""}>Quantity</option>
+                  <option value="Rate" ${draft.purpose === "Rate" ? "selected" : ""}>Rate</option>
+                </select>
+                ${errors.purpose ? `<div class="field-error">${escapeHtml(errors.purpose)}</div>` : ""}
+              </div>
+              `}
               <div class="fb-desc-row">
                 <div>
                   <label class="form-label" for="fb-description">Description</label>
@@ -8062,6 +9033,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (codeError) errors.code = codeError;
       if (!draft.type) errors.type = "Type is required.";
       else if (!FORMULA_TYPES.includes(draft.type)) errors.type = "Type must be Material, Service, or Style.";
+      if (draft.type === "Material" || draft.type === "Service") {
+        if (!draft.purpose) errors.purpose = "Purpose is required.";
+        else if (!FORMULA_PURPOSES.includes(draft.purpose)) errors.purpose = "Purpose must be Rate or Quantity.";
+      }
       if (!draft.expression || !String(draft.expression).trim()) errors.expression = "Expression is required.";
 
       const code = String(draft.code || "").trim().toUpperCase();
@@ -8082,6 +9057,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code,
         name: String(draft.name).trim(),
         type: draft.type,
+        purpose: draft.type === "Style" ? null : draft.purpose,
         description: String(draft.description || "").trim(),
         expression: String(draft.expression).trim(),
         serviceLength: Boolean(draft.serviceLength),
@@ -8418,7 +9394,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="rm-qty-formula">Default Quantity Formula</label>
               <select id="rm-qty-formula" class="full-select">
-                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId)}
+                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId, "Quantity")}
               </select>
               <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
             </div>
@@ -8594,6 +9570,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rawMaterialId: material ? material.id : null,
         rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
         rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        formulaId: rateRow && rateRow.formulaId ? Number(rateRow.formulaId) : "",
         status: (rateRow && rateRow.status) || "Active"
       };
     }
@@ -8611,6 +9588,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = state.modal.errors || {};
       const material = getRawMaterial(draft.rawMaterialId);
       const dimSummary = material ? formatMaterialDimensionSummary(material) : "—";
+      const formulaOptions = renderBoundFormulaOptions("Material", draft.formulaId, "Rate");
       return `
         <div class="modal-header">
           <div>
@@ -8640,6 +9618,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${materialRateUomOptions(draft.rateUOM)}
               </select>
               ${errors.rateUOM ? `<div class="field-error">${escapeHtml(errors.rateUOM)}</div>` : ""}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label" for="mrate-formula">Formula</label>
+              <select id="mrate-formula" class="full-select">
+                ${formulaOptions}
+              </select>
+              <p class="stat-hint">Rate formula for this purchasing rate. Quantity formula stays on the Raw Material profile.</p>
             </div>
             <div class="form-span-2">
               <label class="form-label">Dimensions (optional)</label>
@@ -8712,6 +9697,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rawMaterialId: Number(draft.rawMaterialId),
         rate: roundTo(Number(draft.rate), 2),
         rateUOM: normalizeMaterialRateUom(draft.rateUOM) || draft.rateUOM,
+        formulaId: draft.formulaId ? Number(draft.formulaId) : null,
         status: draft.status || "Active",
         updatedAt: now
       };
@@ -8740,6 +9726,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       if (target.id === "mrate-rate") draft.rate = target.value;
       else if (target.id === "mrate-uom") draft.rateUOM = target.value;
+      else if (target.id === "mrate-formula") draft.formulaId = target.value ? Number(target.value) : "";
       else if (target.name === "mrate-status") draft.status = target.value;
       else return false;
       return true;
@@ -8950,7 +9937,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="orm-qty-formula">Default Quantity Formula</label>
               <select id="orm-qty-formula" class="full-select">
-                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId)}
+                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId, "Quantity")}
               </select>
               <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
             </div>
@@ -9125,6 +10112,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         otherRawMaterialId: material ? material.id : null,
         rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
         rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        formulaId: rateRow && rateRow.formulaId ? Number(rateRow.formulaId) : "",
         status: (rateRow && rateRow.status) || "Active"
       };
     }
@@ -9134,6 +10122,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = state.modal.errors || {};
       const material = getOtherRawMaterial(draft.otherRawMaterialId);
       const dimSummary = material ? formatOtherMaterialDimensionSummary(material) : "—";
+      const formulaOptions = renderBoundFormulaOptions("Material", draft.formulaId, "Rate");
       return `
         <div class="modal-header">
           <div>
@@ -9163,6 +10152,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${materialRateUomOptions(draft.rateUOM)}
               </select>
               ${errors.rateUOM ? `<div class="field-error">${escapeHtml(errors.rateUOM)}</div>` : ""}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label" for="omrate-formula">Formula</label>
+              <select id="omrate-formula" class="full-select">
+                ${formulaOptions}
+              </select>
+              <p class="stat-hint">Rate formula for this purchasing rate. Quantity formula stays on the Other Raw Material profile.</p>
             </div>
             <div class="form-span-2">
               <label class="form-label">Dimensions (optional)</label>
@@ -9235,6 +10231,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         otherRawMaterialId: Number(draft.otherRawMaterialId),
         rate: roundTo(Number(draft.rate), 2),
         rateUOM: normalizeMaterialRateUom(draft.rateUOM) || draft.rateUOM,
+        formulaId: draft.formulaId ? Number(draft.formulaId) : null,
         status: draft.status || "Active",
         updatedAt: now
       };
@@ -9261,6 +10258,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       if (target.id === "omrate-rate") draft.rate = target.value;
       else if (target.id === "omrate-uom") draft.rateUOM = target.value;
+      else if (target.id === "omrate-formula") draft.formulaId = target.value ? Number(target.value) : "";
       else if (target.name === "omrate-status") draft.status = target.value;
       else return false;
       return true;
@@ -9411,8 +10409,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: "",
         uom: "piece",
         dimensionIds: [],
-        customLength: "",
-        customWidth: "",
         status: "Active"
       };
     }
@@ -9457,14 +10453,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
                 <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
               </select>
-            </div>
-            <div>
-              <label class="form-label" for="srv-custom-length">Custom Length (optional)</label>
-              <input id="srv-custom-length" class="full-search" type="number" step="any" value="${draft.customLength == null || draft.customLength === "" ? "" : escapeHtml(String(draft.customLength))}" placeholder="Used when formula requires Area Length" />
-            </div>
-            <div>
-              <label class="form-label" for="srv-custom-width">Custom Width (optional)</label>
-              <input id="srv-custom-width" class="full-search" type="number" step="any" value="${draft.customWidth == null || draft.customWidth === "" ? "" : escapeHtml(String(draft.customWidth))}" placeholder="Used when formula requires Area Width" />
             </div>
             <div class="form-span-2">
               <p class="stat-hint">Rates managed in Service Rates page</p>
@@ -9537,8 +10525,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: item.name,
         uom: item.uom,
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
-        customLength: item.customLength != null ? item.customLength : "",
-        customWidth: item.customWidth != null ? item.customWidth : "",
         status: item.status
       };
     }
@@ -9571,8 +10557,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         uom: draft.uom,
-        customLength: numericOrNull(draft.customLength),
-        customWidth: numericOrNull(draft.customWidth),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -9606,8 +10590,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "srv-name") draft.name = target.value;
       else if (target.id === "srv-uom") draft.uom = target.value;
       else if (target.id === "srv-status") draft.status = target.value;
-      else if (target.id === "srv-custom-length") draft.customLength = target.value;
-      else if (target.id === "srv-custom-width") draft.customWidth = target.value;
       else return false;
       return true;
     }
@@ -9644,7 +10626,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft || {};
       const errors = state.modal.errors || {};
       const service = getService(draft.serviceId);
-      const formulaOptions = renderBoundFormulaOptions("Service", draft.formulaId);
+      const formulaOptions = renderBoundFormulaOptions("Service", draft.formulaId, "Quantity");
       return `
         <div class="modal-header">
           <div>
@@ -10737,7 +11719,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!draft.category) errors.category = "Category is required.";
       if (!draft.dataType) errors.dataType = "Data type is required.";
       if (draft.dataType === "numeric" && draft.defaultValue !== "" && draft.defaultValue != null) {
-        const parsed = parseByRule(draft.defaultValue, "variable");
+        const parsed = parseNumeric(draft.defaultValue, 8, { ...DECIMAL_RULES.variable, decimals: 8, decimalError: "Value must have maximum 8 decimal places" });
         if (!parsed.ok) errors.defaultValue = parsed.error;
       }
       return errors;
@@ -10840,7 +11822,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       let defaultValue = draft.defaultValue === "" ? null : draft.defaultValue;
       if (String(draft.code).trim().toUpperCase() === "SHEET_AREA") defaultValue = null;
       if (draft.dataType === "numeric" && defaultValue != null) {
-        const parsed = parseByRule(defaultValue, "variable");
+        const parsed = parseNumeric(defaultValue, 8, { ...DECIMAL_RULES.variable, decimals: 8, decimalError: "Value must have maximum 8 decimal places" });
         defaultValue = parsed.ok ? parsed.value : defaultValue;
       }
       const payload = {
@@ -11525,22 +12507,31 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function buildFormulaExplainModel_BOMLine(kind, lineId) {
       const fg = getSelectedFinishedGood();
       const isService = kind === "service";
+      const isOther = kind === "other-material";
       const line = isService
         ? state.bomServices.find((item) => item.id === Number(lineId))
-        : state.bomMaterials.find((item) => item.id === Number(lineId));
+        : isOther
+          ? (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId))
+          : state.bomMaterials.find((item) => item.id === Number(lineId));
       if (!line || !fg) {
         return { error: "Calculation details are unavailable." };
       }
-      const item = isService ? getService(line.serviceId) : getRawMaterial(line.rawMaterialId);
+      const item = isService
+        ? getService(line.serviceId)
+        : isOther
+          ? getOtherRawMaterial(line.otherRawMaterialId)
+          : getRawMaterial(line.rawMaterialId);
       const formula = line.calculationMethod === "formula"
-        ? (isService ? getFormula(getServiceDefaultFormulaId(item && item.id)) : getMaterialQtyFormula(item))
+        ? (isService ? getFormula(getServiceDefaultFormulaId(item && item.id)) : (isOther ? getOtherMaterialQtyFormula(item) : getMaterialQtyFormula(item)))
         : null;
       const uom = isService ? (item && item.uom) || "" : (item && item.uom) || "";
-      const title = item ? item.name + " — " + item.code : (isService ? "Service" : "Material");
+      const title = item ? item.name + " — " + item.code : (isService ? "Service" : (isOther ? "Other Material" : "Material"));
       const variables = item
         ? (isService
           ? buildServiceFormulaVariables(fg, item, line.dimensionId, line, formula)
-          : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula))
+          : isOther
+            ? buildOtherMaterialFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula)
+            : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula))
         : {};
       const isManual = line.calculationMethod === "manual";
       if (!isManual && !formula) {
@@ -11743,9 +12734,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "service", "cc-material", "cc-service", "style"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-service", "style"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "service" || resolved === "cc-service";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
@@ -11832,6 +12823,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
         return { kind, ready: true, item, preview, error: preview.error || null };
       }
+      if (kind === "other-material") {
+        const item = getOtherRawMaterial(draft && draft.otherRawMaterialId);
+        if (!item) return { kind, ready: false, item: null, preview: null, error: null };
+        const preview = calculateOtherMaterialCost({
+          id: (state.modal && state.modal.lineId) || 0,
+          otherRawMaterialId: draft.otherRawMaterialId,
+          layer: draft.layer,
+          calculationMethod: draft.calculationMethod,
+          formulaId: draft.formulaId,
+          dimensionId: draft.dimensionId,
+          manualQty: draft.manualQty,
+          wastagePercent: draft.wastagePercent,
+          netQty: 0,
+          grossQty: 0,
+          rate: 0,
+          costPerPiece: 0
+        });
+        return { kind, ready: true, item, preview, error: preview.error || null };
+      }
       const item = getService(draft && draft.serviceId);
       if (!item) return { kind: "service", ready: false, item: null, preview: null, error: null };
       const preview = calculateServiceCost({
@@ -11859,10 +12869,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       let variables = {};
       if (kind === "material" && cost.item && finishedGood) {
         variables = buildFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId, formula);
+      } else if (kind === "other-material" && cost.item && finishedGood) {
+        variables = buildOtherMaterialFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId, formula);
       } else if (kind === "service" && cost.item && finishedGood) {
         variables = buildServiceFormulaVariables(finishedGood, cost.item, draft.dimensionId, draft, formula);
       }
-      const extraCodes = kind === "material"
+      const extraCodes = kind === "material" || kind === "other-material"
         ? ["WASTAGE"]
         : (variables.PRINT_AREA != null ? ["PRINT_AREA"] : []);
       return {
@@ -11880,6 +12892,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const root = document.getElementById("bom-line-preview");
       if (!root || !state.modal || !state.modal.draft) return;
       if (state.modal.type === "material") root.innerHTML = renderMaterialModalRight();
+      else if (state.modal.type === "other-material") root.innerHTML = renderOtherMaterialModalRight();
       else if (state.modal.type === "service") root.innerHTML = renderServiceModalRight();
     }
 
@@ -11904,41 +12917,92 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
+      const fg = getSelectedFinishedGood();
+      const ply = getFinishedGoodPly(fg);
+      const slotLocked = Boolean(state.modal.slotLocked);
+      const material = getRawMaterial(draft.rawMaterialId);
+      const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
+      const dimMeta = describeBomMaterialDimensionSelect(material);
+      const materialOptions = slotLocked
+        ? getBomSlotMaterialOptions(ply, draft.rawMaterialId)
+        : getBomExtraMaterialOptions(draft.rawMaterialId);
       return `
         <section aria-label="Material selection and inputs">
           <div class="form-grid">
+            ${slotLocked ? `
+              <div>
+                <div class="field-label">Layer</div>
+                <div class="field-value">${escapeHtml(draft.layer || "—")}</div>
+              </div>
+              <div>
+                <div class="field-label">Raw Material</div>
+                <div class="field-value">${escapeHtml(material ? material.code + " — " + material.name : "Select a material on the slot card")}</div>
+                <p class="stat-hint">Change the material from the ply slot dropdown. This dialog edits calculation details only.</p>
+              </div>
+            ` : `
+              <div>
+                <label class="form-label" for="modal-material-select">Raw Material</label>
+                <select id="modal-material-select" class="full-select ${errors.rawMaterialId ? "input-invalid" : ""}" aria-invalid="${errors.rawMaterialId ? "true" : "false"}">
+                  <option value="">Select a raw material...</option>
+                  ${materialOptions.map((item) => `
+                    <option value="${item.id}" ${Number(draft.rawMaterialId) === item.id ? "selected" : ""}>
+                      ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
+                    </option>
+                  `).join("")}
+                </select>
+                ${errors.rawMaterialId ? `<div class="field-error">${escapeHtml(errors.rawMaterialId)}</div>` : ""}
+              </div>
+              <div>
+                <label class="form-label" for="modal-layer-select">Layer</label>
+                <select id="modal-layer-select" class="full-select ${errors.layer ? "input-invalid" : ""}" aria-invalid="${errors.layer ? "true" : "false"}">
+                  ${getLayerOptionsForEditor(draft.layer).map((layer) => `<option value="${escapeHtml(layer)}" ${draft.layer === layer ? "selected" : ""}>${escapeHtml(layer)}</option>`).join("")}
+                </select>
+                ${errors.layer ? `<div class="field-error">${escapeHtml(errors.layer)}</div>` : ""}
+              </div>
+            `}
             <div>
-              <label class="form-label" for="modal-material-select">Raw Material</label>
-              <select id="modal-material-select" class="full-select ${errors.rawMaterialId ? "input-invalid" : ""}" aria-invalid="${errors.rawMaterialId ? "true" : "false"}">
-                <option value="">Select a raw material...</option>
-                ${rawMaterials.map((item) => `
-                  <option value="${item.id}" ${Number(draft.rawMaterialId) === item.id ? "selected" : ""}>
-                    ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
-                  </option>
-                `).join("")}
+              <label class="form-label" for="modal-method-select">Calculation Method</label>
+              <select id="modal-method-select" class="full-select">
+                <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
+                <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
               </select>
-              ${errors.rawMaterialId ? `<div class="field-error">${escapeHtml(errors.rawMaterialId)}</div>` : ""}
             </div>
+            ${draft.calculationMethod === "formula" ? `
+              ${renderBomDimensionSelect(
+                dimMeta.linkedIds,
+                draft.dimensionId,
+                "modal-line-dimension",
+                errors.dimensionId,
+                dimMeta.hint,
+                { emptyLabel: dimMeta.emptyLabel, disabled: !material, lockedLabel: "Select a material first" }
+              )}
+              <div>
+                <div class="field-label">Quantity Formula</div>
+                <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
+                ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
+              </div>
+            ` : `
+              <div>
+                <label class="form-label" for="modal-manual-qty">Manual quantity</label>
+                <input id="modal-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" aria-invalid="${errors.manualQty ? "true" : "false"}" />
+                ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
+              </div>
+            `}
             <div>
-              <label class="form-label" for="modal-layer-select">Layer</label>
-              <select id="modal-layer-select" class="full-select ${errors.layer ? "input-invalid" : ""}" aria-invalid="${errors.layer ? "true" : "false"}">
-                ${getLayerOptionsForEditor(draft.layer).map((layer) => `<option value="${escapeHtml(layer)}" ${draft.layer === layer ? "selected" : ""}>${escapeHtml(layer)}</option>`).join("")}
-              </select>
-              ${errors.layer ? `<div class="field-error">${escapeHtml(errors.layer)}</div>` : ""}
+              <label class="form-label" for="modal-wastage">Wastage %</label>
+              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(formatDecimal(draft.wastagePercent, 2, false))}" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
+              ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
             </div>
           </div>
           ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
           ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
-          ${errors.dimensionId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.dimensionId)}</div>` : ""}
           ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
-          ${errors.wastagePercent ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.wastagePercent)}</div>` : ""}
-          ${errors.manualQty ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.manualQty)}</div>` : ""}
           ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
           ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
         </section>
         <div class="modal-left-actions">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-material">${state.modal.mode === "edit" ? "Save" : "Add"}</button>
+          <button type="button" class="btn btn-primary" id="btn-save-material">Save</button>
         </div>
       `;
     }
@@ -12028,6 +13092,124 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       );
     }
 
+    function renderOtherMaterialModalLeft() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const fg = getSelectedFinishedGood();
+      const ply = getFinishedGoodPly(fg);
+      const slotLocked = Boolean(state.modal.slotLocked);
+      const material = getOtherRawMaterial(draft.otherRawMaterialId);
+      const formula = draft.calculationMethod === "formula" ? getOtherMaterialQtyFormula(material) : getFormula(draft.formulaId);
+      const dimMeta = describeOtherMaterialDimensionSelect(material);
+      const materialOptions = slotLocked
+        ? getBomOtherSlotMaterialOptions(ply, draft.otherRawMaterialId)
+        : getBomOtherExtraMaterialOptions(draft.otherRawMaterialId);
+      return `
+        <section aria-label="Other material selection and inputs">
+          <div class="form-grid">
+            ${slotLocked ? `
+              <div>
+                <div class="field-label">Layer</div>
+                <div class="field-value">${escapeHtml(draft.layer || "—")}</div>
+              </div>
+              <div>
+                <div class="field-label">Other Raw Material</div>
+                <div class="field-value">${escapeHtml(material ? material.code + " — " + material.name : "Select a material on the slot card")}</div>
+              </div>
+            ` : `
+              <div>
+                <label class="form-label" for="modal-other-material-select">Other Raw Material</label>
+                <select id="modal-other-material-select" class="full-select ${errors.otherRawMaterialId ? "input-invalid" : ""}">
+                  <option value="">Select an other raw material...</option>
+                  ${materialOptions.map((item) => `
+                    <option value="${item.id}" ${Number(draft.otherRawMaterialId) === item.id ? "selected" : ""}>
+                      ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
+                    </option>
+                  `).join("")}
+                </select>
+                ${errors.otherRawMaterialId ? `<div class="field-error">${escapeHtml(errors.otherRawMaterialId)}</div>` : ""}
+              </div>
+              <div>
+                <label class="form-label" for="modal-other-layer-select">Layer</label>
+                <select id="modal-other-layer-select" class="full-select ${errors.layer ? "input-invalid" : ""}">
+                  ${getLayerOptionsForEditor(draft.layer).map((layer) => `<option value="${escapeHtml(layer)}" ${draft.layer === layer ? "selected" : ""}>${escapeHtml(layer)}</option>`).join("")}
+                </select>
+                ${errors.layer ? `<div class="field-error">${escapeHtml(errors.layer)}</div>` : ""}
+              </div>
+            `}
+            <div>
+              <label class="form-label" for="modal-other-method-select">Calculation Method</label>
+              <select id="modal-other-method-select" class="full-select">
+                <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
+                <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
+              </select>
+            </div>
+            ${draft.calculationMethod === "formula" ? `
+              ${renderBomDimensionSelect(
+                dimMeta.linkedIds,
+                draft.dimensionId,
+                "modal-other-line-dimension",
+                errors.dimensionId,
+                dimMeta.hint,
+                { emptyLabel: dimMeta.emptyLabel, disabled: !material, lockedLabel: "Select a material first" }
+              )}
+              <div>
+                <div class="field-label">Quantity Formula</div>
+                <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
+              </div>
+            ` : `
+              <div>
+                <label class="form-label" for="modal-other-manual-qty">Manual quantity</label>
+                <input id="modal-other-manual-qty" class="full-search ${errors.manualQty ? "input-invalid" : ""}" type="number" min="0.0001" step="0.0001" value="${draft.manualQty == null || draft.manualQty === "" ? "" : escapeHtml(formatDecimal(draft.manualQty, 4, false))}" />
+                ${errors.manualQty ? `<div class="field-error">${escapeHtml(errors.manualQty)}</div>` : ""}
+              </div>
+            `}
+            <div>
+              <label class="form-label" for="modal-other-wastage">Wastage %</label>
+              <input id="modal-other-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(formatDecimal(draft.wastagePercent, 2, false))}" />
+              ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
+            </div>
+          </div>
+          ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
+          ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+          ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
+        </section>
+        <div class="modal-left-actions">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-other-material">Save</button>
+        </div>
+      `;
+    }
+
+    function renderOtherMaterialModalRight() {
+      const data = formatPreviewData("other-material", state.modal.draft);
+      if (!data.ready) {
+        return `<p class="preview-empty">Select an other raw material to see live quantity, formula variables, and cost.</p>`;
+      }
+      const material = data.item;
+      const preview = data.preview;
+      const formula = data.formula;
+      return `
+        <section class="preview-section">
+          <h3 class="preview-heading">Other material details</h3>
+          ${renderPreviewField("Code", `<span class="mono">${escapeHtml(material.code)}</span>`)}
+          ${renderPreviewField("Name", escapeHtml(material.name))}
+          ${renderPreviewField("Rate", escapeHtml(formatRatePkr(getOtherMaterialRate(material.id)?.rate, getOtherMaterialRate(material.id)?.rateUOM)))}
+        </section>
+        <section class="preview-section">
+          <h3 class="preview-heading">Cost summary</h3>
+          ${preview && !preview.error
+            ? `${renderPreviewField("Gross qty", escapeHtml(formatQty(preview.grossQty) + " " + (material.uom || "")))}
+               ${renderPreviewField("Cost / Piece", escapeHtml(formatCurrency(preview.costPerPiece)))}`
+            : `<p class="preview-error">${escapeHtml((preview && preview.error) || "Cost cannot be calculated yet.")}</p>`}
+        </section>
+      `;
+    }
+
+    function renderOtherMaterialFormModal() {
+      return renderBomLineModalShell("Edit Other Raw Material", renderOtherMaterialModalLeft(), renderOtherMaterialModalRight());
+    }
+
     function renderBreakdownModal() {
       const line = state.bomMaterials.find((item) => item.id === state.modal.lineId);
       const fg = getSelectedFinishedGood();
@@ -12114,7 +13296,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
-      dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
+      dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "other-material" || state.modal.type === "service");
 
       if (state.modal.type === "finished-good") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -12148,6 +13330,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderMasterDeleteModal();
       } else if (state.modal.type === "material") {
         dialog.innerHTML = renderMaterialFormModal();
+      } else if (state.modal.type === "other-material") {
+        dialog.innerHTML = renderOtherMaterialFormModal();
       } else if (state.modal.type === "formula-builder") {
         dialog.innerHTML = renderFormulaBuilderModal();
       } else if (state.modal.type === "formula-test") {
@@ -12174,6 +13358,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderFormulaExplainerModal();
       } else if (state.modal.type === "confirm-delete") {
         dialog.innerHTML = renderConfirmDeleteModal();
+      } else if (state.modal.type === "confirm-delete-other") {
+        dialog.innerHTML = `
+          <div class="modal-header">
+            <div>
+              <div class="section-kicker">BOM line</div>
+              <strong>Remove other raw material</strong>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+          </div>
+          <div class="modal-body">
+            <p>Remove this other raw material from the BOM?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn" data-modal-close>Cancel</button>
+            <button type="button" class="btn btn-primary" id="btn-confirm-delete-other">Remove</button>
+          </div>
+        `;
+      } else if (state.modal.type === "other-breakdown") {
+        dialog.innerHTML = renderOtherBreakdownModal();
       } else if (state.modal.type === "service") {
         dialog.innerHTML = renderServiceFormModal();
       } else if (state.modal.type === "service-breakdown") {
@@ -12204,15 +13407,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openMaterialModal(lineId) {
-      if (!getSelectedFinishedGood()) return;
-      const line = lineId ? state.bomMaterials.find((item) => item.id === Number(lineId)) : null;
+      if (!getSelectedFinishedGood() || !lineId) return;
+      const line = state.bomMaterials.find((item) => item.id === Number(lineId));
+      if (!line) return;
       const draft = defaultMaterialDraft(line);
       if (draft.rawMaterialId) applyMaterialFormulaBindings(draft);
+      const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomMaterials);
+      const slotLocked = layout.slots.some((slot) => slot.line && slot.line.id === line.id);
       state.modal = {
         type: "material",
-        selectedId: line ? line.rawMaterialId : null,
-        mode: line ? "edit" : "add",
-        lineId: line ? line.id : null,
+        selectedId: line.rawMaterialId,
+        mode: "edit",
+        lineId: line.id,
+        slotLocked,
         draft,
         errors: {}
       };
@@ -12303,6 +13510,179 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       recalculateBOMCosts();
       refreshBomViews();
       persistEditorState();
+    }
+
+    function openOtherMaterialModal(lineId) {
+      if (!getSelectedFinishedGood() || !lineId) return;
+      const line = (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId));
+      if (!line) return;
+      const draft = {
+        otherRawMaterialId: line.otherRawMaterialId,
+        layer: line.layer,
+        calculationMethod: line.calculationMethod,
+        formulaId: line.formulaId,
+        dimensionId: line.dimensionId != null ? Number(line.dimensionId) : null,
+        manualQty: line.manualQty,
+        wastagePercent: line.wastagePercent
+      };
+      if (draft.otherRawMaterialId) applyOtherMaterialFormulaBindings(draft);
+      const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials);
+      const slotLocked = layout.slots.some((slot) => slot.line && slot.line.id === line.id);
+      state.modal = {
+        type: "other-material",
+        selectedId: line.otherRawMaterialId,
+        mode: "edit",
+        lineId: line.id,
+        slotLocked,
+        draft,
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function openOtherBreakdownModal(lineId) {
+      state.modal = { type: "other-breakdown", selectedId: null, mode: "view", lineId: Number(lineId), draft: null, errors: {} };
+      renderModal();
+    }
+
+    function openDeleteOtherMaterialModal(lineId) {
+      state.modal = { type: "confirm-delete-other", selectedId: null, mode: "delete", lineId: Number(lineId), draft: null, errors: {} };
+      renderModal();
+    }
+
+    function validateOtherMaterialDraft(draft) {
+      const errors = {};
+      applyOtherMaterialFormulaBindings(draft);
+      if (!getSelectedFinishedGood()) errors.finishedGood = "Select a Finished Good before adding materials.";
+      if (!draft.otherRawMaterialId) errors.otherRawMaterialId = "Other Raw Material is required.";
+      const material = getOtherRawMaterial(draft.otherRawMaterialId);
+      if (draft.otherRawMaterialId && !material) errors.otherRawMaterialId = "Material must exist in the Other Raw Material Master.";
+      if (!draft.layer) errors.layer = "Layer is required.";
+      if (material && !getOtherMaterialRate(material.id)) errors.rate = "No rate configured for this other material.";
+      if (draft.calculationMethod === "formula") {
+        if (!getOtherMaterialQtyFormula(material)) errors.formulaId = "A valid material formula is required. Set Default Quantity Formula on the Other Raw Material master.";
+      } else {
+        const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Manual quantity must be greater than 0." });
+        if (!qty.ok) errors.manualQty = qty.error;
+      }
+      const wastage = parseByRule(draft.wastagePercent, "wastage", { requiredError: "Wastage cannot be negative." });
+      if (!wastage.ok) errors.wastagePercent = wastage.error;
+      return errors;
+    }
+
+    function saveOtherMaterialFromModal() {
+      const draft = state.modal.draft;
+      applyOtherMaterialFormulaBindings(draft);
+      const errors = validateOtherMaterialDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const nextLine = calculateOtherMaterialCost({
+        id: state.modal.lineId || nextBomLineId(),
+        otherRawMaterialId: Number(draft.otherRawMaterialId),
+        layer: draft.layer,
+        calculationMethod: draft.calculationMethod,
+        formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
+        dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
+        manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
+        wastagePercent: parseByRule(draft.wastagePercent, "wastage").value,
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      });
+      state.bomOtherMaterials = state.bomOtherMaterials.map((line) => line.id === nextLine.id ? nextLine : line);
+      recalculateBOMCosts();
+      closeModal();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function confirmDeleteOtherMaterial() {
+      state.bomOtherMaterials = (state.bomOtherMaterials || []).filter((line) => line.id !== state.modal.lineId);
+      recalculateBOMCosts();
+      closeModal();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function updateOtherLineWastage(lineId, value) {
+      const parsed = parseByRule(value === "" ? "0" : value, "wastage");
+      if (!parsed.ok) {
+        showNotification(parsed.error, "error");
+        refreshBomViews();
+        return;
+      }
+      state.bomOtherMaterials = (state.bomOtherMaterials || []).map((line) => {
+        if (line.id !== Number(lineId)) return line;
+        return { ...line, wastagePercent: parsed.value };
+      });
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function updateOtherMaterialDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "other-material") return false;
+      const draft = state.modal.draft;
+      if (target.id === "modal-other-material-select") {
+        draft.otherRawMaterialId = target.value ? Number(target.value) : null;
+        draft.dimensionId = null;
+        applyOtherMaterialFormulaBindings(draft);
+      } else if (target.id === "modal-other-layer-select") draft.layer = target.value;
+      else if (target.id === "modal-other-method-select") {
+        draft.calculationMethod = target.value;
+        if (draft.calculationMethod === "formula") applyOtherMaterialFormulaBindings(draft);
+      } else if (target.id === "modal-other-line-dimension") {
+        draft.dimensionId = target.value ? Number(target.value) : null;
+        applyOtherMaterialFormulaBindings(draft);
+      } else if (target.id === "modal-other-manual-qty") {
+        draft.manualQty = target.value === "" ? null : target.value;
+        state.modal.errors = {};
+        refreshBomLinePreview();
+        return true;
+      } else if (target.id === "modal-other-wastage") {
+        draft.wastagePercent = target.value;
+        state.modal.errors = {};
+        refreshBomLinePreview();
+        return true;
+      } else return false;
+      state.modal.errors = {};
+      renderModal();
+      return true;
+    }
+
+    function renderOtherBreakdownModal() {
+      const line = (state.bomOtherMaterials || []).find((item) => item.id === state.modal.lineId);
+      const fg = getSelectedFinishedGood();
+      if (!line || !fg) {
+        return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
+      }
+      const material = getOtherRawMaterial(line.otherRawMaterialId);
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Calculation</div>
+            <strong>Other Material Breakdown</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="detail-list">
+            <div><span>Material</span><strong>${escapeHtml(material ? material.name : "—")}</strong></div>
+            <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
+            <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
+            <div><span>Cost / Piece</span><strong>${formatCurrency(line.costPerPiece)}</strong></div>
+            ${line.error ? `<div><span>Error</span><strong>${escapeHtml(line.error)}</strong></div>` : ""}
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-primary" data-modal-close>Close</button>
+        </div>
+      `;
     }
 
     function updateBomMarginPercent(field, value) {
@@ -12470,7 +13850,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <label class="form-label" for="modal-service-formula">Quantity Formula</label>
                 <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
                   <option value="">Select a formula...</option>
-                  ${getServiceFormulas().map((item) => `
+                  ${getServiceFormulas("Quantity").map((item) => `
                     <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
                       ${escapeHtml(item.name)} (${escapeHtml(item.code)})
                     </option>
@@ -12951,6 +14331,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               /* number inputs may not support selection ranges */
             }
           }
+        } else if (event.target.dataset.otherWastageLine) {
+          const lineId = event.target.dataset.otherWastageLine;
+          const caret = event.target.selectionStart;
+          updateOtherLineWastage(lineId, event.target.value);
+          const next = document.querySelector(`[data-other-wastage-line="${lineId}"]`);
+          if (next) {
+            next.focus();
+            try {
+              const pos = Math.min(Number(caret) || next.value.length, next.value.length);
+              next.setSelectionRange(pos, pos);
+            } catch (error) {
+              /* number inputs may not support selection ranges */
+            }
+          }
         } else if (event.target.id === "bom-profit-percent" || event.target.id === "bom-overhead-percent") {
           const fieldId = event.target.id;
           const caret = event.target.selectionStart;
@@ -13047,6 +14441,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             else showNotification((material ? material.name : "Material") + " selected for " + row.layer);
           }
         }
+        const otherLayerSelect = event.target.dataset && event.target.dataset.ccOtherLayerMaterial;
+        if (otherLayerSelect) {
+          const row = (state.costCalculator.otherLayers || []).find((item) => item.layer === otherLayerSelect);
+          if (row) row.otherRawMaterialId = event.target.value ? Number(event.target.value) : "";
+          renderCostCalculator();
+          refreshIcons();
+          if (row && row.otherRawMaterialId) {
+            const material = getOtherRawMaterial(row.otherRawMaterialId);
+            const calc = calculateCostCalculatorOtherMaterial(row);
+            if (calc.error) showNotification(calc.error, "error");
+            else showNotification((material ? material.name : "Other material") + " selected for " + row.layer);
+          }
+        }
+        const bomLayerSelect = event.target.dataset && event.target.dataset.bomLayerMaterial;
+        if (bomLayerSelect) {
+          assignBomSlotMaterial(bomLayerSelect, event.target.value);
+        }
+        const bomExtraSelect = event.target.dataset && event.target.dataset.bomExtraMaterial;
+        if (bomExtraSelect) {
+          assignBomExtraMaterial(bomExtraSelect, event.target.value);
+        }
+        const bomOtherLayerSelect = event.target.dataset && event.target.dataset.bomOtherLayerMaterial;
+        if (bomOtherLayerSelect) {
+          assignBomOtherSlotMaterial(bomOtherLayerSelect, event.target.value);
+        }
+        const bomOtherExtraSelect = event.target.dataset && event.target.dataset.bomOtherExtraMaterial;
+        if (bomOtherExtraSelect) {
+          assignBomOtherExtraMaterial(bomOtherExtraSelect, event.target.value);
+        }
       });
 
       document.querySelector(".content").addEventListener("focusout", (event) => {
@@ -13116,6 +14539,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           state.costCalculator.ply = ply;
           openCostCalculatorStyleFormulas();
           loadCostCalculatorLayers(ply, { notify: true });
+          loadCostCalculatorOtherLayers(ply);
           loadCostCalculatorServices(ply, { resetRemoved: true, notify: true });
           renderCostCalculator();
           refreshIcons();
@@ -13342,11 +14766,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        if (event.target.closest("#btn-add-material")) {
-          openMaterialModal();
-          return;
-        }
-
         if (event.target.closest("#btn-add-service")) {
           openServiceModal();
           return;
@@ -13361,6 +14780,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteBtn = event.target.closest("[data-delete-line]");
         if (deleteBtn) {
           openDeleteMaterialModal(deleteBtn.dataset.deleteLine);
+          return;
+        }
+
+        const editOtherBtn = event.target.closest("[data-edit-other-line]");
+        if (editOtherBtn) {
+          openOtherMaterialModal(editOtherBtn.dataset.editOtherLine);
+          return;
+        }
+
+        const deleteOtherBtn = event.target.closest("[data-delete-other-line]");
+        if (deleteOtherBtn) {
+          openDeleteOtherMaterialModal(deleteOtherBtn.dataset.deleteOtherLine);
+          return;
+        }
+
+        const breakdownOtherBtn = event.target.closest("[data-breakdown-other-line]");
+        if (breakdownOtherBtn) {
+          openOtherBreakdownModal(breakdownOtherBtn.dataset.breakdownOtherLine);
           return;
         }
 
@@ -13445,6 +14882,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.id === "fb-type") {
           state.modal.draft.type = event.target.value;
+          if (event.target.value === "Style") state.modal.draft.purpose = null;
+          renderModal();
+          restoreFocus("fb-type");
+          return;
+        }
+        if (event.target.id === "fb-purpose") {
+          state.modal.draft.purpose = event.target.value || null;
           return;
         }
         if (event.target.id === "fb-service-length") {
@@ -13553,11 +14997,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (event.target.id === "modal-wastage") normalizeDraftNumber(event.target, "wastagePercent", "wastage");
           restoreFocus(event.target.id);
         }
+        if (updateOtherMaterialDraftFromEvent(event.target)) {
+          if (event.target.id === "modal-other-manual-qty") normalizeDraftNumber(event.target, "manualQty", "quantity");
+          if (event.target.id === "modal-other-wastage") normalizeDraftNumber(event.target, "wastagePercent", "wastage");
+          restoreFocus(event.target.id);
+        }
       });
 
       document.getElementById("modal-dialog").addEventListener("input", (event) => {
         if (event.target.id === "modal-manual-qty" || event.target.id === "modal-wastage") {
           updateMaterialDraftFromEvent(event.target);
+          restoreFocus(event.target.id);
+        }
+        if (event.target.id === "modal-other-manual-qty" || event.target.id === "modal-other-wastage") {
+          updateOtherMaterialDraftFromEvent(event.target);
           restoreFocus(event.target.id);
         }
         if (event.target.id === "modal-service-qty" || event.target.id === "modal-service-custom-length" || event.target.id === "modal-service-custom-width") {
@@ -13842,6 +15295,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           saveMaterialFromModal();
           return;
         }
+        if (event.target.closest("#btn-save-other-material")) {
+          saveOtherMaterialFromModal();
+          return;
+        }
         if (event.target.closest("#btn-save-service")) {
           saveServiceFromModal();
           return;
@@ -13852,6 +15309,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-confirm-delete")) {
           confirmDeleteMaterial();
+          return;
+        }
+        if (event.target.closest("#btn-confirm-delete-other")) {
+          confirmDeleteOtherMaterial();
           return;
         }
         if (event.target.closest("#btn-confirm-delete-service")) {
