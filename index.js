@@ -405,7 +405,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const GRAM_TO_KG = 0.001;
     const DEFAULT_GLUE_FLAP = 1;
     const DEFAULT_WASTAGE_PERCENT = 5;
-    const SERVICE_CUSTOM_DIM_ERROR = "⚠️ Service Length/Width required by formula but not provided. Check formula settings.";
+    const SERVICE_CUSTOM_DIM_ERROR = "⚠️ Area Length/Width required by formula but not provided. Check formula settings.";
     const STRUCTURAL_PLY_LAYERS = {
       1: ["Single Layer"],
       2: ["Top Liner", "Bottom Liner"],
@@ -2713,26 +2713,34 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return n !== null && n !== 0;
     }
 
-    function resolveStyleServiceDimUsage(finishedGood, formula) {
+    function resolveQuantityFormulaLW(finishedGood, dim, defaults) {
+      const catalog = defaults || getFormulaVariableDefaults();
+      const fgDims = finishedGood?.dimensions ?? {};
       const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
+      const useL = isUsableStyleServiceDim(styleDims.serviceL);
+      const useW = isUsableStyleServiceDim(styleDims.serviceW);
       const warnings = [];
-      if (formula && formula.serviceLength && styleDims.serviceL === 0) {
-        warnings.push("⚠️ Service Length formula evaluated to 0. Check style formula.");
+      if (styleDims.serviceL === 0) {
+        warnings.push("⚠️ Area Length formula evaluated to 0. Check style formula.");
       }
-      if (formula && formula.serviceWidth && styleDims.serviceW === 0) {
-        warnings.push("⚠️ Service Width formula evaluated to 0. Check style formula.");
+      if (styleDims.serviceW === 0) {
+        warnings.push("⚠️ Area Width formula evaluated to 0. Check style formula.");
       }
-      const useL = Boolean(formula && formula.serviceLength && isUsableStyleServiceDim(styleDims.serviceL));
-      const useW = Boolean(formula && formula.serviceWidth && isUsableStyleServiceDim(styleDims.serviceW));
       return {
+        L: useL ? styleDims.serviceL : (dim?.L ?? fgDims.L ?? catalog.L),
+        W: useW ? styleDims.serviceW : (dim?.W ?? fgDims.W ?? catalog.W),
+        useL,
+        useW,
+        warnings,
         serviceL: styleDims.serviceL,
         serviceW: styleDims.serviceW,
         serviceLCode: styleDims.serviceLCode,
-        serviceWCode: styleDims.serviceWCode,
-        useL,
-        useW,
-        warnings
+        serviceWCode: styleDims.serviceWCode
       };
+    }
+
+    function resolveStyleServiceDimUsage(finishedGood) {
+      return resolveQuantityFormulaLW(finishedGood, null, getFormulaVariableDefaults());
     }
 
     function getStyleVariableValue(styleId, variableCode, ply) {
@@ -3815,7 +3823,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function buildFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula) {
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
-      const formulaRec = formula || null;
       const styleVals = {};
       const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
       if (style) {
@@ -3828,13 +3835,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const sheet = getSheetDimensions(finishedGood);
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       const fgDims = finishedGood?.dimensions ?? {};
-      const styleUsage = resolveStyleServiceDimUsage(finishedGood, formulaRec);
-      let L = dim?.L ?? fgDims.L ?? defaults.L;
-      let W = dim?.W ?? fgDims.W ?? defaults.W;
-      if (styleUsage.useL) L = styleUsage.serviceL;
-      if (styleUsage.useW) W = styleUsage.serviceW;
-      L = roundTo(L, 2);
-      W = roundTo(W, 2);
+      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      const L = roundTo(resolvedDims.L, 2);
+      const W = roundTo(resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       return {
         ...defaults,
@@ -4029,11 +4032,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       }
       const fgDims = finishedGood?.dimensions ?? {};
-      const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
-      const baseL = isUsableStyleServiceDim(styleDims.serviceL) ? styleDims.serviceL : (dim?.L ?? fgDims.L ?? defaults.L);
-      const baseW = isUsableStyleServiceDim(styleDims.serviceW) ? styleDims.serviceW : (dim?.W ?? fgDims.W ?? defaults.W);
-      const L = roundTo(override.L !== null ? override.L : baseL, 2);
-      const W = roundTo(override.W !== null ? override.W : baseW, 2);
+      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      const L = roundTo(override.L !== null ? override.L : resolvedDims.L, 2);
+      const W = roundTo(override.W !== null ? override.W : resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
       const area = evaluateFormula("COVERED_AREA", {
@@ -4266,8 +4267,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>
                 <div><span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
                 <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
-                ${row.success && row.serviceLength ? `<div class="stat-hint mono">Service length = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
-                ${row.success && row.serviceWidth ? `<div class="stat-hint mono">Service width = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
+                ${row.success && row.serviceLength ? `<div class="stat-hint mono">Area Length = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
+                ${row.success && row.serviceWidth ? `<div class="stat-hint mono">Area Width = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
               </div>
               <div class="style-formula-value">
                 <span class="formula-cell">
@@ -4569,7 +4570,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
       const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
-      const styleUsage = resolveStyleServiceDimUsage(fg, formula);
+      const styleUsage = resolveStyleServiceDimUsage(fg);
       const calcContext = { finishedGood: fg, useEnteredDimensions: true };
       const line = calculateMaterialCost({
         rawMaterialId: material.id,
@@ -4716,12 +4717,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const parts = [];
       const tips = [];
       if (calc.usedServiceL) {
-        parts.push("Service Length = " + formatFormulaResult(calc.serviceL));
-        tips.push("This material qty uses Service Length from style formula " + (calc.serviceLCode || ""));
+        parts.push("Area Length = " + formatFormulaResult(calc.serviceL));
+        tips.push("This material qty uses Area Length from style formula " + (calc.serviceLCode || ""));
       }
       if (calc.usedServiceW) {
-        parts.push("Service Width = " + formatFormulaResult(calc.serviceW));
-        tips.push("This material qty uses Service Width from style formula " + (calc.serviceWCode || ""));
+        parts.push("Area Width = " + formatFormulaResult(calc.serviceW));
+        tips.push("This material qty uses Area Width from style formula " + (calc.serviceWCode || ""));
       }
       if (!parts.length) return "";
       return `<span class="cc-dim-override" title="${escapeHtml(tips.join(" "))}">[Using ${escapeHtml(parts.join(", "))}]</span>`;
@@ -7136,11 +7137,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="fb-service-flags">
                   <label class="fb-flag">
                     <input id="fb-service-length" type="checkbox" ${draft.serviceLength ? "checked" : ""} />
-                    <span>This formula uses Service-specific Length</span>
+                    <span>This formula uses Area Length</span>
                   </label>
                   <label class="fb-flag">
                     <input id="fb-service-width" type="checkbox" ${draft.serviceWidth ? "checked" : ""} />
-                    <span>This formula uses Service-specific Width</span>
+                    <span>This formula uses Area Width</span>
                   </label>
                 </div>
               </div>
@@ -8212,11 +8213,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div>
               <label class="form-label" for="srv-custom-length">Custom Length (optional)</label>
-              <input id="srv-custom-length" class="full-search" type="number" step="any" value="${draft.customLength == null || draft.customLength === "" ? "" : escapeHtml(String(draft.customLength))}" placeholder="Used when formula requires service Length" />
+              <input id="srv-custom-length" class="full-search" type="number" step="any" value="${draft.customLength == null || draft.customLength === "" ? "" : escapeHtml(String(draft.customLength))}" placeholder="Used when formula requires Area Length" />
             </div>
             <div>
               <label class="form-label" for="srv-custom-width">Custom Width (optional)</label>
-              <input id="srv-custom-width" class="full-search" type="number" step="any" value="${draft.customWidth == null || draft.customWidth === "" ? "" : escapeHtml(String(draft.customWidth))}" placeholder="Used when formula requires service Width" />
+              <input id="srv-custom-width" class="full-search" type="number" step="any" value="${draft.customWidth == null || draft.customWidth === "" ? "" : escapeHtml(String(draft.customWidth))}" placeholder="Used when formula requires Area Width" />
             </div>
             <div class="form-span-2">
               <p class="stat-hint">Rates managed in Service Rates page</p>
@@ -11270,13 +11271,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="dim-input-row two">
                 ${formula.serviceLength ? `
                   <div>
-                    <label class="form-label" for="modal-service-custom-length">Service Length</label>
+                    <label class="form-label" for="modal-service-custom-length">Area Length</label>
                     <input id="modal-service-custom-length" class="full-search" type="number" step="any" value="${draft.customLength == null || draft.customLength === "" ? "" : escapeHtml(String(draft.customLength))}" />
                   </div>
                 ` : ""}
                 ${formula.serviceWidth ? `
                   <div>
-                    <label class="form-label" for="modal-service-custom-width">Service Width</label>
+                    <label class="form-label" for="modal-service-custom-width">Area Width</label>
                     <input id="modal-service-custom-width" class="full-search" type="number" step="any" value="${draft.customWidth == null || draft.customWidth === "" ? "" : escapeHtml(String(draft.customWidth))}" />
                   </div>
                 ` : ""}
