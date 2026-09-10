@@ -1,92 +1,137 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Taj Packages | BOM &amp; Costing</title>
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='54' dominant-baseline='middle' text-anchor='middle' font-size='80'%3E%F0%9F%91%91%3C/text%3E%3C/svg%3E" />
-  <link rel="stylesheet" href="index.css" />
-  <script src="https://unpkg.com/lucide@latest"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-</head>
-<body>
-  <!-- ==================================================
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taj Packages | BOM &amp; Costing</title>
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext x='50' y='54' dominant-baseline='middle' text-anchor='middle' font-size='80'%3E%F0%9F%91%91%3C/text%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="index.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  </head>
+  <body>
+    <!-- ==================================================
        HTML structure
        ================================================== -->
-  <div class="overlay" id="sidebar-overlay"></div>
+    <div class="overlay" id="sidebar-overlay"></div>
 
-  <div class="app">
-    <aside class="sidebar" id="sidebar">
-      <div class="brand">
-        <div class="brand-mark" data-lucide-wrap>
-          <i data-lucide="package"></i>
-        </div>
-        <div class="brand-text">
-          <strong>Taj Packages</strong>
-          <span>BOM &amp; Costing MVP</span>
-        </div>
-      </div>
-
-      <nav class="nav" id="sidebar-nav">
-        <button class="nav-item active" data-page="dashboard"><i data-lucide="layout-dashboard"></i> Dashboard</button>
-        <button class="nav-item nav-section-start" data-page="formula-variables"><i data-lucide="variable"></i> Variables</button>
-        <button class="nav-item" data-page="formulas"><i data-lucide="sigma"></i> Formula</button>
-        <button class="nav-item nav-section-start" data-page="dimensions"><i data-lucide="ruler"></i> Dimension</button>
-        <button class="nav-item" data-page="style"><i data-lucide="shapes"></i> Style</button>
-        <button class="nav-item nav-section-start" data-page="raw-materials"><i data-lucide="layers"></i> Raw Material</button>
-        <button class="nav-item" data-page="raw-material-rates"><i data-lucide="banknote"></i> Raw Material Rates</button>
-        <button class="nav-item nav-section-start" data-page="services"><i data-lucide="wrench"></i> Services</button>
-        <button class="nav-item" data-page="service-rates"><i data-lucide="tag"></i> Service Rates</button>
-        <button class="nav-item nav-section-start" data-page="finished-goods"><i data-lucide="box"></i> Finished Goods</button>
-        <button class="nav-item" data-page="bom-costing"><i data-lucide="calculator"></i> BOM &amp; Costing</button>
-        <button class="nav-item" data-page="bom-list"><i data-lucide="list"></i> BOM List</button>
-        <button class="nav-item" data-page="cost-calculator"><i data-lucide="calculator"></i> Cost Calculator</button>
-      </nav>
-
-      <div class="sidebar-footer">Phase 6 · BOM workflow</div>
-    </aside>
-
-    <div class="main">
-      <header class="header">
-        <div class="header-left">
-          <button class="menu-btn" id="menu-btn" type="button" aria-label="Open menu">
-            <i data-lucide="menu"></i>
-          </button>
-          <div>
-            <div class="page-title" id="header-title">Dashboard</div>
-            <div class="page-subtitle" id="header-subtitle">Manufacturing overview</div>
+    <div class="app">
+      <aside class="sidebar" id="sidebar">
+        <div class="brand">
+          <div class="brand-mark" data-lucide-wrap>
+            <i data-lucide="package"></i>
+          </div>
+          <div class="brand-text">
+            <strong>Taj Packages</strong>
+            <span>BOM &amp; Costing MVP</span>
           </div>
         </div>
-        <div class="header-meta">
-          <span id="cloud-badge" class="badge badge-muted">Local only</span>
-          <span id="save-status" class="save-status">Ready</span>
-        </div>
-      </header>
 
-      <main class="content">
-        <section class="page active" id="page-dashboard"></section>
-        <section class="page" id="page-formula-variables"></section>
-        <section class="page" id="page-formulas"></section>
-        <section class="page" id="page-dimensions"></section>
-        <section class="page" id="page-style"></section>
-        <section class="page" id="page-raw-materials"></section>
-        <section class="page" id="page-raw-material-rates"></section>
-        <section class="page" id="page-services"></section>
-        <section class="page" id="page-service-rates"></section>
-        <section class="page" id="page-finished-goods"></section>
-        <section class="page" id="page-bom-costing"></section>
-        <section class="page" id="page-bom-list"></section>
-        <section class="page" id="page-cost-calculator"></section>
-      </main>
+        <nav class="nav" id="sidebar-nav">
+          <button class="nav-item active" data-page="dashboard">
+            <i data-lucide="layout-dashboard"></i> Dashboard
+          </button>
+          <button
+            class="nav-item nav-section-start"
+            data-page="formula-variables"
+          >
+            <i data-lucide="variable"></i> Variables
+          </button>
+          <button class="nav-item" data-page="formulas">
+            <i data-lucide="sigma"></i> Formula
+          </button>
+          <button class="nav-item nav-section-start" data-page="dimensions">
+            <i data-lucide="ruler"></i> Dimension
+          </button>
+          <button class="nav-item" data-page="style">
+            <i data-lucide="shapes"></i> Style
+          </button>
+          <button class="nav-item nav-section-start" data-page="raw-materials">
+            <i data-lucide="layers"></i> Raw Material
+          </button>
+          <button class="nav-item" data-page="raw-material-rates">
+            <i data-lucide="banknote"></i> Raw Material Rates
+          </button>
+          <button class="nav-item nav-section-start" data-page="services">
+            <i data-lucide="wrench"></i> Services
+          </button>
+          <button class="nav-item" data-page="service-rates">
+            <i data-lucide="tag"></i> Service Rates
+          </button>
+          <button class="nav-item nav-section-start" data-page="finished-goods">
+            <i data-lucide="box"></i> Finished Goods
+          </button>
+          <button class="nav-item" data-page="bom-costing">
+            <i data-lucide="calculator"></i> BOM &amp; Costing
+          </button>
+          <button class="nav-item" data-page="bom-list">
+            <i data-lucide="list"></i> BOM List
+          </button>
+          <button class="nav-item" data-page="cost-calculator">
+            <i data-lucide="calculator"></i> Cost Calculator
+          </button>
+        </nav>
+
+        <div class="sidebar-footer">Taj Packages — All Rights Reserved</div>
+      </aside>
+
+      <div class="main">
+        <header class="header">
+          <div class="header-left">
+            <button
+              class="menu-btn"
+              id="menu-btn"
+              type="button"
+              aria-label="Open menu"
+            >
+              <i data-lucide="menu"></i>
+            </button>
+            <div>
+              <div class="page-title" id="header-title">Dashboard</div>
+              <div class="page-subtitle" id="header-subtitle">
+                Manufacturing overview
+              </div>
+            </div>
+          </div>
+          <div class="header-meta">
+            <span id="cloud-badge" class="badge badge-muted">Local only</span>
+            <span id="save-status" class="save-status">Ready</span>
+          </div>
+        </header>
+
+        <main class="content">
+          <section class="page active" id="page-dashboard"></section>
+          <section class="page" id="page-formula-variables"></section>
+          <section class="page" id="page-formulas"></section>
+          <section class="page" id="page-dimensions"></section>
+          <section class="page" id="page-style"></section>
+          <section class="page" id="page-raw-materials"></section>
+          <section class="page" id="page-raw-material-rates"></section>
+          <section class="page" id="page-services"></section>
+          <section class="page" id="page-service-rates"></section>
+          <section class="page" id="page-finished-goods"></section>
+          <section class="page" id="page-bom-costing"></section>
+          <section class="page" id="page-bom-list"></section>
+          <section class="page" id="page-cost-calculator"></section>
+        </main>
+      </div>
     </div>
-  </div>
 
-  <div class="toast" id="app-toast" hidden></div>
+    <div class="toast" id="app-toast" hidden></div>
 
-  <div class="modal-backdrop" id="modal-backdrop" hidden>
-    <div class="modal" id="modal-dialog" role="dialog" aria-modal="true"></div>
-  </div>
+    <div class="modal-backdrop" id="modal-backdrop" hidden>
+      <div
+        class="modal"
+        id="modal-dialog"
+        role="dialog"
+        aria-modal="true"
+      ></div>
+    </div>
 
-  <script type="module" src="/index.js"></script>
-</body>
+    <script type="module" src="/index.js"></script>
+  </body>
 </html>
