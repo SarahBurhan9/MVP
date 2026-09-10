@@ -159,6 +159,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 19, rawMaterialId: 303, dimensionId: 201, ply: 2, formulaId: 305, createdAt: "2026-01-01T00:00:00.000Z" }
     ];
 
+    const otherMaterialDimensions = [];
+
     const formulaVariables = [
       { id: 1, code: "L", name: "Length", description: "Product Length", dataType: "numeric", defaultValue: 7, unit: "inch", category: "Dimension", isActive: true },
       { id: 2, code: "W", name: "Width", description: "Product Width", dataType: "numeric", defaultValue: 7, unit: "inch", category: "Dimension", isActive: true },
@@ -220,6 +222,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 13, rawMaterialId: 302, rate: 120, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" },
       { id: 14, rawMaterialId: 303, rate: 150.5, rateUOM: "Rs./kg", status: "Active", createdAt: "2026-01-01T00:00:00.000Z", updatedAt: "2026-01-01T00:00:00.000Z" }
     ];
+
+    const otherRawMaterials = [];
+    const otherMaterialRates = [];
 
     const services = [
       { id: 201, code: "SRV-PRINT", name: "Printing", uom: "pieces", status: "Active", dimensionIds: [201, 202] },
@@ -483,7 +488,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const SEED_DATA = {
       finishedGoods: snapshotData(finishedGoods),
       rawMaterials: snapshotData(rawMaterials),
+      otherRawMaterials: snapshotData(otherRawMaterials),
       materialRates: snapshotData(materialRates),
+      otherMaterialRates: snapshotData(otherMaterialRates),
       services: snapshotData(services),
       serviceRates: snapshotData(serviceRates),
       formulas: snapshotData(formulas),
@@ -494,7 +501,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       styleVariables: snapshotData(styleVariables),
       styleFormulas: snapshotData(styleFormulas),
       serviceDimensions: snapshotData(serviceDimensions),
-      materialDimensions: snapshotData(materialDimensions)
+      materialDimensions: snapshotData(materialDimensions),
+      otherMaterialDimensions: snapshotData(otherMaterialDimensions)
     };
 
     const FORMULA_TYPES = ["Material", "Service", "Style"];
@@ -552,6 +560,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "raw-material-rates": { title: "Raw Material Rates", subtitle: "Manage purchasing rates for raw materials" },
       services: { title: "Services", subtitle: "Conversion process master" },
       "service-rates": { title: "Service Rates", subtitle: "Manage pricing and formulas for services" },
+      "other-raw-materials": { title: "Other Raw Material", subtitle: "Purchasing master" },
+      "other-raw-material-rates": { title: "Other Raw Material Rates", subtitle: "Manage purchasing rates for other raw materials" },
       "finished-goods": { title: "Finished Goods", subtitle: "Product master" },
       "bom-costing": { title: "BOM & Costing", subtitle: "Select a finished good to begin" },
       "bom-list": { title: "BOM List", subtitle: "Saved drafts and active versions" },
@@ -563,7 +573,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       searches: {
         finishedGoods: "",
         rawMaterials: "",
+        otherRawMaterials: "",
         materialRates: "",
+        otherMaterialRates: "",
         services: "",
         serviceRates: "",
         style: "",
@@ -576,6 +588,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       formulaFilter: "all",
       materialRateFilter: "all",
       materialRateSort: "name",
+      otherMaterialRateFilter: "all",
+      otherMaterialRateSort: "name",
       serviceRateFilter: "all",
       serviceRateSort: "name",
       bomListFilter: "all",
@@ -591,7 +605,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       totalServiceCost: 0,
       finalCostPerPiece: 0,
       costPer100: 0,
+      costPer500: 0,
       costPer1000: 0,
+      bomProfitPercent: 0,
+      bomOverheadPercent: 0,
+      saleCost: 0,
       fgSelectorOpen: false,
       cleaningUserData: false,
       bomFlowSection: "fg-selector-root",
@@ -622,11 +640,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 6;
+    const IDB_VERSION = 7;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "rawMaterials",
+      "otherRawMaterials",
       "materialRates",
+      "otherMaterialRates",
       "services",
       "serviceRates",
       "formulas",
@@ -637,7 +657,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "styleVariables",
       "styleFormulas",
       "serviceDimensions",
-      "materialDimensions"
+      "materialDimensions",
+      "otherMaterialDimensions"
     ];
 
     let idb = null;
@@ -655,6 +676,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     let cloudReconcileInFlight = false;
     let suppressCloudPush = false;
     let lastReconciledUid = null;
+    const QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION = "qtyFormulaFromMaterialDimensionsV1";
+    const SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION = "serviceFormulaFromServiceDimensionsV1";
+    let dataMigrations = {
+      [QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]: false,
+      qtyFormulaFromMaterialDimensionsV1Report: null,
+      [SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]: false,
+      serviceFormulaFromServiceDimensionsV1Report: null
+    };
+    let pendingQtyFormulaMigrationNotice = null;
+    let pendingServiceFormulaMigrationNotice = null;
 
     function initIndexedDB() {
       return new Promise((resolve, reject) => {
@@ -688,7 +719,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function getCollectionArray(storeName) {
       if (storeName === "finishedGoods") return finishedGoods;
       if (storeName === "rawMaterials") return rawMaterials;
+      if (storeName === "otherRawMaterials") return otherRawMaterials;
       if (storeName === "materialRates") return materialRates;
+      if (storeName === "otherMaterialRates") return otherMaterialRates;
       if (storeName === "services") return services;
       if (storeName === "serviceRates") return serviceRates;
       if (storeName === "formulas") return formulas;
@@ -700,6 +733,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (storeName === "styleFormulas") return styleFormulas;
       if (storeName === "serviceDimensions") return serviceDimensions;
       if (storeName === "materialDimensions") return materialDimensions;
+      if (storeName === "otherMaterialDimensions") return otherMaterialDimensions;
       return null;
     }
 
@@ -797,7 +831,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedFinishedGoodId: state.selectedFinishedGoodId,
         currentBOM: state.currentBOM,
         bomMaterials: state.bomMaterials,
-        bomServices: state.bomServices
+        bomServices: state.bomServices,
+        bomProfitPercent: state.bomProfitPercent,
+        bomOverheadPercent: state.bomOverheadPercent
       });
     }
 
@@ -809,6 +845,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaFilter: state.formulaFilter,
         materialRateFilter: state.materialRateFilter,
         materialRateSort: state.materialRateSort,
+        otherMaterialRateFilter: state.otherMaterialRateFilter,
+        otherMaterialRateSort: state.otherMaterialRateSort,
         serviceRateFilter: state.serviceRateFilter,
         serviceRateSort: state.serviceRateSort,
         bomListFilter: state.bomListFilter
@@ -825,6 +863,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         hydratedFromSeed: Boolean(hydratedFromSeed),
         lastCloudUserId: lastCloudUserId || null
       });
+    }
+
+    function persistMigrationsNow() {
+      return putAppStateRecord({
+        key: "migrations",
+        [QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]: Boolean(dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]),
+        qtyFormulaFromMaterialDimensionsV1Report: dataMigrations.qtyFormulaFromMaterialDimensionsV1Report || null,
+        [SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]: Boolean(dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]),
+        serviceFormulaFromServiceDimensionsV1Report: dataMigrations.serviceFormulaFromServiceDimensionsV1Report || null
+      });
+    }
+
+    function applyStoredMigrations(record) {
+      if (!record) return;
+      dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION] = Boolean(record[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]);
+      if (record.qtyFormulaFromMaterialDimensionsV1Report) {
+        dataMigrations.qtyFormulaFromMaterialDimensionsV1Report = record.qtyFormulaFromMaterialDimensionsV1Report;
+      }
+      dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION] = Boolean(record[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]);
+      if (record.serviceFormulaFromServiceDimensionsV1Report) {
+        dataMigrations.serviceFormulaFromServiceDimensionsV1Report = record.serviceFormulaFromServiceDimensionsV1Report;
+      }
     }
 
     function setSaveStatus(text, kind) {
@@ -938,7 +998,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return snapshotData({
         finishedGoods,
         rawMaterials,
+        otherRawMaterials,
         materialRates,
+        otherMaterialRates,
         services,
         serviceRates,
         formulas,
@@ -948,6 +1010,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         styleFormulas,
         serviceDimensions,
         materialDimensions,
+        otherMaterialDimensions,
         dimensions,
         boms,
         sequences: {
@@ -959,10 +1022,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           selectedFinishedGoodId: state.selectedFinishedGoodId,
           currentBOM: state.currentBOM,
           bomMaterials: state.bomMaterials,
-          bomServices: state.bomServices
+          bomServices: state.bomServices,
+          bomProfitPercent: state.bomProfitPercent,
+          bomOverheadPercent: state.bomOverheadPercent
         },
         userClearedAllData: Boolean(userClearedAllData),
         hydratedFromSeed: Boolean(hydratedFromSeed),
+        migrations: {
+          [QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]: Boolean(dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]),
+          qtyFormulaFromMaterialDimensionsV1Report: dataMigrations.qtyFormulaFromMaterialDimensionsV1Report || null,
+          [SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]: Boolean(dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]),
+          serviceFormulaFromServiceDimensionsV1Report: dataMigrations.serviceFormulaFromServiceDimensionsV1Report || null
+        },
         syncTimestamp: new Date().toISOString()
       });
     }
@@ -973,6 +1044,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       await persistSequencesNow();
       await persistEditorNow();
       await persistMetaNow();
+      await persistMigrationsNow();
     }
 
     function applyCloudPayload(cloudData) {
@@ -988,7 +1060,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       replaceArrayContents(finishedGoods, cloudData.finishedGoods || []);
       replaceArrayContents(rawMaterials, cloudData.rawMaterials || []);
+      replaceArrayContents(otherRawMaterials, cloudData.otherRawMaterials || []);
       replaceArrayContents(materialRates, cloudData.materialRates || []);
+      replaceArrayContents(otherMaterialRates, cloudData.otherMaterialRates || []);
       replaceArrayContents(services, cloudData.services || []);
       replaceArrayContents(serviceRates, cloudData.serviceRates || []);
       replaceArrayContents(formulas, cloudData.formulas || []);
@@ -998,9 +1072,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(styleFormulas, cloudData.styleFormulas || []);
       replaceArrayContents(serviceDimensions, cloudData.serviceDimensions || []);
       replaceArrayContents(materialDimensions, cloudData.materialDimensions || []);
+      replaceArrayContents(otherMaterialDimensions, cloudData.otherMaterialDimensions || []);
       replaceArrayContents(dimensions, cloudData.dimensions || []);
       replaceArrayContents(boms, cloudData.boms || []);
+      if (cloudData.migrations) {
+        applyStoredMigrations(cloudData.migrations);
+      } else {
+        dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION] = false;
+        dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION] = false;
+      }
       sanitizeNumericMasters();
+      migrateQtyFormulaFromMaterialDimensions({ notify: true });
+      migrateServiceFormulaFromServiceDimensions({ notify: true });
       const sequences = cloudData.sequences || {};
       if (Number.isFinite(sequences.bomLineSeq)) bomLineSeq = sequences.bomLineSeq;
       if (Number.isFinite(sequences.bomSeq)) bomSeq = sequences.bomSeq;
@@ -1011,6 +1094,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.currentBOM = editor.currentBOM || null;
         state.bomMaterials = Array.isArray(editor.bomMaterials) ? editor.bomMaterials : [];
         state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
+        state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
+        state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
       }
       syncSequencesFromData();
       if (cloudCleared) {
@@ -1026,6 +1111,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ensureSeedCostCalculatorData();
         ensureServiceRates();
         ensureMaterialRates();
+        ensureOtherMaterialRates();
         syncSequencesFromData();
       }
       if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
@@ -1326,6 +1412,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           replaceArrayContents(getCollectionArray(name), loaded[name]);
         });
         sanitizeNumericMasters();
+        applyStoredMigrations(await getAppStateRecord("migrations"));
+        const qtyFormulaMigration = migrateQtyFormulaFromMaterialDimensions({ notify: true });
+        const serviceFormulaMigration = migrateServiceFormulaFromServiceDimensions({ notify: true });
+        if (idbReady && (!qtyFormulaMigration.skipped || !serviceFormulaMigration.skipped)) {
+          await persistMigrationsNow();
+          if (qtyFormulaMigration.migrated && qtyFormulaMigration.migrated.length) {
+            await saveToIndexedDB("rawMaterials", rawMaterials);
+          }
+          if (serviceFormulaMigration.migrated && serviceFormulaMigration.migrated.length) {
+            await saveToIndexedDB("serviceRates", serviceRates);
+          }
+        }
         userClearedAllData = Boolean(meta.userClearedAllData);
         hydratedFromSeed = Boolean(meta.hydratedFromSeed);
         lastCloudUserId = meta.lastCloudUserId || null;
@@ -1345,6 +1443,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             state.currentBOM = editor.currentBOM || null;
             state.bomMaterials = Array.isArray(editor.bomMaterials) ? editor.bomMaterials : [];
             state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
+            state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
+            state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
           }
 
           syncSequencesFromData();
@@ -1358,7 +1458,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             const seededCalculator = ensureSeedCostCalculatorData();
             const seededServiceRates = ensureServiceRates();
             const seededMaterialRates = ensureMaterialRates();
-            if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededCalculator || seededServiceRates || seededMaterialRates) {
+            const seededOtherMaterialRates = ensureOtherMaterialRates();
+            if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededCalculator || seededServiceRates || seededMaterialRates || seededOtherMaterialRates) {
               syncSequencesFromData();
               await persistAllCollections();
               await persistSequencesNow();
@@ -1384,6 +1485,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             if (prefs.formulaFilter) state.formulaFilter = prefs.formulaFilter;
             if (prefs.materialRateFilter) state.materialRateFilter = prefs.materialRateFilter;
             if (prefs.materialRateSort) state.materialRateSort = prefs.materialRateSort;
+            if (prefs.otherMaterialRateFilter) state.otherMaterialRateFilter = prefs.otherMaterialRateFilter;
+            if (prefs.otherMaterialRateSort) state.otherMaterialRateSort = prefs.otherMaterialRateSort;
             if (prefs.serviceRateFilter) state.serviceRateFilter = prefs.serviceRateFilter;
             if (prefs.serviceRateSort) state.serviceRateSort = prefs.serviceRateSort;
             if (prefs.bomListFilter) state.bomListFilter = prefs.bomListFilter;
@@ -1752,11 +1855,47 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function ensureOtherMaterialRates() {
+      if (seedCatalogBlocked()) return false;
+      let added = false;
+      const now = "2026-01-01T00:00:00.000Z";
+      otherRawMaterials.forEach((material) => {
+        if (getOtherMaterialRate(material.id)) {
+          delete material.purchasingRate;
+          delete material.rateUOM;
+          return;
+        }
+        const seed = (SEED_DATA.otherMaterialRates || []).find((row) => Number(row.otherRawMaterialId) === material.id);
+        const rate = seed ? seed.rate : Number(material.purchasingRate);
+        const rateUOM = seed ? seed.rateUOM : (material.rateUOM || "Rs./kg");
+        if (!Number.isFinite(Number(rate)) && !seed) {
+          delete material.purchasingRate;
+          delete material.rateUOM;
+          return;
+        }
+        otherMaterialRates.push({
+          id: nextMasterId(otherMaterialRates),
+          otherRawMaterialId: material.id,
+          rate: roundTo(Number(rate) || 0, 2),
+          rateUOM: normalizeMaterialRateUom(rateUOM) || "Rs./kg",
+          status: seed && seed.status ? seed.status : "Active",
+          createdAt: (seed && seed.createdAt) || now,
+          updatedAt: (seed && seed.updatedAt) || now
+        });
+        delete material.purchasingRate;
+        delete material.rateUOM;
+        added = true;
+      });
+      return added;
+    }
+
     function resetSearchAndFilterState() {
       state.searches = {
         finishedGoods: "",
         rawMaterials: "",
+        otherRawMaterials: "",
         materialRates: "",
+        otherMaterialRates: "",
         services: "",
         serviceRates: "",
         style: "",
@@ -1769,6 +1908,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.formulaFilter = "all";
       state.materialRateFilter = "all";
       state.materialRateSort = "name";
+      state.otherMaterialRateFilter = "all";
+      state.otherMaterialRateSort = "name";
       state.serviceRateFilter = "all";
       state.serviceRateSort = "name";
       state.bomListFilter = "all";
@@ -1779,6 +1920,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         replaceArrayContents(getCollectionArray(name), []);
       });
       sanitizeNumericMasters();
+      dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION] = false;
+      dataMigrations.qtyFormulaFromMaterialDimensionsV1Report = null;
+      dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION] = false;
+      dataMigrations.serviceFormulaFromServiceDimensionsV1Report = null;
+      pendingQtyFormulaMigrationNotice = null;
+      pendingServiceFormulaMigrationNotice = null;
       resetBomEditor({ keepModal: true, skipPersist: true });
       state.costCalculator = defaultCostCalculatorState();
       bomLineSeq = 1;
@@ -1790,7 +1937,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applySeedDataInMemory() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
+      replaceArrayContents(otherRawMaterials, snapshotData(SEED_DATA.otherRawMaterials));
       replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
+      replaceArrayContents(otherMaterialRates, snapshotData(SEED_DATA.otherMaterialRates));
       replaceArrayContents(services, snapshotData(SEED_DATA.services));
       replaceArrayContents(serviceRates, snapshotData(SEED_DATA.serviceRates));
       replaceArrayContents(formulas, snapshotData(SEED_DATA.formulas));
@@ -1802,7 +1951,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(styleFormulas, snapshotData(SEED_DATA.styleFormulas));
       replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
       replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
+      replaceArrayContents(otherMaterialDimensions, snapshotData(SEED_DATA.otherMaterialDimensions));
       sanitizeNumericMasters();
+      migrateQtyFormulaFromMaterialDimensions({ notify: false });
+      migrateServiceFormulaFromServiceDimensions({ notify: false });
       resetBomEditor({ skipPersist: true });
       state.costCalculator = defaultCostCalculatorState();
       bomLineSeq = 1;
@@ -1824,6 +1976,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       await persistPrefsNow();
       lastSavedAt = new Date();
       await persistMetaNow();
+      await persistMigrationsNow();
       setSaveStatus("✓ Saved", "saved");
     }
 
@@ -1847,6 +2000,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         collections,
         userClearedAllData,
         hydratedFromSeed,
+        migrations: snapshotData(dataMigrations),
         bomLineSeq,
         bomSeq,
         formulaSeq,
@@ -1859,11 +2013,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         totalServiceCost: state.totalServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
+        costPer500: state.costPer500,
         costPer1000: state.costPer1000,
+        bomProfitPercent: state.bomProfitPercent,
+        bomOverheadPercent: state.bomOverheadPercent,
+        saleCost: state.saleCost,
         searches: snapshotData(state.searches),
         formulaFilter: state.formulaFilter,
         materialRateFilter: state.materialRateFilter,
         materialRateSort: state.materialRateSort,
+        otherMaterialRateFilter: state.otherMaterialRateFilter,
+        otherMaterialRateSort: state.otherMaterialRateSort,
         serviceRateFilter: state.serviceRateFilter,
         serviceRateSort: state.serviceRateSort,
         bomListFilter: state.bomListFilter,
@@ -1880,12 +2040,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else {
         replaceArrayContents(finishedGoods, snap.finishedGoods);
         replaceArrayContents(rawMaterials, snap.rawMaterials);
+        replaceArrayContents(otherRawMaterials, snap.otherRawMaterials || []);
         replaceArrayContents(materialRates, snap.materialRates);
+        replaceArrayContents(otherMaterialRates, snap.otherMaterialRates || []);
         replaceArrayContents(services, snap.services);
         replaceArrayContents(serviceRates, snap.serviceRates);
         replaceArrayContents(boms, snap.boms);
         replaceArrayContents(serviceDimensions, snap.serviceDimensions);
         replaceArrayContents(materialDimensions, snap.materialDimensions);
+        replaceArrayContents(otherMaterialDimensions, snap.otherMaterialDimensions || []);
       }
       if (typeof snap.userClearedAllData === "boolean") userClearedAllData = snap.userClearedAllData;
       if (typeof snap.hydratedFromSeed === "boolean") hydratedFromSeed = snap.hydratedFromSeed;
@@ -1901,16 +2064,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.totalServiceCost = snap.totalServiceCost;
       state.finalCostPerPiece = snap.finalCostPerPiece;
       state.costPer100 = snap.costPer100;
+      state.costPer500 = snap.costPer500;
       state.costPer1000 = snap.costPer1000;
+      state.bomProfitPercent = storedBomPercent(snap.bomProfitPercent);
+      state.bomOverheadPercent = storedBomPercent(snap.bomOverheadPercent);
+      state.saleCost = snap.saleCost;
       if (snap.searches) state.searches = snap.searches;
       if (snap.formulaFilter) state.formulaFilter = snap.formulaFilter;
       state.materialRateFilter = snap.materialRateFilter;
       state.materialRateSort = snap.materialRateSort;
+      if (snap.otherMaterialRateFilter) state.otherMaterialRateFilter = snap.otherMaterialRateFilter;
+      if (snap.otherMaterialRateSort) state.otherMaterialRateSort = snap.otherMaterialRateSort;
       state.serviceRateFilter = snap.serviceRateFilter;
       state.serviceRateSort = snap.serviceRateSort;
       state.bomListFilter = snap.bomListFilter;
       state.costCalculator = snap.costCalculator || defaultCostCalculatorState();
       sanitizeNumericMasters();
+      applyStoredMigrations(snap.migrations);
+      migrateQtyFormulaFromMaterialDimensions({ notify: false });
+      migrateServiceFormulaFromServiceDimensions({ notify: false });
     }
 
     function applyCleanUserDataInMemory() {
@@ -1947,6 +2119,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         renderFinishedGoods();
         renderRawMaterials();
         renderRawMaterialRates();
+        renderOtherRawMaterials();
+        renderOtherRawMaterialRates();
         renderServices();
         renderServiceRates();
         renderBomList();
@@ -1968,6 +2142,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       await persistEditorNow();
       await persistPrefsNow();
       await persistMetaNow();
+      await persistMigrationsNow();
     }
 
     async function deleteUserDataFromCloud() {
@@ -2078,6 +2253,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       rate: { decimals: 2, min: 0.01, max: 999999.99, label: "Rate", decimalError: "Rate must have maximum 2 decimal places" },
       quantity: { decimals: 4, min: 0.0001, max: 999999, label: "Quantity" },
       wastage: { decimals: 2, min: 0, max: 100, label: "Wastage" },
+      percent: { decimals: 2, min: 0, max: 100, label: "Percent" },
       gsm: { decimals: 1, min: 1, max: 999, label: "GSM" },
       variable: { decimals: 4, min: -999999999, max: 999999999, label: "Value" }
     };
@@ -2139,6 +2315,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return parseNumeric(stringInput, rule.decimals, { ...rule, ...(extra || {}) });
     }
 
+    function storedBomPercent(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) return 0;
+      return roundTo(n, 2);
+    }
+
     function showFirstValidationError(errors) {
       const first = errors && Object.keys(errors).map((key) => errors[key]).find(Boolean);
       if (first) showNotification(first, "error");
@@ -2194,7 +2376,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
         delete item.rateFormulaId;
       });
+      otherRawMaterials.forEach((item) => {
+        if (item.gsm != null && item.gsm !== "") item.gsm = roundTo(item.gsm, 1);
+        item.qtyFormulaId = normalizeFormulaBinding(item.qtyFormulaId);
+        item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
+        delete item.rateFormulaId;
+      });
       materialRates.forEach((item) => {
+        item.rate = roundTo(item.rate, 2);
+        item.rateUOM = normalizeMaterialRateUom(item.rateUOM) || item.rateUOM;
+        if (!item.status) item.status = "Active";
+      });
+      otherMaterialRates.forEach((item) => {
         item.rate = roundTo(item.rate, 2);
         item.rateUOM = normalizeMaterialRateUom(item.rateUOM) || item.rateUOM;
         if (!item.status) item.status = "Active";
@@ -2221,6 +2414,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         delete item.purchasingRate;
         delete item.serviceRate;
       });
+      otherMaterialDimensions.forEach((item) => {
+        item.ply = normalizeStylePly(item.ply, 3);
+        delete item.rate;
+        delete item.purchasingRate;
+        delete item.serviceRate;
+      });
       serviceDimensions.forEach((item) => {
         item.ply = normalizeStylePly(item.ply, 3);
         delete item.rate;
@@ -2238,6 +2437,145 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (Number.isFinite(n)) item.defaultValue = roundTo(n, 4);
         }
       });
+    }
+
+    function migrateQtyFormulaFromMaterialDimensions(options) {
+      const notify = Boolean(options && options.notify);
+      if (dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION]) {
+        return { skipped: true, migrated: [], ambiguous: [] };
+      }
+      const migrated = [];
+      const ambiguous = [];
+      rawMaterials.forEach((material) => {
+        if (normalizeFormulaBinding(material.qtyFormulaId)) return;
+        const formulaIds = [];
+        materialDimensions.forEach((row) => {
+          if (Number(row.rawMaterialId) !== Number(material.id)) return;
+          const id = normalizeFormulaBinding(row.formulaId);
+          if (id != null && !formulaIds.includes(id)) formulaIds.push(id);
+        });
+        if (!formulaIds.length) return;
+        material.qtyFormulaId = formulaIds[0];
+        const formula = getFormula(formulaIds[0]);
+        const entry = {
+          id: material.id,
+          code: material.code,
+          name: material.name,
+          qtyFormulaId: formulaIds[0],
+          formulaCode: formula ? formula.code : null
+        };
+        migrated.push(entry);
+        if (formulaIds.length > 1) {
+          ambiguous.push({
+            ...entry,
+            formulaIds,
+            formulaCodes: formulaIds.map((id) => {
+              const item = getFormula(id);
+              return item ? item.code : String(id);
+            })
+          });
+        }
+      });
+      const report = {
+        ranAt: new Date().toISOString(),
+        migratedCount: migrated.length,
+        ambiguousCount: ambiguous.length,
+        migrated,
+        ambiguous
+      };
+      dataMigrations[QTY_FORMULA_FROM_MATERIAL_DIMS_MIGRATION] = true;
+      dataMigrations.qtyFormulaFromMaterialDimensionsV1Report = report;
+      console.info("[migration] qtyFormulaFromMaterialDimensionsV1", report);
+      if (notify && (migrated.length || ambiguous.length)) {
+        pendingQtyFormulaMigrationNotice = report;
+      }
+      return { skipped: false, migrated, ambiguous, report };
+    }
+
+    function migrateServiceFormulaFromServiceDimensions(options) {
+      const notify = Boolean(options && options.notify);
+      if (dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION]) {
+        return { skipped: true, migrated: [], ambiguous: [] };
+      }
+      const migrated = [];
+      const ambiguous = [];
+      services.forEach((service) => {
+        const rateRow = getServiceRate(service.id);
+        if (!rateRow) return;
+        if (normalizeFormulaBinding(rateRow.formulaId)) return;
+        const formulaIds = [];
+        serviceDimensions.forEach((row) => {
+          if (Number(row.serviceId) !== Number(service.id)) return;
+          const id = normalizeFormulaBinding(row.formulaId);
+          if (id != null && !formulaIds.includes(id)) formulaIds.push(id);
+        });
+        if (!formulaIds.length) return;
+        rateRow.formulaId = formulaIds[0];
+        const formula = getFormula(formulaIds[0]);
+        const entry = {
+          id: service.id,
+          code: service.code,
+          name: service.name,
+          formulaId: formulaIds[0],
+          formulaCode: formula ? formula.code : null
+        };
+        migrated.push(entry);
+        if (formulaIds.length > 1) {
+          ambiguous.push({
+            ...entry,
+            formulaIds,
+            formulaCodes: formulaIds.map((id) => {
+              const item = getFormula(id);
+              return item ? item.code : String(id);
+            })
+          });
+        }
+      });
+      const report = {
+        ranAt: new Date().toISOString(),
+        migratedCount: migrated.length,
+        ambiguousCount: ambiguous.length,
+        migrated,
+        ambiguous
+      };
+      dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION] = true;
+      dataMigrations.serviceFormulaFromServiceDimensionsV1Report = report;
+      console.info("[migration] serviceFormulaFromServiceDimensionsV1", report);
+      if (notify && (migrated.length || ambiguous.length)) {
+        pendingServiceFormulaMigrationNotice = report;
+      }
+      return { skipped: false, migrated, ambiguous, report };
+    }
+
+    function showPendingQtyFormulaMigrationNotice() {
+      const reports = [];
+      if (pendingQtyFormulaMigrationNotice) reports.push({ kind: "material", report: pendingQtyFormulaMigrationNotice });
+      if (pendingServiceFormulaMigrationNotice) reports.push({ kind: "service", report: pendingServiceFormulaMigrationNotice });
+      pendingQtyFormulaMigrationNotice = null;
+      pendingServiceFormulaMigrationNotice = null;
+      if (!reports.length) return;
+      const parts = [];
+      let warn = false;
+      reports.forEach(({ kind, report }) => {
+        if (kind === "material") {
+          if (report.migratedCount) {
+            parts.push("Copied Default Quantity Formula onto " + report.migratedCount + " material(s): " + report.migrated.map((item) => item.code).join(", "));
+          }
+          if (report.ambiguousCount) {
+            warn = true;
+            parts.push("Review materials with multiple dimension formulas: " + report.ambiguous.map((item) => item.code).join(", "));
+          }
+        } else {
+          if (report.migratedCount) {
+            parts.push("Copied Service Rate formula onto " + report.migratedCount + " service(s): " + report.migrated.map((item) => item.code).join(", "));
+          }
+          if (report.ambiguousCount) {
+            warn = true;
+            parts.push("Review services with multiple dimension formulas: " + report.ambiguous.map((item) => item.code).join(", "));
+          }
+        }
+      });
+      if (parts.length) showNotification(parts.join(" "), warn ? "warning" : "info");
     }
 
     function numericTestValues(values) {
@@ -2309,6 +2647,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function getMaterialRate(rawMaterialId) {
       const id = Number(rawMaterialId);
       const matches = materialRates.filter((row) => Number(row.rawMaterialId) === id);
+      return matches.find((row) => row.status !== "Inactive") || matches[0] || null;
+    }
+
+    function getOtherMaterialRate(otherRawMaterialId) {
+      const id = Number(otherRawMaterialId);
+      const matches = otherMaterialRates.filter((row) => Number(row.otherRawMaterialId) === id);
       return matches.find((row) => row.status !== "Inactive") || matches[0] || null;
     }
 
@@ -3022,6 +3366,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return "Cannot delete. Used in " + nos.length + " BOM" + (nos.length === 1 ? "" : "s") + ": " + nos.join(", ");
     }
 
+    function getBomsUsingOtherMaterial(otherRawMaterialId) {
+      const id = Number(otherRawMaterialId);
+      return boms.filter((bom) => (bom.materials || []).some((line) => Number(line.otherRawMaterialId) === id));
+    }
+
+    function otherMaterialBomUsageMessage(otherRawMaterialId) {
+      const nos = uniqueBomNumbers(getBomsUsingOtherMaterial(otherRawMaterialId));
+      if (!nos.length) return "";
+      return "Cannot delete. Used in " + nos.length + " BOM" + (nos.length === 1 ? "" : "s") + ": " + nos.join(", ");
+    }
+
     function serviceBomUsageMessage(serviceId) {
       const nos = uniqueBomNumbers(getBomsUsingService(serviceId));
       if (!nos.length) return "";
@@ -3165,6 +3520,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return rawMaterials.find((item) => item.id === Number(id)) || null;
     }
 
+    function getOtherRawMaterial(id) {
+      return otherRawMaterials.find((item) => item.id === Number(id)) || null;
+    }
+
     function getService(id) {
       return services.find((item) => item.id === Number(id)) || null;
     }
@@ -3248,13 +3607,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Boolean(service && getServiceDimensionLinks(service.id).length);
     }
 
-    function serviceMissingPlyFormula(service, dimensionId, ply) {
-      if (!serviceHasDimensionLinks(service)) return false;
-      if (dimensionId == null || dimensionId === "") return false;
-      const link = getServiceDimensionLink(service.id, dimensionId, ply);
-      return !link || !link.formulaId;
-    }
-
     function syncServiceDimensionIds(serviceId) {
       const service = getService(serviceId);
       if (!service) return;
@@ -3315,7 +3667,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return {
           linkedIds,
           emptyLabel: "No dimensions linked",
-          hint: "Optional. Select a dimension to load the formula linked for this material."
+          hint: "Optional. Select a dimension used for this material quantity."
         };
       }
       return {
@@ -3329,11 +3681,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Boolean(material && getMaterialDimensionLinks(material.id).length);
     }
 
-    function materialMissingPlyFormula(material, dimensionId, ply) {
-      if (!materialHasDimensionLinks(material)) return false;
-      if (dimensionId == null || dimensionId === "") return false;
-      const link = getMaterialDimensionLink(material.id, dimensionId, ply);
-      return !link || !link.formulaId;
+    function materialMissingPlyFormula(material) {
+      return !getMaterialQtyFormula(material);
+    }
+
+    function getMaterialQtyFormula(material) {
+      return getFormula(material && material.qtyFormulaId);
     }
 
     function syncMaterialDimensionIds(rawMaterialId) {
@@ -3346,6 +3699,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatMaterialDimensionSummary(material) {
       const links = getMaterialDimensionLinks(material && material.id);
+      if (links.length) {
+        return formatLinkedDimensionSummary(links.map((row) => Number(row.dimensionId)));
+      }
+      return formatLinkedDimensionSummary(material && material.dimensionIds);
+    }
+
+    function getOtherMaterialDimensionLinks(otherRawMaterialId) {
+      return otherMaterialDimensions
+        .filter((item) => item.otherRawMaterialId === Number(otherRawMaterialId))
+        .slice()
+        .sort((a, b) => Number(a.dimensionId) - Number(b.dimensionId) || Number(a.ply) - Number(b.ply) || a.id - b.id);
+    }
+
+    function syncOtherMaterialDimensionIds(otherRawMaterialId) {
+      const material = getOtherRawMaterial(otherRawMaterialId);
+      if (!material) return;
+      material.dimensionIds = normalizeDimensionIds(
+        getOtherMaterialDimensionLinks(otherRawMaterialId).map((row) => Number(row.dimensionId))
+      );
+    }
+
+    function formatOtherMaterialDimensionSummary(material) {
+      const links = getOtherMaterialDimensionLinks(material && material.id);
       if (links.length) {
         return formatLinkedDimensionSummary(links.map((row) => Number(row.dimensionId)));
       }
@@ -3470,24 +3846,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!draft.dimensionId) {
         draft.dimensionId = pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
       }
-      if (draft.dimensionId) {
-        applyMaterialDimensionFormula(draft);
-      } else if (draft.calculationMethod === "formula") {
-        draft.formulaId = material.qtyFormulaId ? Number(material.qtyFormulaId) : draft.formulaId;
-      }
+      applyMaterialDimensionFormula(draft);
     }
 
     function applyMaterialDimensionFormula(draft) {
       const material = getRawMaterial(draft.rawMaterialId);
-      if (!material || !draft.dimensionId) return;
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const link = getMaterialDimensionLink(material.id, draft.dimensionId, ply);
-      if (!link || !link.formulaId) {
-        if (draft.calculationMethod === "formula") draft.formulaId = null;
-        return;
-      }
-      draft.calculationMethod = "formula";
-      draft.formulaId = Number(link.formulaId);
+      if (!material || draft.calculationMethod !== "formula") return;
+      // Qty formula comes only from the material Default Quantity Formula (qtyFormulaId).
+      // materialDimensions.formulaId is no longer read for costing; dimension+ply mapping is still used.
+      draft.formulaId = material.qtyFormulaId ? Number(material.qtyFormulaId) : null;
     }
 
     function applyServiceFormulaBinding(draft) {
@@ -3501,24 +3868,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.dimensionId && !linkedIds.includes(Number(draft.dimensionId))) {
         draft.dimensionId = null;
       }
-      if (draft.dimensionId) {
-        applyServiceDimensionFormula(draft);
-      } else if (draft.calculationMethod === "formula") {
-        draft.formulaId = getServiceDefaultFormulaId(service.id);
-      }
+      applyServiceDimensionFormula(draft);
     }
 
     function applyServiceDimensionFormula(draft) {
       const service = getService(draft.serviceId);
-      if (!service || !draft.dimensionId) return;
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const link = getServiceDimensionLink(service.id, draft.dimensionId, ply);
-      if (!link || !link.formulaId) {
-        if (draft.calculationMethod === "formula") draft.formulaId = null;
-        return;
-      }
-      draft.calculationMethod = "formula";
-      draft.formulaId = Number(link.formulaId);
+      if (!service || draft.calculationMethod !== "formula") return;
+      // Qty formula comes only from the active Service Rate (serviceRates.formulaId via getServiceDefaultFormulaId).
+      // serviceDimensions.formulaId is no longer read for costing; dimension+ply mapping is still used.
+      draft.formulaId = getServiceDefaultFormulaId(service.id);
     }
 
     function nextFormulaId() {
@@ -3921,11 +4279,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
       } else {
-        const formula = getFormula(line.formulaId);
+        const formula = getMaterialQtyFormula(material);
+        if (formula) line.formulaId = formula.id;
         if (!formula || !formula.isActive) {
           line.error = formula && !formula.isActive
             ? "The selected material formula is inactive."
-            : "A valid material formula is required.";
+            : "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.";
           line.netQty = 0;
           line.grossQty = 0;
           line.costPerPiece = 0;
@@ -3943,7 +4302,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         netQty = calculated.result;
       }
 
-      const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
+      const qtyFormula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : null;
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
@@ -4109,11 +4468,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
       } else {
-        const formula = getFormula(line.formulaId);
+        const formula = getFormula(getServiceDefaultFormulaId(service.id));
+        if (formula) line.formulaId = formula.id;
         if (!formula || !formula.isActive || formula.type !== "Service") {
           line.error = formula && !formula.isActive
             ? "The selected service formula is inactive."
-            : "A valid service formula is required.";
+            : "A valid service formula is required. Set a formula on the active Service Rate.";
           line.quantity = 0;
           line.costPerPiece = 0;
           return line;
@@ -4172,7 +4532,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.totalServiceCost = roundTo(calculateTotalServiceCost(), 2);
       state.finalCostPerPiece = roundTo(state.totalMaterialCost + state.totalServiceCost, 2);
       state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
+      state.costPer500 = roundTo(state.finalCostPerPiece * 500, 2);
       state.costPer1000 = roundTo(state.finalCostPerPiece * 1000, 2);
+      const overheadPercent = Number(state.bomOverheadPercent) || 0;
+      const profitPercent = Number(state.bomProfitPercent) || 0;
+      const saleIntermediate = state.finalCostPerPiece + (state.finalCostPerPiece * overheadPercent / 100);
+      state.saleCost = roundTo(saleIntermediate + (saleIntermediate * profitPercent / 100), 2);
       state.bomStyleResults = evaluateStyleFormulasForFinishedGood(getSelectedFinishedGood());
     }
 
@@ -4550,9 +4915,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!link) {
         return { ...empty, error: "No material configured for " + ply + "-ply " + layerRow.layer };
       }
-      const formula = getFormula(link.formulaId) || getFormula(material.qtyFormulaId);
+      const formula = getMaterialQtyFormula(material);
       if (!formula || !formula.isActive) {
-        return { ...empty, error: "Formula not configured for " + material.name + " in " + ply + "-ply" };
+        return { ...empty, error: "Formula not configured for " + material.name + ". Set Default Quantity Formula on the Raw Material master." };
       }
       const rateRow = getMaterialRate(material.id);
       const masterRate = Number(rateRow?.rate);
@@ -4641,9 +5006,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { ...empty, error: "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0." };
       }
       const link = findCostCalculatorServiceLink(service.id, ply, fg);
-      const formula = getFormula(link && link.formulaId) || getFormula(rateRow?.formulaId);
+      const formula = getFormula(rateRow?.formulaId);
       if (!formula || !formula.isActive || formula.type !== "Service") {
-        return { ...empty, error: "Formula not configured for " + service.name + " in " + ply + "-ply" };
+        return { ...empty, error: "Formula not configured for " + service.name + ". Set a formula on the active Service Rate." };
       }
       const calcContext = { finishedGood: fg, useEnteredDimensions: true };
       const line = calculateServiceCost({
@@ -4869,15 +5234,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function createMaterialLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
       const material = getRawMaterial(config.rawMaterialId);
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const linkedIds = getMaterialLinkedDimensionIds(material, ply);
+      const linkedIds = getMaterialLinkedDimensionIds(material);
       const dimensionId = config.dimensionId !== undefined
         ? (config.dimensionId == null ? null : Number(config.dimensionId))
         : pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
-      const link = getMaterialDimensionLink(material && material.id, dimensionId, ply);
-      const boundFormula = formula
-        || getFormula(link && link.formulaId)
-        || getFormula(material && material.qtyFormulaId);
+      const boundFormula = formula || getMaterialQtyFormula(material);
       return calculateMaterialCost({
         id: nextBomLineId(),
         rawMaterialId: config.rawMaterialId,
@@ -5175,15 +5536,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function createServiceLineFromConfig(config) {
       const formula = config.formulaCode ? getFormulaByCode(config.formulaCode) : getFormula(config.formulaId);
       const service = getService(config.serviceId);
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
-      const linkedIds = getServiceLinkedDimensionIds(service, ply);
+      const linkedIds = getServiceLinkedDimensionIds(service);
       const dimensionId = config.dimensionId !== undefined
         ? (config.dimensionId == null ? null : Number(config.dimensionId))
         : pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
-      const link = getServiceDimensionLink(service && service.id, dimensionId, ply);
-      const boundFormula = formula
-        || getFormula(link && link.formulaId)
-        || getFormula(getServiceDefaultFormulaId(service && service.id));
+      const boundFormula = formula || getFormula(getServiceDefaultFormulaId(service && service.id));
       return calculateServiceCost({
         id: nextBomLineId(),
         serviceId: config.serviceId,
@@ -5249,12 +5606,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       for (const line of state.bomMaterials) {
         if (!getRawMaterial(line.rawMaterialId)) return "A BOM material does not reference a valid raw material master record.";
-        if (line.calculationMethod === "formula" && !getFormula(line.formulaId)) return "A BOM material formula is missing or invalid.";
+        if (line.calculationMethod === "formula" && !getMaterialQtyFormula(getRawMaterial(line.rawMaterialId))) return "A BOM material formula is missing or invalid. Set Default Quantity Formula on the Raw Material master.";
       }
 
       for (const line of state.bomServices) {
         if (!getService(line.serviceId)) return "A BOM service does not reference a valid service master record.";
-        if (line.calculationMethod === "formula" && !getFormula(line.formulaId)) return "A BOM service formula is missing or invalid.";
+        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "A BOM service formula is missing or invalid. Set a formula on the active Service Rate.";
       }
 
       if (currentBomHasCalculationErrors()) {
@@ -5291,7 +5648,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         totalServiceCost: state.totalServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
+        costPer500: state.costPer500,
         costPer1000: state.costPer1000,
+        bomProfitPercent: state.bomProfitPercent,
+        bomOverheadPercent: state.bomOverheadPercent,
+        saleCost: state.saleCost,
         createdAt: state.currentBOM.createdAt || now,
         updatedAt: now
       });
@@ -5303,6 +5664,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       syncEditorBomMeta(copy);
       state.bomMaterials = cloneData(copy.materials || []);
       state.bomServices = cloneData(copy.services || []);
+      state.bomProfitPercent = storedBomPercent(copy.bomProfitPercent ?? copy.profitPercent);
+      state.bomOverheadPercent = storedBomPercent(copy.bomOverheadPercent ?? copy.overheadPercent);
       state.searches.bomFinishedGood = "";
       state.fgSelectorOpen = false;
       state.workflowError = "";
@@ -5351,6 +5714,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.selectedFinishedGoodId = fg.id;
       state.bomMaterials = lines.materials;
       state.bomServices = lines.services;
+      state.bomProfitPercent = storedBomPercent(original.bomProfitPercent ?? original.profitPercent);
+      state.bomOverheadPercent = storedBomPercent(original.bomOverheadPercent ?? original.overheadPercent);
       recalculateBOMCosts();
 
       const now = new Date().toISOString();
@@ -5373,7 +5738,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         totalServiceCost: state.totalServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
+        costPer500: state.costPer500,
         costPer1000: state.costPer1000,
+        bomProfitPercent: state.bomProfitPercent,
+        bomOverheadPercent: state.bomOverheadPercent,
+        saleCost: state.saleCost,
         createdAt: now,
         updatedAt: now
       });
@@ -5611,11 +5980,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       );
     }
 
+    function filterOtherRawMaterials() {
+      const q = state.searches.otherRawMaterials;
+      return otherRawMaterials.filter((item) =>
+        matchesQuery(
+          [
+            item.code,
+            item.name,
+            item.category,
+            item.uom,
+            item.gsm,
+            item.status,
+            formatBoundFormulaCode(item.qtyFormulaId),
+            formatOtherMaterialDimensionSummary(item)
+          ],
+          q
+        )
+      );
+    }
+
     function filterServices() {
       const q = state.searches.services;
       return services.filter((item) =>
         matchesQuery(
-          [item.code, item.name, item.uom, item.status, formatServiceDimensionSummary(item)],
+          [item.code, item.name, item.uom, item.status],
           q
         )
       );
@@ -5674,6 +6062,40 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (statusFilter === "inactive" && status !== "Inactive") return false;
         return matchesQuery(
           [material.code, material.name, rateRow && rateRow.rate, rateRow && rateRow.rateUOM, formatMaterialDimensionSummary(material), status],
+          q
+        );
+      });
+      rows.sort((a, b) => {
+        if (sort === "rate") {
+          const ar = Number(a.rateRow && a.rateRow.rate);
+          const br = Number(b.rateRow && b.rateRow.rate);
+          const av = Number.isFinite(ar) ? ar : Number.POSITIVE_INFINITY;
+          const bv = Number.isFinite(br) ? br : Number.POSITIVE_INFINITY;
+          if (av !== bv) return av - bv;
+        }
+        return String(a.material.name || "").localeCompare(String(b.material.name || ""), undefined, { sensitivity: "base" });
+      });
+      return rows;
+    }
+
+    function getOtherMaterialRateRecord(otherRawMaterialId) {
+      const id = Number(otherRawMaterialId);
+      return otherMaterialRates.find((row) => Number(row.otherRawMaterialId) === id) || null;
+    }
+
+    function otherMaterialRateTableRows() {
+      const q = state.searches.otherMaterialRates;
+      const statusFilter = state.otherMaterialRateFilter;
+      const sort = state.otherMaterialRateSort;
+      const rows = otherRawMaterials.map((material) => {
+        const rateRow = getOtherMaterialRateRecord(material.id);
+        return { material, rateRow };
+      }).filter(({ material, rateRow }) => {
+        const status = rateRow ? rateRow.status : "";
+        if (statusFilter === "active" && status !== "Active") return false;
+        if (statusFilter === "inactive" && status !== "Inactive") return false;
+        return matchesQuery(
+          [material.code, material.name, rateRow && rateRow.rate, rateRow && rateRow.rateUOM, formatOtherMaterialDimensionSummary(material), status],
           q
         );
       });
@@ -5792,6 +6214,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="stat-value">${rawMaterials.length}</div>
             <div class="stat-hint">Purchasing rate source</div>
           </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="other-raw-materials">
+            <div class="stat-label">Total Other Raw Materials</div>
+            <div class="stat-value">${otherRawMaterials.length}</div>
+            <div class="stat-hint">Purchasing rate source</div>
+          </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="services">
             <div class="stat-label">Total Services</div>
             <div class="stat-value">${services.length}</div>
@@ -5830,6 +6257,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="raw-material-rates">
             <div class="stat-label">Raw Material Rates</div>
             <div class="stat-value">${materialRates.length}</div>
+            <div class="stat-hint">Purchasing rates</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="other-raw-material-rates">
+            <div class="stat-label">Other Raw Material Rates</div>
+            <div class="stat-value">${otherMaterialRates.length}</div>
             <div class="stat-hint">Purchasing rates</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="service-rates">
@@ -6041,6 +6473,125 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderOtherRawMaterials() {
+      const page = document.getElementById("page-other-raw-materials");
+      if (!page) return;
+      const rows = filterOtherRawMaterials();
+      const body = rows.length
+        ? rows.map((item) => `
+            <tr>
+              <td class="mono">${escapeHtml(item.code)}</td>
+              <td>${escapeHtml(item.name)}</td>
+              <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
+              <td>${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</td>
+              <td>${escapeHtml(item.uom)}</td>
+              <td class="mono">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</td>
+              <td>${escapeHtml(formatOtherMaterialDimensionSummary(item))}</td>
+              <td>${statusBadge(item.status)}</td>
+              ${masterRowActions("data-edit-orm", item.id, "data-delete-orm", item.id)}
+            </tr>
+          `).join("")
+        : emptyRow(9, "No other raw materials match this search.");
+
+      page.innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-left">
+            ${toolbarSearch("orm-search", state.searches.otherRawMaterials, "Search code, material, category...")}
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="btn btn-primary" id="btn-add-other-material-master">
+              <i data-lucide="plus"></i> Add Material
+            </button>
+            <span class="badge badge-muted">${rows.length} of ${otherRawMaterials.length}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Material</th>
+                  <th>Category</th>
+                  <th>GSM</th>
+                  <th>UOM</th>
+                  <th>Qty Formula</th>
+                  <th>Dimensions</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderOtherRawMaterialRates() {
+      const page = document.getElementById("page-other-raw-material-rates");
+      if (!page) return;
+      const rows = otherMaterialRateTableRows();
+      const body = rows.length
+        ? rows.map(({ material, rateRow }) => {
+            const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
+              ? formatNumber(rateRow.rate, 2)
+              : "—";
+            return `
+            <tr>
+              <td class="mono">${escapeHtml(material.code)}</td>
+              <td>${escapeHtml(material.name)}</td>
+              <td>${rateText}</td>
+              <td>${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</td>
+              <td>${escapeHtml(formatOtherMaterialDimensionSummary(material))}</td>
+              <td>${rateRow ? statusBadge(rateRow.status) : '<span class="badge badge-muted">Unset</span>'}</td>
+              <td>
+                <button type="button" class="btn btn-sm" data-edit-other-material-rate="${material.id}">Update</button>
+              </td>
+            </tr>
+          `;
+          }).join("")
+        : emptyRow(7, "No material rates match this search.");
+
+      page.innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-left">
+            ${toolbarSearch("omrate-search", state.searches.otherMaterialRates, "Search material name, code...")}
+            <select class="filter-select" id="omrate-status-filter">
+              <option value="all" ${state.otherMaterialRateFilter === "all" ? "selected" : ""}>All statuses</option>
+              <option value="active" ${state.otherMaterialRateFilter === "active" ? "selected" : ""}>Active</option>
+              <option value="inactive" ${state.otherMaterialRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
+            </select>
+            <select class="filter-select" id="omrate-sort">
+              <option value="name" ${state.otherMaterialRateSort === "name" ? "selected" : ""}>Sort by material name</option>
+              <option value="rate" ${state.otherMaterialRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
+            </select>
+          </div>
+          <div class="toolbar-right">
+            <span class="badge badge-muted">${rows.length} of ${otherRawMaterials.length}</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Rate (PKR)</th>
+                  <th>Rate UOM</th>
+                  <th>Dimensions</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+    }
+
     function renderServices() {
       const rows = filterServices();
       const body = rows.length
@@ -6049,12 +6600,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td class="mono">${escapeHtml(item.code)}</td>
               <td>${escapeHtml(item.name)}</td>
               <td>${escapeHtml(item.uom)}</td>
-              <td>${escapeHtml(formatServiceDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
           `).join("")
-        : emptyRow(6, "No services match this search.");
+        : emptyRow(5, "No services match this search.");
 
       document.getElementById("page-services").innerHTML = `
         <div class="toolbar">
@@ -6076,7 +6626,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <th>Code</th>
                   <th>Service</th>
                   <th>UOM</th>
-                  <th>Dimensions</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -6328,10 +6877,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function isFormulaUsed(formulaId) {
       const formula = getFormula(formulaId);
       const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
+        || otherRawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
         || services.some((item) => bindingUsesFormula(item.formulaId, formula))
         || styleFormulas.some((item) => bindingUsesFormula(item.formulaId, formula))
         || serviceDimensions.some((item) => bindingUsesFormula(item.formulaId, formula))
-        || materialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula));
+        || materialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula))
+        || otherMaterialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula));
       const usedInEditor = state.bomMaterials.some((line) => lineUsesFormula(line, formula)) ||
         state.bomServices.some((line) => lineUsesFormula(line, formula));
       const usedInSaved = boms.some((bom) =>
@@ -6452,9 +7003,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-product-root", label: "Product Information" },
       { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
-      { id: "bom-services-root", label: "Services" },
-      { id: "bom-cost-root", label: "Cost Summary" }
+      { id: "bom-services-root", label: "Services" }
     ];
+
+    function getBomVisibleStepNumbers() {
+      const fg = getSelectedFinishedGood();
+      const hasStyle = Boolean(fg && Array.isArray(state.bomStyleResults) && state.bomStyleResults.length);
+      let n = 1;
+      const steps = { selectFg: n++ };
+      if (fg) {
+        steps.product = n++;
+        if (hasStyle) steps.style = n++;
+        steps.materials = n++;
+        steps.services = n++;
+      }
+      return steps;
+    }
 
     function setActiveBomFlowSection(sectionId) {
       if (!sectionId) return;
@@ -6507,7 +7071,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="bom-main">
             <div class="card">
               <div class="card-body">
-                <div class="section-kicker">BOM &amp; Product Costing</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().selectFg}: Select Finished Good</div>
                 <div class="section-title" style="margin:4px 0 14px;">Select a finished good to configure its BOM</div>
                 <div id="fg-selector-root"></div>
               </div>
@@ -6581,7 +7145,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.totalServiceCost = 0;
       state.finalCostPerPiece = 0;
       state.costPer100 = 0;
+      state.costPer500 = 0;
       state.costPer1000 = 0;
+      state.bomProfitPercent = 0;
+      state.bomOverheadPercent = 0;
+      state.saleCost = 0;
       state.searches.bomFinishedGood = "";
       state.fgSelectorOpen = false;
       state.workflowError = "";
@@ -6606,6 +7174,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.workflowError = "";
       state.searches.bomFinishedGood = "";
       state.fgSelectorOpen = false;
+      state.bomProfitPercent = 0;
+      state.bomOverheadPercent = 0;
       closeModal();
       loadSampleBom(item.id);
       recalculateBOMCosts();
@@ -6762,6 +7332,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().product}: Product Information</div>
             <div class="pi-grid">
               <div>
                 <div class="section-kicker">Finished Good</div>
@@ -6818,7 +7389,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Style formulas</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().style}: Style Formulas</div>
                 <div class="section-title">Style Formulas (Auto-calculated)</div>
               </div>
               <span class="badge badge-muted">Read-only</span>
@@ -6834,14 +7405,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const root = document.getElementById("bom-materials-root");
       if (!root) return;
       const hasFg = Boolean(getSelectedFinishedGood());
+      if (!hasFg) {
+        root.innerHTML = "";
+        return;
+      }
       const rows = state.bomMaterials;
 
-      const body = !hasFg
-        ? emptyRow(11, "Select a Finished Good before adding raw materials.")
-        : rows.length
+      const body = rows.length
           ? rows.map((line, index) => {
               const material = getRawMaterial(line.rawMaterialId);
-              const formula = getFormula(line.formulaId);
+              const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId);
               const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
               const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
               return `
@@ -6893,7 +7466,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Raw Materials</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Raw Materials</div>
                 <div class="section-title">BOM consumption</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-material" ${hasFg ? "" : "disabled"}>
@@ -6929,14 +7502,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const root = document.getElementById("bom-services-root");
       if (!root) return;
       const hasFg = Boolean(getSelectedFinishedGood());
+      if (!hasFg) {
+        root.innerHTML = "";
+        return;
+      }
       const rows = state.bomServices;
 
-      const body = !hasFg
-        ? emptyRow(8, "Select a Finished Good before adding services.")
-        : rows.length
+      const body = rows.length
           ? rows.map((line, index) => {
               const service = getService(line.serviceId);
-              const formula = getFormula(line.formulaId);
+              const formula = line.calculationMethod === "formula"
+                ? getFormula(getServiceDefaultFormulaId(service && service.id))
+                : getFormula(line.formulaId);
               const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
               const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
               return `
@@ -6983,7 +7560,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Services / Processes</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().services}: Services</div>
                 <div class="section-title">Conversion steps</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-service" ${hasFg ? "" : "disabled"}>
@@ -7042,8 +7619,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <strong>${formatCurrency(state.costPer100)}</strong>
             </div>
             <div class="cost-row">
+              <span>Cost per 500</span>
+              <strong>${formatCurrency(state.costPer500)}</strong>
+            </div>
+            <div class="cost-row">
               <span>Cost per 1,000</span>
               <strong>${formatCurrency(state.costPer1000)}</strong>
+            </div>
+            <div class="cost-row">
+              <span>Profit %</span>
+              <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" />
+            </div>
+            <div class="cost-row">
+              <span>Overhead %</span>
+              <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-overhead-percent" value="${escapeHtml(formatDecimal(state.bomOverheadPercent, 2, false))}" />
+            </div>
+            <div class="cost-row cost-final">
+              <span>Sale Cost</span>
+              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.saleCost)}</strong>
             </div>
             <div class="cost-bars">
               <div class="cost-bar">
@@ -7683,7 +8276,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <select id="rm-qty-formula" class="full-select">
                 ${renderBoundFormulaOptions("Material", draft.qtyFormulaId)}
               </select>
-              <p class="stat-hint" style="margin-top:6px;">Optional fallback when a dimension has no linked qty formula.</p>
+              <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
             </div>
             ${showGsm ? `
               <div>
@@ -7708,24 +8301,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const dimRows = linked.length
         ? linked.map((row) => {
             const dim = getDimension(row.dimensionId);
-            const formula = getFormula(row.formulaId);
             return `
               <tr>
                 <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
-                <td>
-                  <div>${escapeHtml(formula ? formula.name : "Missing formula")}</div>
-                  <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}</div>
-                </td>
                 ${masterRowActions("data-edit-material-dim", row.id, "data-delete-material-dim", row.id)}
               </tr>
             `;
           }).join("")
-        : emptyRow(3, "No dimensions linked to this material yet.");
+        : emptyRow(2, "No dimensions linked to this material yet.");
       const dimsForm = `
         <div class="section-head">
           <div>
             <div class="section-kicker">Material dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension and Material qty formula. BOM uses the formula linked to that dimension.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension (and ply) to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-material-dimension">
             <i data-lucide="plus"></i> Add Dimension to Material
@@ -7736,7 +8324,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <thead>
               <tr>
                 <th>Dimension Name</th>
-                <th>Formula (Qty Calculate)</th>
+                <!-- Formula (Qty Calculate) column hidden intentionally as of qtyFormulaId-only change; materialDimensions.formulaId is still stored. -->
                 <th>Actions</th>
               </tr>
             </thead>
@@ -8018,7 +8606,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = sub.draft;
       const errors = sub.errors || {};
       const available = dimensions.filter((item) => item.status !== "Inactive");
-      const formula = getFormula(draft.formulaId);
       return `
         <div class="modal-header">
           <div>
@@ -8039,19 +8626,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
             </div>
-            <div>
-              <label class="form-label" for="rm-dim-formula">Formula (Qty Calculate)</label>
-              <select id="rm-dim-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
-                <option value="">Select a Material formula...</option>
-                ${getMaterialFormulas().map((item) => `
-                  <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
-                    ${escapeHtml(item.name)} (${escapeHtml(item.code)})
-                  </option>
-                `).join("")}
-              </select>
-              ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-              ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
-            </div>
+            ${"" /* Formula (Qty Calculate) selector hidden intentionally — qty uses material.qtyFormulaId. Keep draft.formulaId + save path so materialDimensions.formulaId can be restored later. */}
           </div>
         </div>
         <div class="modal-footer">
@@ -8064,12 +8639,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function openMaterialDimensionLinkModal(linkId) {
       if (state.modal.type !== "raw-material-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
       const existing = linkId ? materialDimensions.find((row) => row.id === Number(linkId)) : null;
+      const material = getRawMaterial(state.modal.draft.id);
       state.modal.sub = {
         type: "material-dimension",
         mode: existing ? "edit" : "add",
         draft: existing
           ? { id: existing.id, dimensionId: existing.dimensionId, ply: existing.ply, formulaId: existing.formulaId }
-          : { dimensionId: "", formulaId: "" },
+          : { dimensionId: "", formulaId: material && material.qtyFormulaId ? Number(material.qtyFormulaId) : "" },
         errors: {}
       };
       renderModal();
@@ -8089,12 +8665,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       const rawMaterialId = Number(state.modal.draft.id);
       const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
-      const formulaId = draft.formulaId ? Number(draft.formulaId) : null;
+      const formulaId = draft.formulaId ? Number(draft.formulaId) : normalizeFormulaBinding(getRawMaterial(rawMaterialId) && getRawMaterial(rawMaterialId).qtyFormulaId);
       if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
-      const formula = getFormula(formulaId);
-      if (!formulaId || !formula || formula.type !== "Material" || !formula.isActive) {
-        errors.formulaId = "Select an active Material formula.";
-      }
       if (dimensionId && materialDimensions.some((row) =>
         row.rawMaterialId === rawMaterialId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
       )) {
@@ -8171,6 +8743,524 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return false;
     }
 
+    function defaultOtherRawMaterialDraft() {
+      return {
+        code: "",
+        name: "",
+        category: "Paper",
+        uom: "kg",
+        gsm: "",
+        qtyFormulaId: null,
+        dimensionIds: [],
+        status: "Active"
+      };
+    }
+
+    function validateOtherRawMaterialDraft(draft) {
+      const errors = {};
+      const code = String(draft.code || "").trim().toUpperCase();
+      if (!code) errors.code = "Code is required.";
+      else if (!/^[A-Z0-9][A-Z0-9_-]*$/.test(code)) errors.code = "Code must be alphanumeric.";
+      else if (otherRawMaterials.some((item) => item.code.toUpperCase() === code && item.id !== draft.id)) errors.code = "Code must be unique.";
+      if (!String(draft.name || "").trim()) errors.name = "Name is required.";
+      if (!draft.category) errors.category = "Category is required.";
+      if (!draft.uom) errors.uom = "UOM is required.";
+      if ((draft.category === "Paper" || draft.category === "Board") && draft.gsm !== "" && draft.gsm != null) {
+        const gsm = parseByRule(draft.gsm, "gsm", { requiredError: "GSM must be greater than 0." });
+        if (!gsm.ok) errors.gsm = gsm.error;
+      }
+      if (!draft.status) errors.status = "Status is required.";
+      return errors;
+    }
+
+    function renderOtherRawMaterialFormModal() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const editing = state.modal.mode === "edit";
+      const tab = state.modal.otherMaterialTab || "info";
+      const showGsm = draft.category === "Paper" || draft.category === "Board";
+      const infoForm = `
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="orm-code">Code</label>
+              <input id="orm-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="KRAFT-PH" />
+              ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="orm-name">Name</label>
+              <input id="orm-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" placeholder="Kraft Paper High" />
+              ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="orm-category">Category</label>
+              <select id="orm-category" class="full-select">
+                ${["Paper", "Board", "Sheet", "Film", "Consumable"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="orm-uom">UOM</label>
+              <select id="orm-uom" class="full-select">
+                ${["kg", "gm", "sheet", "sq.meter"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="orm-qty-formula">Default Quantity Formula</label>
+              <select id="orm-qty-formula" class="full-select">
+                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId)}
+              </select>
+              <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
+            </div>
+            ${showGsm ? `
+              <div>
+                <label class="form-label" for="orm-gsm">GSM (Basis Weight)</label>
+                <input id="orm-gsm" class="full-search ${errors.gsm ? "input-invalid" : ""}" type="number" min="1" max="999" step="0.1" value="${escapeHtml(draft.gsm === "" || draft.gsm == null ? "" : formatDecimal(draft.gsm, 1, false))}" placeholder="Optional" />
+                ${errors.gsm ? `<div class="field-error">${escapeHtml(errors.gsm)}</div>` : ""}
+              </div>
+            ` : ""}
+            <div>
+              <label class="form-label" for="orm-status">Status</label>
+              <select id="orm-status" class="full-select">
+                <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
+                <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
+              </select>
+            </div>
+            <div class="form-span-2">
+              <p class="stat-hint">Rates managed in Other Raw Material Rates page</p>
+            </div>
+          </div>
+      `;
+      const linked = editing && draft.id ? getOtherMaterialDimensionLinks(draft.id) : [];
+      const dimRows = linked.length
+        ? linked.map((row) => {
+            const dim = getDimension(row.dimensionId);
+            return `
+              <tr>
+                <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
+                ${masterRowActions("data-edit-other-material-dim", row.id, "data-delete-other-material-dim", row.id)}
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(2, "No dimensions linked to this material yet.");
+      const dimsForm = `
+        <div class="section-head">
+          <div>
+            <div class="section-kicker">Material dimensions</div>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension (and ply) to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
+          </div>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-other-material-dimension">
+            <i data-lucide="plus"></i> Add Dimension to Material
+          </button>
+        </div>
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:560px;">
+            <thead>
+              <tr>
+                <th>Dimension Name</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${dimRows}</tbody>
+          </table>
+        </div>
+      `;
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Material master</div>
+            <strong>${editing ? "Edit Other Raw Material" : "Add New Other Raw Material"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          ${editing ? `
+            <div class="section-tabs">
+              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-other-material-tab="info">Material Info</button>
+              <button type="button" class="section-tab ${tab === "dimensions" ? "active" : ""}" data-other-material-tab="dimensions">Dimensions</button>
+            </div>
+            ${tab === "dimensions" ? dimsForm : infoForm}
+          ` : infoForm}
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-other-raw-material">${editing ? "Update Material Info" : "Add Material"}</button>` : ""}
+        </div>
+      `;
+    }
+
+    function otherRawMaterialToDraft(item) {
+      return {
+        id: item.id,
+        code: item.code,
+        name: item.name,
+        category: item.category,
+        uom: item.uom,
+        gsm: item.gsm == null ? "" : formatDecimal(item.gsm, 1, false),
+        qtyFormulaId: normalizeFormulaBinding(item.qtyFormulaId),
+        dimensionIds: normalizeDimensionIds(item.dimensionIds),
+        status: item.status
+      };
+    }
+
+    function openOtherRawMaterialMasterModal(id) {
+      const item = id ? otherRawMaterials.find((row) => row.id === Number(id)) : null;
+      state.modal = {
+        type: "other-raw-material-master",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
+        lineId: null,
+        otherMaterialTab: "info",
+        draft: item ? otherRawMaterialToDraft(item) : defaultOtherRawMaterialDraft(),
+        errors: {},
+        sub: null
+      };
+      renderModal();
+    }
+
+    function saveOtherRawMaterialFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateOtherRawMaterialDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const showGsm = draft.category === "Paper" || draft.category === "Board";
+      const parsedGsm = showGsm && draft.gsm !== "" && draft.gsm != null ? parseByRule(draft.gsm, "gsm") : null;
+      const payload = {
+        code: String(draft.code).trim().toUpperCase(),
+        name: String(draft.name).trim(),
+        category: draft.category,
+        uom: draft.uom,
+        gsm: parsedGsm && parsedGsm.ok ? parsedGsm.value : null,
+        qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
+        status: draft.status
+      };
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = otherRawMaterials.findIndex((row) => row.id === draft.id);
+        if (index >= 0) {
+          otherRawMaterials[index] = { ...otherRawMaterials[index], ...payload };
+          delete otherRawMaterials[index].rateFormulaId;
+          delete otherRawMaterials[index].purchasingRate;
+          delete otherRawMaterials[index].rateUOM;
+        }
+        syncOtherMaterialDimensionIds(draft.id);
+        showNotification("Material updated successfully");
+        state.modal.errors = {};
+        renderModal();
+        renderOtherRawMaterials();
+        refreshIcons();
+        afterDataChange("otherRawMaterials");
+        return;
+      }
+      otherRawMaterials.push({ id: nextMasterId(otherRawMaterials), ...payload, dimensionIds: [] });
+      showNotification("Material added successfully");
+      closeModal();
+      renderOtherRawMaterials();
+      refreshIcons();
+      afterDataChange("otherRawMaterials");
+    }
+
+    function updateOtherRawMaterialDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "other-raw-material-master") return false;
+      const draft = state.modal.draft;
+      if (target.id === "orm-code") draft.code = target.value.toUpperCase();
+      else if (target.id === "orm-name") draft.name = target.value;
+      else if (target.id === "orm-category") draft.category = target.value;
+      else if (target.id === "orm-uom") draft.uom = target.value;
+      else if (target.id === "orm-gsm") draft.gsm = target.value;
+      else if (target.id === "orm-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "orm-status") draft.status = target.value;
+      else return false;
+      return true;
+    }
+
+    function defaultOtherMaterialRateDraft(material, rateRow) {
+      const inferredUom = normalizeMaterialRateUom(material && material.uom) || "Rs./kg";
+      return {
+        otherRawMaterialId: material ? material.id : null,
+        rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
+        rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        status: (rateRow && rateRow.status) || "Active"
+      };
+    }
+
+    function renderOtherMaterialRateFormModal() {
+      const draft = state.modal.draft || {};
+      const errors = state.modal.errors || {};
+      const material = getOtherRawMaterial(draft.otherRawMaterialId);
+      const dimSummary = material ? formatOtherMaterialDimensionSummary(material) : "—";
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Pricing</div>
+            <strong>Update Material Rate</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="card" style="margin-bottom:16px;">
+            <div class="card-body">
+              <div class="section-kicker">Material (Read-only)</div>
+              <div><strong>Material:</strong> ${escapeHtml(material ? material.name : "Material not found")}</div>
+              <div><strong>Code:</strong> ${escapeHtml(material ? material.code : "—")}</div>
+              <div><strong>UOM:</strong> ${escapeHtml(material ? material.uom : "—")}</div>
+            </div>
+          </div>
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="omrate-rate">Rate (PKR)</label>
+              <input id="omrate-rate" class="full-search ${errors.rate ? "input-invalid" : ""}" type="number" min="0.01" max="99999.99" step="0.01" value="${escapeHtml(draft.rate === "" || draft.rate == null ? "" : formatDecimal(draft.rate, 2, true))}" placeholder="165.00" />
+              ${errors.rate ? `<div class="field-error">${escapeHtml(errors.rate)}</div>` : ""}
+            </div>
+            <div>
+              <label class="form-label" for="omrate-uom">Rate UOM</label>
+              <select id="omrate-uom" class="full-select ${errors.rateUOM ? "input-invalid" : ""}">
+                ${materialRateUomOptions(draft.rateUOM)}
+              </select>
+              ${errors.rateUOM ? `<div class="field-error">${escapeHtml(errors.rateUOM)}</div>` : ""}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label">Dimensions (optional)</label>
+              <div class="full-search" style="min-height:38px;display:flex;align-items:center;">${escapeHtml(dimSummary || "—")}</div>
+              <p class="stat-hint">Dimension links are managed on the Other Raw Material master</p>
+            </div>
+            <div class="form-span-2">
+              <div class="section-kicker">Status</div>
+              <label class="radio-row"><input type="radio" name="omrate-status" value="Active" ${draft.status === "Active" ? "checked" : ""} /> Active</label>
+              <label class="radio-row"><input type="radio" name="omrate-status" value="Inactive" ${draft.status === "Inactive" ? "checked" : ""} /> Inactive</label>
+              ${errors.status ? `<div class="field-error">${escapeHtml(errors.status)}</div>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-other-material-rate">Update Material Rate</button>
+        </div>
+      `;
+    }
+
+    function openOtherMaterialRateModal(otherRawMaterialId) {
+      const material = getOtherRawMaterial(otherRawMaterialId);
+      if (!material) {
+        showNotification("Material not found", "error");
+        return;
+      }
+      const rateRow = getOtherMaterialRateRecord(material.id);
+      state.modal = {
+        type: "other-material-rate",
+        selectedId: material.id,
+        mode: "edit",
+        lineId: null,
+        draft: defaultOtherMaterialRateDraft(material, rateRow),
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function validateOtherMaterialRateDraft(draft) {
+      const errors = {};
+      const material = getOtherRawMaterial(draft.otherRawMaterialId);
+      if (!material) {
+        errors.otherRawMaterialId = "Material not found";
+        return errors;
+      }
+      if (material.status === "Inactive") {
+        errors.status = "Cannot update rate if material inactive";
+      }
+      const rate = Number(draft.rate);
+      if (!Number.isFinite(rate) || rate <= 0) errors.rate = "Rate must be positive number";
+      else if (rate > 99999.99) errors.rate = "Rate must be 99999.99 or less.";
+      if (!draft.rateUOM) errors.rateUOM = "Rate UOM must be selected";
+      return errors;
+    }
+
+    function saveOtherMaterialRateFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateOtherMaterialRateDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const material = getOtherRawMaterial(draft.otherRawMaterialId);
+      const now = new Date().toISOString();
+      const existing = getOtherMaterialRateRecord(draft.otherRawMaterialId);
+      const payload = {
+        otherRawMaterialId: Number(draft.otherRawMaterialId),
+        rate: roundTo(Number(draft.rate), 2),
+        rateUOM: normalizeMaterialRateUom(draft.rateUOM) || draft.rateUOM,
+        status: draft.status || "Active",
+        updatedAt: now
+      };
+      if (existing) {
+        const index = otherMaterialRates.findIndex((row) => row.id === existing.id);
+        otherMaterialRates[index] = { ...existing, ...payload };
+      } else {
+        otherMaterialRates.push({
+          id: nextMasterId(otherMaterialRates),
+          ...payload,
+          createdAt: now
+        });
+      }
+      const unit = formatRateUnit(payload.rateUOM) || "unit";
+      showNotification("Material rate updated: " + material.name + " - Rs. " + formatDecimal(payload.rate, 2, true) + "/" + unit);
+      closeModal();
+      renderOtherRawMaterialRates();
+      refreshIcons();
+      afterDataChange("otherMaterialRates");
+    }
+
+    function updateOtherMaterialRateDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "other-material-rate") return false;
+      const draft = state.modal.draft;
+      if (target.id === "omrate-rate") draft.rate = target.value;
+      else if (target.id === "omrate-uom") draft.rateUOM = target.value;
+      else if (target.name === "omrate-status") draft.status = target.value;
+      else return false;
+      return true;
+    }
+
+    function renderOtherMaterialDimensionLinkModal() {
+      const sub = state.modal.sub;
+      const draft = sub.draft;
+      const errors = sub.errors || {};
+      const available = dimensions.filter((item) => item.status !== "Inactive");
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Material dimension</div>
+            <strong>${sub.mode === "edit" ? "Edit Dimension Link" : "Add Dimension to Material"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-back-other-material-edit">Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div>
+              <label class="form-label" for="orm-dim-select">Dimension</label>
+              <select id="orm-dim-select" class="full-select ${errors.dimensionId ? "input-invalid" : ""}" ${available.length ? "" : "disabled"}>
+                <option value="">${available.length ? "Select a dimension..." : "No dimensions available"}</option>
+                ${available.map((item) => `
+                  <option value="${item.id}" ${Number(draft.dimensionId) === item.id ? "selected" : ""}>${escapeHtml(formatDimensionChipLabel(item))}</option>
+                `).join("")}
+              </select>
+              ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" id="btn-back-other-material-edit">Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-other-material-dimension">${sub.mode === "edit" ? "Update Link" : "Add Dimension"}</button>
+        </div>
+      `;
+    }
+
+    function openOtherMaterialDimensionLinkModal(linkId) {
+      if (state.modal.type !== "other-raw-material-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
+      const existing = linkId ? otherMaterialDimensions.find((row) => row.id === Number(linkId)) : null;
+      const material = getOtherRawMaterial(state.modal.draft.id);
+      state.modal.sub = {
+        type: "other-material-dimension",
+        mode: existing ? "edit" : "add",
+        draft: existing
+          ? { id: existing.id, dimensionId: existing.dimensionId, ply: existing.ply, formulaId: existing.formulaId }
+          : { dimensionId: "", formulaId: material && material.qtyFormulaId ? Number(material.qtyFormulaId) : "" },
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function backToOtherMaterialEdit() {
+      state.modal.sub = null;
+      state.modal.otherMaterialTab = "dimensions";
+      renderModal();
+      refreshIcons();
+    }
+
+    function saveOtherMaterialDimensionLinkFromModal() {
+      const sub = state.modal.sub;
+      if (!sub || !sub.draft || !state.modal.draft || !state.modal.draft.id) return;
+      const draft = sub.draft;
+      const errors = {};
+      const otherRawMaterialId = Number(state.modal.draft.id);
+      const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
+      const formulaId = draft.formulaId ? Number(draft.formulaId) : normalizeFormulaBinding(getOtherRawMaterial(otherRawMaterialId) && getOtherRawMaterial(otherRawMaterialId).qtyFormulaId);
+      if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
+      if (dimensionId && otherMaterialDimensions.some((row) =>
+        row.otherRawMaterialId === otherRawMaterialId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
+      )) {
+        errors.dimensionId = "This dimension is already linked.";
+      }
+      sub.errors = errors;
+      if (Object.keys(errors).length) {
+        renderModal();
+        return;
+      }
+      if (sub.mode === "edit" && draft.id) {
+        const index = otherMaterialDimensions.findIndex((row) => row.id === Number(draft.id));
+        if (index >= 0) {
+          otherMaterialDimensions[index] = {
+            id: otherMaterialDimensions[index].id,
+            otherRawMaterialId: otherMaterialDimensions[index].otherRawMaterialId,
+            dimensionId,
+            ply: otherMaterialDimensions[index].ply,
+            formulaId,
+            createdAt: otherMaterialDimensions[index].createdAt
+          };
+        }
+        showNotification("Dimension link updated");
+      } else {
+        otherMaterialDimensions.push({
+          id: nextMasterId(otherMaterialDimensions),
+          otherRawMaterialId,
+          dimensionId,
+          ply: 1,
+          formulaId,
+          createdAt: new Date().toISOString()
+        });
+        showNotification("Dimension linked to material");
+      }
+      syncOtherMaterialDimensionIds(otherRawMaterialId);
+      state.modal.sub = null;
+      state.modal.otherMaterialTab = "dimensions";
+      renderModal();
+      renderOtherRawMaterials();
+      refreshIcons();
+      afterDataChange("otherMaterialDimensions", "otherRawMaterials");
+    }
+
+    function removeOtherMaterialDimensionLink(linkId) {
+      const index = otherMaterialDimensions.findIndex((row) => row.id === Number(linkId));
+      if (index < 0) return;
+      const otherRawMaterialId = otherMaterialDimensions[index].otherRawMaterialId;
+      otherMaterialDimensions.splice(index, 1);
+      syncOtherMaterialDimensionIds(otherRawMaterialId);
+      showNotification("Dimension removed from material");
+      if (state.modal.type === "other-raw-material-master") {
+        state.modal.sub = null;
+        state.modal.otherMaterialTab = "dimensions";
+        renderModal();
+      }
+      renderOtherRawMaterials();
+      refreshIcons();
+      afterDataChange("otherMaterialDimensions", "otherRawMaterials");
+    }
+
+    function updateOtherMaterialDimensionLinkDraftFromEvent(target) {
+      if (!state.modal.sub || state.modal.sub.type !== "other-material-dimension" || !state.modal.sub.draft) return false;
+      const draft = state.modal.sub.draft;
+      if (target.id === "orm-dim-select") {
+        draft.dimensionId = target.value ? Number(target.value) : "";
+        return "rerender";
+      }
+      if (target.id === "orm-dim-formula") {
+        draft.formulaId = target.value ? Number(target.value) : "";
+        return "rerender";
+      }
+      return false;
+    }
+
     function defaultServiceMasterDraft() {
       return {
         code: "",
@@ -8241,24 +9331,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const dimRows = linked.length
         ? linked.map((row) => {
             const dim = getDimension(row.dimensionId);
-            const formula = getFormula(row.formulaId);
             return `
               <tr>
                 <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
-                <td>
-                  <div>${escapeHtml(formula ? formula.name : "Missing formula")}</div>
-                  <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}</div>
-                </td>
                 ${masterRowActions("data-edit-service-dim", row.id, "data-delete-service-dim", row.id)}
               </tr>
             `;
           }).join("")
-        : emptyRow(3, "No dimensions linked to this service yet.");
+        : emptyRow(2, "No dimensions linked to this service yet.");
       const dimsForm = `
         <div class="section-head">
           <div>
             <div class="section-kicker">Service dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension and Service qty formula. BOM uses the formula linked to that dimension.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension (and ply) to this service. Quantity uses the formula on the active Service Rate.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-service-dimension">
             <i data-lucide="plus"></i> Add Dimension to Service
@@ -8269,7 +9354,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <thead>
               <tr>
                 <th>Dimension Name</th>
-                <th>Formula (Qty Calculate)</th>
+                <!-- Formula (Qty Calculate) column hidden intentionally as of serviceRates.formulaId-only change; serviceDimensions.formulaId is still stored. -->
                 <th>Actions</th>
               </tr>
             </thead>
@@ -8559,7 +9644,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = sub.draft;
       const errors = sub.errors || {};
       const available = dimensions.filter((item) => item.status !== "Inactive");
-      const formula = getFormula(draft.formulaId);
       return `
         <div class="modal-header">
           <div>
@@ -8580,19 +9664,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.dimensionId ? `<div class="field-error">${escapeHtml(errors.dimensionId)}</div>` : ""}
             </div>
-            <div>
-              <label class="form-label" for="srv-dim-formula">Formula (Qty Calculate)</label>
-              <select id="srv-dim-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}">
-                <option value="">Select a Service formula...</option>
-                ${getServiceFormulas().map((item) => `
-                  <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
-                    ${escapeHtml(item.name)} (${escapeHtml(item.code)})
-                  </option>
-                `).join("")}
-              </select>
-              ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-              ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
-            </div>
+            ${"" /* Formula (Qty Calculate) selector hidden intentionally — qty uses serviceRates.formulaId. Keep draft.formulaId + save path so serviceDimensions.formulaId can be restored later. */}
           </div>
         </div>
         <div class="modal-footer">
@@ -8605,12 +9677,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function openServiceDimensionLinkModal(linkId) {
       if (state.modal.type !== "service-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
       const existing = linkId ? serviceDimensions.find((row) => row.id === Number(linkId)) : null;
+      const defaultFormulaId = getServiceDefaultFormulaId(state.modal.draft.id);
       state.modal.sub = {
         type: "service-dimension",
         mode: existing ? "edit" : "add",
         draft: existing
           ? { id: existing.id, dimensionId: existing.dimensionId, ply: existing.ply, formulaId: existing.formulaId }
-          : { dimensionId: "", formulaId: "" },
+          : { dimensionId: "", formulaId: defaultFormulaId || "" },
         errors: {}
       };
       renderModal();
@@ -8630,12 +9703,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       const serviceId = Number(state.modal.draft.id);
       const dimensionId = draft.dimensionId ? Number(draft.dimensionId) : null;
-      const formulaId = draft.formulaId ? Number(draft.formulaId) : null;
+      const formulaId = draft.formulaId
+        ? Number(draft.formulaId)
+        : getServiceDefaultFormulaId(serviceId);
       if (!dimensionId || !getDimension(dimensionId)) errors.dimensionId = "Dimension is required.";
-      const formula = getFormula(formulaId);
-      if (!formulaId || !formula || formula.type !== "Service" || !formula.isActive) {
-        errors.formulaId = "Select an active Service formula.";
-      }
       if (dimensionId && serviceDimensions.some((row) =>
         row.serviceId === serviceId && Number(row.dimensionId) === dimensionId && row.id !== draft.id
       )) {
@@ -9758,6 +10829,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         renderRawMaterials();
         showNotification("Material deleted successfully");
         afterDataChange("rawMaterials", "materialDimensions", "materialRates");
+      } else if (entity === "other-raw-material") {
+        const usage = otherMaterialBomUsageMessage(id);
+        if (usage) {
+          showNotification(usage, "error");
+          return;
+        }
+        const index = otherRawMaterials.findIndex((item) => item.id === id);
+        if (index >= 0) otherRawMaterials.splice(index, 1);
+        for (let i = otherMaterialDimensions.length - 1; i >= 0; i -= 1) {
+          if (otherMaterialDimensions[i].otherRawMaterialId === id) otherMaterialDimensions.splice(i, 1);
+        }
+        for (let i = otherMaterialRates.length - 1; i >= 0; i -= 1) {
+          if (Number(otherMaterialRates[i].otherRawMaterialId) === id) otherMaterialRates.splice(i, 1);
+        }
+        closeModal();
+        renderOtherRawMaterials();
+        showNotification("Material deleted successfully");
+        afterDataChange("otherRawMaterials", "otherMaterialDimensions", "otherMaterialRates");
       } else if (entity === "service") {
         const usage = serviceBomUsageMessage(id);
         if (usage) {
@@ -9815,12 +10904,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         for (let i = materialDimensions.length - 1; i >= 0; i -= 1) {
           if (Number(materialDimensions[i].dimensionId) === id) materialDimensions.splice(i, 1);
         }
+        for (let i = otherMaterialDimensions.length - 1; i >= 0; i -= 1) {
+          if (Number(otherMaterialDimensions[i].dimensionId) === id) otherMaterialDimensions.splice(i, 1);
+        }
         services.forEach((item) => syncServiceDimensionIds(item.id));
         rawMaterials.forEach((item) => syncMaterialDimensionIds(item.id));
+        otherRawMaterials.forEach((item) => syncOtherMaterialDimensionIds(item.id));
         closeModal();
         renderDimensions();
         showNotification("Dimension deleted successfully");
-        afterDataChange("dimensions", "serviceDimensions", "materialDimensions", "services", "rawMaterials");
+        afterDataChange("dimensions", "serviceDimensions", "materialDimensions", "otherMaterialDimensions", "services", "rawMaterials", "otherRawMaterials");
       } else if (entity === "formula-variable") {
         const variable = formulaVariables.find((item) => item.id === id);
         const used = variable ? formulasUsingVariable(variable.code) : [];
@@ -9910,10 +11003,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       if (draft.calculationMethod === "formula") {
         if (!errors.dimensionId && material && draft.dimensionId && materialMissingPlyFormula(material, draft.dimensionId, ply)) {
-          errors.formulaId = "Formula not linked for this material and dimension.";
+          errors.formulaId = "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.";
         } else if (!errors.dimensionId) {
           const selectedFormula = getFormula(draft.formulaId);
-          if (!draft.formulaId) errors.formulaId = "A valid material formula is required. Link a formula on the Raw Material master.";
+          if (!draft.formulaId) errors.formulaId = "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.";
           else if (!selectedFormula || !selectedFormula.isActive) errors.formulaId = "Selected formula is not valid or is inactive.";
         }
       } else {
@@ -10295,7 +11388,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { error: "Calculation details are unavailable." };
       }
       const item = isService ? getService(line.serviceId) : getRawMaterial(line.rawMaterialId);
-      const formula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
+      const formula = line.calculationMethod === "formula"
+        ? (isService ? getFormula(getServiceDefaultFormulaId(item && item.id)) : getMaterialQtyFormula(item))
+        : null;
       const uom = isService ? (item && item.uom) || "" : (item && item.uom) || "";
       const title = item ? item.name + " — " + item.code : (isService ? "Service" : "Material");
       const variables = item
@@ -10796,7 +11891,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
       }
       const material = getRawMaterial(line.rawMaterialId);
-      const formula = getFormula(line.formulaId);
+      const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId);
       const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId, formula) : {};
       return `
         <div class="modal-header">
@@ -10872,8 +11967,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
 
-      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit"));
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
+      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
       dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "service");
 
@@ -10885,6 +11980,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderRawMaterialFormModal();
       } else if (state.modal.type === "material-rate") {
         dialog.innerHTML = renderMaterialRateFormModal();
+      } else if (state.modal.type === "other-raw-material-master" && state.modal.sub && state.modal.sub.type === "other-material-dimension") {
+        dialog.innerHTML = renderOtherMaterialDimensionLinkModal();
+      } else if (state.modal.type === "other-raw-material-master") {
+        dialog.innerHTML = renderOtherRawMaterialFormModal();
+      } else if (state.modal.type === "other-material-rate") {
+        dialog.innerHTML = renderOtherMaterialRateFormModal();
       } else if (state.modal.type === "service-master" && state.modal.sub && state.modal.sub.type === "service-dimension") {
         dialog.innerHTML = renderServiceDimensionLinkModal();
       } else if (state.modal.type === "service-master") {
@@ -11060,6 +12161,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       persistEditorState();
     }
 
+    function updateBomMarginPercent(field, value) {
+      const parsed = parseByRule(value === "" ? "0" : value, "percent");
+      if (!parsed.ok) {
+        showNotification(parsed.error, "error");
+        refreshBomViews();
+        return;
+      }
+      if (field === "profit") state.bomProfitPercent = parsed.value;
+      else state.bomOverheadPercent = parsed.value;
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
     function updateMaterialDraftFromEvent(target) {
       if (!state.modal.draft) return false;
       const draft = state.modal.draft;
@@ -11121,7 +12236,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function validateServiceDraft(draft, lineId) {
       const errors = {};
-      const ply = getFinishedGoodPly(getSelectedFinishedGood());
       if (!getSelectedFinishedGood()) errors.finishedGood = "Select a Finished Good before adding services.";
       if (!draft.serviceId) errors.serviceId = "Service is required.";
       const service = getService(draft.serviceId);
@@ -11135,14 +12249,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         errors.dimensionId = "Selected dimension is not valid.";
       }
       if (draft.calculationMethod === "formula") {
-        if (!errors.dimensionId && service && draft.dimensionId && serviceMissingPlyFormula(service, draft.dimensionId, ply)) {
-          errors.formulaId = "Formula not linked for this service and dimension.";
-        } else if (!errors.dimensionId) {
-          const selectedFormula = getFormula(draft.formulaId);
-          if (!draft.formulaId) errors.formulaId = "Formula is required when Formula method is selected.";
-          else if (!selectedFormula || !selectedFormula.isActive || selectedFormula.type !== "Service") {
-            errors.formulaId = "Selected formula is not valid or is inactive.";
-          }
+        const selectedFormula = getFormula(draft.formulaId) || getFormula(getServiceDefaultFormulaId(service && service.id));
+        if (!selectedFormula) errors.formulaId = "A valid service formula is required. Set a formula on the active Service Rate.";
+        else if (!selectedFormula.isActive || selectedFormula.type !== "Service") {
+          errors.formulaId = "Selected formula is not valid or is inactive.";
         }
       } else {
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Quantity / Piece must be greater than 0." });
@@ -11196,7 +12306,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               "modal-service-dimension",
               errors.dimensionId,
               service
-                ? "Optional. Select a dimension to load the formula linked for this service."
+                ? "Optional. Select a dimension used for this service quantity."
                 : "",
               {
                 disabled: !service,
@@ -11343,7 +12453,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
       }
       const service = getService(line.serviceId);
-      const formula = getFormula(line.formulaId);
+      const formula = line.calculationMethod === "formula"
+        ? getFormula(getServiceDefaultFormulaId(service && service.id))
+        : getFormula(line.formulaId);
       const variables = service ? buildServiceFormulaVariables(fg, service, line.dimensionId, line, formula) : {};
       return `
         <div class="modal-header">
@@ -11512,6 +12624,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (page === "style") renderStyles();
       if (page === "raw-materials") renderRawMaterials();
       if (page === "raw-material-rates") renderRawMaterialRates();
+      if (page === "other-raw-materials") renderOtherRawMaterials();
+      if (page === "other-raw-material-rates") renderOtherRawMaterialRates();
       if (page === "services") renderServices();
       if (page === "service-rates") renderServiceRates();
       if (page === "finished-goods") renderFinishedGoods();
@@ -11612,9 +12726,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
+        } else if (id === "orm-search") {
+          state.searches.otherRawMaterials = event.target.value;
+          renderOtherRawMaterials();
+          refreshIcons();
+          restoreFocus(id);
+          persistPrefs();
         } else if (id === "mrate-search") {
           state.searches.materialRates = event.target.value;
           renderRawMaterialRates();
+          refreshIcons();
+          restoreFocus(id);
+          persistPrefs();
+        } else if (id === "omrate-search") {
+          state.searches.otherMaterialRates = event.target.value;
+          renderOtherRawMaterialRates();
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
@@ -11681,6 +12807,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               /* number inputs may not support selection ranges */
             }
           }
+        } else if (event.target.id === "bom-profit-percent" || event.target.id === "bom-overhead-percent") {
+          const fieldId = event.target.id;
+          const caret = event.target.selectionStart;
+          updateBomMarginPercent(fieldId === "bom-profit-percent" ? "profit" : "overhead", event.target.value);
+          const next = document.getElementById(fieldId);
+          if (next) {
+            next.focus();
+            try {
+              const pos = Math.min(Number(caret) || next.value.length, next.value.length);
+              next.setSelectionRange(pos, pos);
+            } catch (error) {
+              /* number inputs may not support selection ranges */
+            }
+          }
         }
       });
 
@@ -11700,6 +12840,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "mrate-sort") {
           state.materialRateSort = event.target.value;
           renderRawMaterialRates();
+          refreshIcons();
+          persistPrefs();
+        }
+        if (event.target.id === "omrate-status-filter") {
+          state.otherMaterialRateFilter = event.target.value;
+          renderOtherRawMaterialRates();
+          refreshIcons();
+          persistPrefs();
+        }
+        if (event.target.id === "omrate-sort") {
+          state.otherMaterialRateSort = event.target.value;
+          renderOtherRawMaterialRates();
           refreshIcons();
           persistPrefs();
         }
@@ -11875,6 +13027,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           openRawMaterialMasterModal();
           return;
         }
+        if (event.target.closest("#btn-add-other-material-master")) {
+          openOtherRawMaterialMasterModal();
+          return;
+        }
         if (event.target.closest("#btn-add-service-master")) {
           openServiceMasterModal();
           return;
@@ -11923,6 +13079,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           openMasterDeleteModal("raw-material", deleteRm.dataset.deleteRm, item ? item.name : "this material");
           return;
         }
+        const editOrm = event.target.closest("[data-edit-orm]");
+        if (editOrm) {
+          openOtherRawMaterialMasterModal(editOrm.dataset.editOrm);
+          return;
+        }
+        const deleteOrm = event.target.closest("[data-delete-orm]");
+        if (deleteOrm) {
+          const item = otherRawMaterials.find((row) => row.id === Number(deleteOrm.dataset.deleteOrm));
+          const usage = otherMaterialBomUsageMessage(deleteOrm.dataset.deleteOrm);
+          if (usage) {
+            showNotification(usage, "error");
+            return;
+          }
+          openMasterDeleteModal("other-raw-material", deleteOrm.dataset.deleteOrm, item ? item.name : "this material");
+          return;
+        }
         const editSrv = event.target.closest("[data-edit-srv-master]");
         if (editSrv) {
           openServiceMasterModal(editSrv.dataset.editSrvMaster);
@@ -11942,6 +13114,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const editMaterialRate = event.target.closest("[data-edit-material-rate]");
         if (editMaterialRate) {
           openMaterialRateModal(editMaterialRate.dataset.editMaterialRate);
+          return;
+        }
+        const editOtherMaterialRate = event.target.closest("[data-edit-other-material-rate]");
+        if (editOtherMaterialRate) {
+          openOtherMaterialRateModal(editOtherMaterialRate.dataset.editOtherMaterialRate);
           return;
         }
         const editServiceRate = event.target.closest("[data-edit-service-rate]");
@@ -12142,13 +13319,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           restoreFocus(event.target.id);
           return;
         }
+        if (updateOtherRawMaterialDraftFromEvent(event.target)) {
+          if (event.target.id === "orm-gsm") normalizeDraftNumber(event.target, "gsm", "gsm");
+          if (event.target.id === "orm-category") renderModal();
+          restoreFocus(event.target.id);
+          return;
+        }
         if (updateMaterialRateDraftFromEvent(event.target)) {
           if (event.target.id === "mrate-rate") normalizeDraftNumber(event.target, "rate", "rate", true);
+          return;
+        }
+        if (updateOtherMaterialRateDraftFromEvent(event.target)) {
+          if (event.target.id === "omrate-rate") normalizeDraftNumber(event.target, "rate", "rate", true);
           return;
         }
         const materialDimChange = updateMaterialDimensionLinkDraftFromEvent(event.target);
         if (materialDimChange) {
           if (materialDimChange === "rerender") {
+            renderModal();
+            refreshIcons();
+            restoreFocus(event.target.id);
+          }
+          return;
+        }
+        const otherMaterialDimChange = updateOtherMaterialDimensionLinkDraftFromEvent(event.target);
+        if (otherMaterialDimChange) {
+          if (otherMaterialDimChange === "rerender") {
             renderModal();
             refreshIcons();
             restoreFocus(event.target.id);
@@ -12228,7 +13424,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (event.target.id === "rm-code") event.target.value = String(event.target.value || "").toUpperCase();
           restoreFocus(event.target.id);
         }
+        if (updateOtherRawMaterialDraftFromEvent(event.target)) {
+          if (event.target.id === "orm-code") event.target.value = String(event.target.value || "").toUpperCase();
+          restoreFocus(event.target.id);
+        }
         if (updateMaterialRateDraftFromEvent(event.target)) {
+          restoreFocus(event.target.id);
+        }
+        if (updateOtherMaterialRateDraftFromEvent(event.target)) {
           restoreFocus(event.target.id);
         }
         if (updateServiceMasterDraftFromEvent(event.target)) {
@@ -12328,6 +13531,43 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteMaterialDim = event.target.closest("[data-delete-material-dim]");
         if (deleteMaterialDim) {
           removeMaterialDimensionLink(deleteMaterialDim.dataset.deleteMaterialDim);
+          return;
+        }
+        if (event.target.closest("#btn-save-other-raw-material")) {
+          saveOtherRawMaterialFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-other-material-rate")) {
+          saveOtherMaterialRateFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-add-other-material-dimension")) {
+          openOtherMaterialDimensionLinkModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-other-material-dimension")) {
+          saveOtherMaterialDimensionLinkFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-back-other-material-edit")) {
+          backToOtherMaterialEdit();
+          return;
+        }
+        const otherMaterialTab = event.target.closest("[data-other-material-tab]");
+        if (otherMaterialTab) {
+          state.modal.otherMaterialTab = otherMaterialTab.dataset.otherMaterialTab;
+          renderModal();
+          refreshIcons();
+          return;
+        }
+        const editOtherMaterialDim = event.target.closest("[data-edit-other-material-dim]");
+        if (editOtherMaterialDim) {
+          openOtherMaterialDimensionLinkModal(editOtherMaterialDim.dataset.editOtherMaterialDim);
+          return;
+        }
+        const deleteOtherMaterialDim = event.target.closest("[data-delete-other-material-dim]");
+        if (deleteOtherMaterialDim) {
+          removeOtherMaterialDimensionLink(deleteOtherMaterialDim.dataset.deleteOtherMaterialDim);
           return;
         }
         if (event.target.closest("#btn-save-service-master")) {
@@ -12532,6 +13772,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       updateHeaderCloudBadge();
       const startPage = PAGE_META[state.currentPage] ? state.currentPage : "dashboard";
       navigateTo(startPage);
+      showPendingQtyFormulaMigrationNotice();
     }
 
     if (document.readyState === "loading") {
