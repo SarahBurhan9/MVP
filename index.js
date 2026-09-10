@@ -11769,7 +11769,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="fvar-unit">Unit</label>
               <select id="fvar-unit" class="full-select">
-                ${["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", "factor", "gram", "Other", "pcs", "Rs./kg", "Rs./pc", "sq.ft", "sq.in", "Type", ""].map((unit) => `<option value="${escapeHtml(unit)}" ${String(draft.unit) === unit ? "selected" : ""}>${unit || "(none)"}</option>`).join("")}
+                ${["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", "factor", "gram", "Other", "pcs", "Rs./kg", "Rs./pc", "sq.ft", "sq.in", "Type", "g/cm³", "Ply", "clr", "thd", ""].map((unit) => `<option value="${escapeHtml(unit)}" ${String(draft.unit) === unit ? "selected" : ""}>${unit || "(none)"}</option>`).join("")}
               </select>
             </div>
             <div>
