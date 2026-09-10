@@ -6867,11 +6867,61 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return "BOM is missing required layers: " + missing.join(", ");
     }
 
+    function bomCalculationErrorLineName(line, kind) {
+      if (!line) return "Unnamed line";
+      if (kind === "material") {
+        const material = getRawMaterial(line.rawMaterialId);
+        if (line.layer) return String(line.layer);
+        if (material && material.name) return material.name;
+        if (line.rawMaterialId) return "Missing material (ID: " + line.rawMaterialId + ")";
+        return "Raw material";
+      }
+      if (kind === "other") {
+        const material = getOtherRawMaterial(line.otherRawMaterialId);
+        if (line.layer) return String(line.layer);
+        if (material && material.name) return material.name;
+        if (line.otherRawMaterialId) return "Missing material (ID: " + line.otherRawMaterialId + ")";
+        return "Other material";
+      }
+      const service = getService(line.serviceId);
+      if (service && service.name) return service.name;
+      if (line.serviceId) return "Missing service (ID: " + line.serviceId + ")";
+      if (line.layer) return String(line.layer);
+      return kind === "additional" ? "Additional" : "Service";
+    }
+
+    function collectBomCalculationErrors() {
+      const errors = [];
+      const add = (line, section, kind) => {
+        if (!line || !line.error) return;
+        errors.push({
+          section,
+          label: bomCalculationErrorLineName(line, kind),
+          error: String(line.error)
+        });
+      };
+      (state.bomMaterials || []).forEach((line) => add(line, "Raw Materials", "material"));
+      (state.bomOtherMaterials || []).forEach((line) => add(line, "Other Materials", "other"));
+      (state.bomServices || []).forEach((line) => add(line, "Services", "service"));
+      (state.bomAdditionalServices || []).forEach((line) => add(line, "Additional Materials", "additional"));
+      return errors;
+    }
+
     function currentBomHasCalculationErrors() {
-      return (state.bomMaterials || []).some((line) => line.error)
-        || (state.bomOtherMaterials || []).some((line) => line.error)
-        || (state.bomServices || []).some((line) => line.error)
-        || (state.bomAdditionalServices || []).some((line) => line.error);
+      return collectBomCalculationErrors().length > 0;
+    }
+
+    function renderBomCalculationErrorBanner(errors) {
+      if (!errors || !errors.length) return "";
+      const items = errors.map((item) => (
+        `<li>${escapeHtml(item.label)} (${escapeHtml(item.section)}): ${escapeHtml(item.error)}</li>`
+      )).join("");
+      return `
+        <div class="field-error cost-summary-errors">
+          <div>⚠ Error calculating cost — fix these first:</div>
+          <ul>${items}</ul>
+        </div>
+      `;
     }
 
     function validateCurrentBom(requirePositiveCost, options) {
@@ -9145,10 +9195,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCostSummary() {
       const root = document.getElementById("bom-cost-root");
       if (!root) return;
-      const hasCalcErrors = currentBomHasCalculationErrors();
+      const calcErrors = collectBomCalculationErrors();
+      const hasCalcErrors = calcErrors.length > 0;
       const showColorCost = hasBomColorCost();
       const showOrderCost = hasBomOrderQuantity();
-      const total = Number(state.finalCostPerPiece) || 0;
+      const total = hasCalcErrors ? 0 : (Number(state.finalCostPerPiece) || 0);
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
       const otherPct = total > 0 ? roundTo((Number(state.totalOtherMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
@@ -9164,7 +9215,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-kicker">Cost Summary (PKR)</div>
             <div class="section-title" style="margin-bottom:12px;">Per piece roll-up</div>
-            ${hasCalcErrors ? `<div class="field-error" style="margin-bottom:12px;">⚠ Error calculating cost</div>` : ""}
+            ${renderBomCalculationErrorBanner(calcErrors)}
             <div class="cost-optional-row">
               <div class="cost-optional-field">
                 <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
@@ -9213,15 +9264,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div class="cost-row">
               <span>Cost per 100</span>
-              <strong>${formatCurrency(state.costPer100)}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer100)}</strong>
             </div>
             <div class="cost-row">
               <span>Cost per 500</span>
-              <strong>${formatCurrency(state.costPer500)}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer500)}</strong>
             </div>
             <div class="cost-row">
               <span>Cost per 1,000</span>
-              <strong>${formatCurrency(state.costPer1000)}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1000)}</strong>
             </div>
             ${showOrderCost ? `
             <div class="cost-row cost-final">
@@ -9241,6 +9292,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <span>Sale Cost</span>
               <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.saleCost)}</strong>
             </div>
+            ${hasCalcErrors ? "" : `
             <div class="cost-bars">
               <div class="cost-bar">
                 <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
@@ -9255,6 +9307,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${showColorCost ? `<span>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
               </div>
             </div>
+            `}
             <p class="stat-hint">Final cost is Material Cost + Other Material Cost + Service Cost in Pakistani Rupees (Rs.). Rates come from master data after unit conversion.</p>
           </div>
         </div>
