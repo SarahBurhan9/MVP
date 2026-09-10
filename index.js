@@ -526,6 +526,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const FORMULA_PURPOSES = ["Rate", "Quantity"];
     const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Consumable"];
     const MATERIAL_UOMS = ["kg", "gm", "sheet", "sq.meter"];
+    const FINISHED_GOOD_UOMS = ["pieces", "kg", "box"];
 
     const BASE_VARIABLES = [
       "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY",
@@ -621,6 +622,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       bomMaterials: [],
       bomOtherMaterials: [],
       bomServices: [],
+      bomAdditionalServices: [],
       bomStyleResults: [],
       totalMaterialCost: 0,
       totalOtherMaterialCost: 0,
@@ -629,8 +631,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       costPer100: 0,
       costPer500: 0,
       costPer1000: 0,
+      totalColorCost: 0,
+      totalOrderCost: null,
       bomProfitPercent: 0,
       bomOverheadPercent: 0,
+      bomNumberOfColors: null,
+      bomColorRate: null,
+      bomOrderQuantity: null,
+      bomOrderQuantityUOM: "pieces",
       saleCost: 0,
       fgSelectorOpen: false,
       cleaningUserData: false,
@@ -654,7 +662,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         services: [],
         removedServices: [],
         nextServiceKey: 1,
-        styleFormulasOpen: false
+        styleFormulasOpen: false,
+        ccNumberOfColors: null,
+        ccColorRate: null,
+        ccOrderQuantity: null,
+        ccOrderQuantityUOM: "pieces"
       }
     };
 
@@ -856,8 +868,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         bomMaterials: state.bomMaterials,
         bomOtherMaterials: state.bomOtherMaterials,
         bomServices: state.bomServices,
+        bomAdditionalServices: state.bomAdditionalServices,
         bomProfitPercent: state.bomProfitPercent,
-        bomOverheadPercent: state.bomOverheadPercent
+        bomOverheadPercent: state.bomOverheadPercent,
+        bomNumberOfColors: state.bomNumberOfColors,
+        bomColorRate: state.bomColorRate,
+        bomOrderQuantity: state.bomOrderQuantity,
+        bomOrderQuantityUOM: state.bomOrderQuantityUOM
       });
     }
 
@@ -1048,8 +1065,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           bomMaterials: state.bomMaterials,
           bomOtherMaterials: state.bomOtherMaterials,
           bomServices: state.bomServices,
+          bomAdditionalServices: state.bomAdditionalServices,
           bomProfitPercent: state.bomProfitPercent,
-          bomOverheadPercent: state.bomOverheadPercent
+          bomOverheadPercent: state.bomOverheadPercent,
+          bomNumberOfColors: state.bomNumberOfColors,
+          bomColorRate: state.bomColorRate,
+          bomOrderQuantity: state.bomOrderQuantity,
+          bomOrderQuantityUOM: state.bomOrderQuantityUOM
         },
         userClearedAllData: Boolean(userClearedAllData),
         hydratedFromSeed: Boolean(hydratedFromSeed),
@@ -1245,8 +1267,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.currentBOM = editor.currentBOM || null;
         hydrateBomEditorMaterials(editor.bomMaterials, editor.bomOtherMaterials);
         state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
+        state.bomAdditionalServices = Array.isArray(editor.bomAdditionalServices) ? editor.bomAdditionalServices : [];
         state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
         state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
+        applyBomCostingExtras(editor);
       }
       syncSequencesFromData();
       if (cloudCleared) {
@@ -1277,6 +1301,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.bomMaterials = [];
         state.bomOtherMaterials = [];
         state.bomServices = [];
+        state.bomAdditionalServices = [];
         state.bomStyleResults = [];
       }
     }
@@ -1534,6 +1559,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomServices.forEach((line) => {
         maxLineId = Math.max(maxLineId, Number(line.id) || 0);
       });
+      (state.bomAdditionalServices || []).forEach((line) => {
+        maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+      });
       boms.forEach((record) => {
         (record.materials || []).forEach((line) => {
           maxLineId = Math.max(maxLineId, Number(line.id) || 0);
@@ -1542,6 +1570,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           maxLineId = Math.max(maxLineId, Number(line.id) || 0);
         });
         (record.services || []).forEach((line) => {
+          maxLineId = Math.max(maxLineId, Number(line.id) || 0);
+        });
+        (record.additionalServices || []).forEach((line) => {
           maxLineId = Math.max(maxLineId, Number(line.id) || 0);
         });
       });
@@ -1601,8 +1632,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             state.currentBOM = editor.currentBOM || null;
             hydrateBomEditorMaterials(editor.bomMaterials, editor.bomOtherMaterials);
             state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
+            state.bomAdditionalServices = Array.isArray(editor.bomAdditionalServices) ? editor.bomAdditionalServices : [];
             state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
             state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
+            applyBomCostingExtras(editor);
           }
 
           syncSequencesFromData();
@@ -1636,6 +1669,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             state.bomMaterials = [];
             state.bomOtherMaterials = [];
             state.bomServices = [];
+            state.bomAdditionalServices = [];
           }
 
           const prefs = await getAppStateRecord("prefs");
@@ -2169,6 +2203,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         bomMaterials: snapshotData(state.bomMaterials),
         bomOtherMaterials: snapshotData(state.bomOtherMaterials),
         bomServices: snapshotData(state.bomServices),
+        bomAdditionalServices: snapshotData(state.bomAdditionalServices),
         bomStyleResults: snapshotData(state.bomStyleResults),
         totalMaterialCost: state.totalMaterialCost,
         totalOtherMaterialCost: state.totalOtherMaterialCost,
@@ -2177,8 +2212,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         costPer100: state.costPer100,
         costPer500: state.costPer500,
         costPer1000: state.costPer1000,
+        totalColorCost: state.totalColorCost,
+        totalOrderCost: state.totalOrderCost,
         bomProfitPercent: state.bomProfitPercent,
         bomOverheadPercent: state.bomOverheadPercent,
+        bomNumberOfColors: state.bomNumberOfColors,
+        bomColorRate: state.bomColorRate,
+        bomOrderQuantity: state.bomOrderQuantity,
+        bomOrderQuantityUOM: state.bomOrderQuantityUOM,
         saleCost: state.saleCost,
         searches: snapshotData(state.searches),
         formulaFilter: state.formulaFilter,
@@ -2221,6 +2262,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.currentBOM = snap.currentBOM;
       hydrateBomEditorMaterials(snap.bomMaterials, snap.bomOtherMaterials);
       state.bomServices = Array.isArray(snap.bomServices) ? snap.bomServices : [];
+      state.bomAdditionalServices = Array.isArray(snap.bomAdditionalServices) ? snap.bomAdditionalServices : [];
       state.bomStyleResults = Array.isArray(snap.bomStyleResults) ? snap.bomStyleResults : [];
       state.totalMaterialCost = snap.totalMaterialCost;
       state.totalOtherMaterialCost = snap.totalOtherMaterialCost;
@@ -2231,6 +2273,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.costPer1000 = snap.costPer1000;
       state.bomProfitPercent = storedBomPercent(snap.bomProfitPercent);
       state.bomOverheadPercent = storedBomPercent(snap.bomOverheadPercent);
+      applyBomCostingExtras(snap);
+      state.totalColorCost = Number.isFinite(Number(snap.totalColorCost)) ? Number(snap.totalColorCost) : 0;
+      state.totalOrderCost = snap.totalOrderCost == null || snap.totalOrderCost === ""
+        ? null
+        : Number(snap.totalOrderCost);
       state.saleCost = snap.saleCost;
       if (snap.searches) state.searches = snap.searches;
       if (snap.formulaFilter) state.formulaFilter = snap.formulaFilter;
@@ -2241,7 +2288,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.serviceRateFilter = snap.serviceRateFilter;
       state.serviceRateSort = snap.serviceRateSort;
       state.bomListFilter = snap.bomListFilter;
-      state.costCalculator = snap.costCalculator || defaultCostCalculatorState();
+      state.costCalculator = { ...defaultCostCalculatorState(), ...(snap.costCalculator || {}) };
       sanitizeNumericMasters();
       applyStoredMigrations(snap.migrations);
       migrateQtyFormulaFromMaterialDimensions({ notify: false });
@@ -2482,6 +2529,75 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const n = Number(value);
       if (!Number.isFinite(n) || n < 0) return 0;
       return roundTo(n, 2);
+    }
+
+    function storedBomOptionalNumber(value, extras) {
+      if (value === "" || value == null) return null;
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 0) return null;
+      const places = extras && extras.places != null ? extras.places : 2;
+      return roundTo(n, places);
+    }
+
+    function storedBomColorCount(value) {
+      if (value === "" || value == null) return null;
+      const n = Number(value);
+      if (!Number.isFinite(n) || n < 1 || n > 8) return null;
+      return Math.round(n);
+    }
+
+    function storedBomOrderQuantityUom(value) {
+      const uom = String(value || "").trim();
+      return FINISHED_GOOD_UOMS.includes(uom) ? uom : "pieces";
+    }
+
+    function applyBomCostingExtras(source) {
+      const src = source || {};
+      state.bomNumberOfColors = storedBomColorCount(src.bomNumberOfColors);
+      state.bomColorRate = storedBomOptionalNumber(src.bomColorRate);
+      state.bomOrderQuantity = storedBomOptionalNumber(src.bomOrderQuantity, { places: 4 });
+      state.bomOrderQuantityUOM = storedBomOrderQuantityUom(src.bomOrderQuantityUOM);
+    }
+
+    function resetBomCostingExtras() {
+      applyBomCostingExtras({});
+      state.totalColorCost = 0;
+      state.totalOrderCost = null;
+    }
+
+    function hasBomColorCost() {
+      const colors = Number(state.bomNumberOfColors);
+      const rate = Number(state.bomColorRate);
+      return Number.isFinite(colors) && colors > 0 && Number.isFinite(rate) && rate > 0;
+    }
+
+    function hasBomOrderQuantity() {
+      const qty = Number(state.bomOrderQuantity);
+      return Number.isFinite(qty) && qty > 0;
+    }
+
+    function hasCostCalculatorColorCost() {
+      const colors = Number(state.costCalculator && state.costCalculator.ccNumberOfColors);
+      const rate = Number(state.costCalculator && state.costCalculator.ccColorRate);
+      return Number.isFinite(colors) && colors > 0 && Number.isFinite(rate) && rate > 0;
+    }
+
+    function hasCostCalculatorOrderQuantity() {
+      const qty = Number(state.costCalculator && state.costCalculator.ccOrderQuantity);
+      return Number.isFinite(qty) && qty > 0;
+    }
+
+    function finishedGoodUomOptions(selected) {
+      return FINISHED_GOOD_UOMS.map((uom) => `
+        <option value="${escapeHtml(uom)}" ${uom === selected ? "selected" : ""}>${escapeHtml(uom)}</option>
+      `).join("");
+    }
+
+    function bomColorCountOptions(selected) {
+      const current = selected == null || selected === "" ? "" : String(selected);
+      return `<option value="">None</option>` + [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `
+        <option value="${n}" ${current === String(n) ? "selected" : ""}>${n}</option>
+      `).join("");
     }
 
     function showFirstValidationError(errors) {
@@ -3524,7 +3640,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getBomsUsingService(serviceId) {
       const id = Number(serviceId);
-      return boms.filter((bom) => (bom.services || []).some((line) => Number(line.serviceId) === id));
+      return boms.filter((bom) =>
+        (bom.services || []).some((line) => Number(line.serviceId) === id) ||
+        (bom.additionalServices || []).some((line) => Number(line.serviceId) === id)
+      );
     }
 
     function isServiceUsedInBoms(serviceId) {
@@ -3628,6 +3747,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           costPerPiece: 0
         })),
         services: cloneData(record.services || []).map((line) => ({
+          ...line,
+          id: nextBomLineId(),
+          quantity: 0,
+          rate: 0,
+          costPerPiece: 0
+        })),
+        additionalServices: cloneData(record.additionalServices || []).map((line) => ({
           ...line,
           id: nextBomLineId(),
           quantity: 0,
@@ -4978,8 +5104,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return line;
     }
 
+    function calculateTotalAdditionalServiceCost() {
+      return (state.bomAdditionalServices || []).reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+    }
+
     function calculateTotalServiceCost() {
-      return state.bomServices.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+      return state.bomServices.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0)
+        + calculateTotalAdditionalServiceCost();
     }
 
     function recalculateBOMCosts() {
@@ -4988,11 +5119,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomOtherMaterials = (state.bomOtherMaterials || []).map((line) => calculateOtherMaterialCost(line));
       state.totalOtherMaterialCost = roundTo(calculateTotalOtherMaterialCost(), 2);
       state.bomServices = state.bomServices.map((line) => calculateServiceCost(line));
+      state.bomAdditionalServices = (state.bomAdditionalServices || []).map((line) => {
+        if (!line.serviceId) {
+          return { ...line, error: null, quantity: 0, rate: 0, costPerPiece: 0 };
+        }
+        return calculateServiceCost(line);
+      });
       state.totalServiceCost = roundTo(calculateTotalServiceCost(), 2);
-      state.finalCostPerPiece = roundTo(state.totalMaterialCost + state.totalOtherMaterialCost + state.totalServiceCost, 2);
+      state.totalColorCost = hasBomColorCost()
+        ? roundTo(Number(state.bomNumberOfColors) * Number(state.bomColorRate), 2)
+        : 0;
+      state.finalCostPerPiece = roundTo(
+        state.totalMaterialCost + state.totalOtherMaterialCost + state.totalServiceCost + state.totalColorCost,
+        2
+      );
       state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
       state.costPer500 = roundTo(state.finalCostPerPiece * 500, 2);
       state.costPer1000 = roundTo(state.finalCostPerPiece * 1000, 2);
+      if (hasBomOrderQuantity()) {
+        // Known simplification: box/kg are multiplied as-is (no conversion to pieces).
+        state.totalOrderCost = roundTo(state.finalCostPerPiece * Number(state.bomOrderQuantity), 2);
+      } else {
+        state.totalOrderCost = null;
+      }
       const overheadPercent = Number(state.bomOverheadPercent) || 0;
       const profitPercent = Number(state.bomProfitPercent) || 0;
       const saleIntermediate = state.finalCostPerPiece + (state.finalCostPerPiece * overheadPercent / 100);
@@ -5012,7 +5161,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         services: [],
         removedServices: [],
         nextServiceKey: 1,
-        styleFormulasOpen: false
+        styleFormulasOpen: false,
+        ccNumberOfColors: null,
+        ccColorRate: null,
+        ccOrderQuantity: null,
+        ccOrderQuantityUOM: "pieces"
       };
     }
 
@@ -5632,7 +5785,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const materialCost = roundTo(layers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
       const otherMaterialCost = roundTo(otherLayers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
       const serviceCost = roundTo(services.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
-      const perPiece = roundTo(materialCost + otherMaterialCost + serviceCost, 2);
+      const colorCost = hasCostCalculatorColorCost()
+        ? roundTo(Number(state.costCalculator.ccNumberOfColors) * Number(state.costCalculator.ccColorRate), 2)
+        : 0;
+      const perPiece = roundTo(materialCost + otherMaterialCost + serviceCost + colorCost, 2);
+      const totalOrderCost = hasCostCalculatorOrderQuantity()
+        // Known simplification: box/kg are multiplied as-is (no conversion to pieces).
+        ? roundTo(perPiece * Number(state.costCalculator.ccOrderQuantity), 2)
+        : null;
       const materialsComplete = layers.length > 0 && layers.every((row) => row.rawMaterialId && !row.calc.error);
       const otherError = otherLayers.find((row) => row.otherRawMaterialId && row.calc.error);
       const serviceError = services.find((row) => row.calc.error);
@@ -5643,15 +5803,79 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         materialCost,
         otherMaterialCost,
         serviceCost,
+        colorCost,
         perPiece,
         per100: roundTo(perPiece * 100, 2),
         per1000: roundTo(perPiece * 1000, 2),
+        totalOrderCost,
         materialsComplete,
         canSave: materialsComplete && !otherError && !serviceError,
         saveError: !layers.length
           ? "Select ply and materials before saving."
           : (!materialsComplete ? "Select a valid material for each layer before saving." : (otherError ? otherError.calc.error : (serviceError ? serviceError.calc.error : "")))
       };
+    }
+
+    function applyCostCalculatorCostingExtrasFromDom() {
+      const colorsEl = document.getElementById("cc-number-of-colors");
+      const rateEl = document.getElementById("cc-color-rate");
+      const qtyEl = document.getElementById("cc-order-quantity");
+      const uomEl = document.getElementById("cc-order-quantity-uom");
+      if (!colorsEl && !rateEl && !qtyEl && !uomEl) return;
+      if (colorsEl) {
+        state.costCalculator.ccNumberOfColors = colorsEl.value
+          ? storedBomColorCount(colorsEl.value)
+          : null;
+      }
+      if (rateEl) {
+        state.costCalculator.ccColorRate = rateEl.value === ""
+          ? null
+          : storedBomOptionalNumber(rateEl.value);
+      }
+      if (qtyEl) {
+        state.costCalculator.ccOrderQuantity = qtyEl.value === ""
+          ? null
+          : storedBomOptionalNumber(qtyEl.value, { places: 4 });
+      }
+      if (uomEl) {
+        state.costCalculator.ccOrderQuantityUOM = storedBomOrderQuantityUom(uomEl.value || "pieces");
+      }
+    }
+
+    function refreshCostCalculatorFromCostingExtras(focusId, caret) {
+      applyCostCalculatorCostingExtrasFromDom();
+      updateCostCalculatorSummary();
+      renderCostCalculator();
+      refreshIcons();
+      if (focusId === "cc-color-rate" || focusId === "cc-order-quantity") {
+        restoreBomSummaryFieldFocus(focusId, caret);
+      } else if (focusId) {
+        const next = document.getElementById(focusId);
+        if (next) next.focus();
+      }
+    }
+
+    function bindCostCalculatorCostingExtras() {
+      const colorsEl = document.getElementById("cc-number-of-colors");
+      const rateEl = document.getElementById("cc-color-rate");
+      const qtyEl = document.getElementById("cc-order-quantity");
+      const uomEl = document.getElementById("cc-order-quantity-uom");
+      if (colorsEl) {
+        colorsEl.addEventListener("change", () => refreshCostCalculatorFromCostingExtras("cc-number-of-colors"));
+      }
+      if (rateEl) {
+        rateEl.addEventListener("input", (event) => {
+          refreshCostCalculatorFromCostingExtras("cc-color-rate", event.target.selectionStart);
+        });
+      }
+      if (qtyEl) {
+        qtyEl.addEventListener("input", (event) => {
+          refreshCostCalculatorFromCostingExtras("cc-order-quantity", event.target.selectionStart);
+        });
+      }
+      if (uomEl) {
+        uomEl.addEventListener("change", () => refreshCostCalculatorFromCostingExtras("cc-order-quantity-uom"));
+      }
     }
 
     function renderCostCalculatorMaterialDimHint(calc) {
@@ -5836,12 +6060,38 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${summary.layers.some((row) => row.calc.error) || summary.otherLayers.some((row) => row.calc.error) || summary.services.some((row) => row.calc.error)
                 ? `<div class="field-error" style="margin-bottom:8px;">⚠ Error calculating cost</div>`
                 : ""}
+              <div class="form-grid two cost-optional-row">
+                <div class="cost-optional-field">
+                  <label class="form-label" for="cc-number-of-colors">Number of Colors</label>
+                  <select id="cc-number-of-colors" class="full-select" aria-label="Number of colors">
+                    ${bomColorCountOptions(cc.ccNumberOfColors)}
+                  </select>
+                </div>
+                <div class="cost-optional-field">
+                  <label class="form-label" for="cc-color-rate">Rate per Color (Rs.)</label>
+                  <input class="wastage-input" type="number" min="0" max="999999.99" step="0.01" id="cc-color-rate" value="${escapeHtml(cc.ccColorRate == null || cc.ccColorRate === "" ? "" : formatDecimal(cc.ccColorRate, 2, false))}" placeholder="Optional" aria-label="Rate per color in rupees" />
+                </div>
+              </div>
+              <div class="form-grid two cost-optional-row">
+                <div class="cost-optional-field">
+                  <label class="form-label" for="cc-order-quantity">Order Quantity</label>
+                  <input class="wastage-input" type="number" min="0" max="999999" step="1" id="cc-order-quantity" value="${escapeHtml(cc.ccOrderQuantity == null || cc.ccOrderQuantity === "" ? "" : formatDecimal(cc.ccOrderQuantity, 4, false))}" placeholder="Optional" aria-label="Order quantity" />
+                </div>
+                <div class="cost-optional-field">
+                  <label class="form-label" for="cc-order-quantity-uom">Unit</label>
+                  <select id="cc-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
+                    ${finishedGoodUomOptions(cc.ccOrderQuantityUOM || "pieces")}
+                  </select>
+                </div>
+              </div>
               <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
               <div class="cc-summary-line"><span>Other Material Cost</span><strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
               <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
+              ${summary.colorCost > 0 ? `<div class="cc-summary-line"><span>Color Printing Cost</span><strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
               <div class="cc-summary-line cc-summary-total"><span>Cost Per Piece</span><strong>${formatRupees(summary.perPiece)}</strong></div>
               <div class="cc-summary-line"><span>Cost Per 100</span><strong>${formatRupees(summary.per100)}</strong></div>
               <div class="cc-summary-line"><span>Cost Per 1000</span><strong>${formatRupees(summary.per1000)}</strong></div>
+              ${summary.totalOrderCost != null ? `<div class="cc-summary-line cc-summary-total"><span>Total Order Cost</span><strong>${formatRupees(summary.totalOrderCost)}</strong></div>` : ""}
               <div class="cc-actions">
                 <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
                 <button type="button" class="btn" id="btn-cc-export-pdf">Export PDF</button>
@@ -5850,6 +6100,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </aside>
         </div>
       `;
+      bindCostCalculatorCostingExtras();
     }
 
     function createMaterialLineFromConfig(config) {
@@ -5880,13 +6131,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const rows = Array.isArray(materials) ? materials : [];
       const ply = getFinishedGoodPly(finishedGood);
       const layers = getStructuralLayers(ply);
+      const layerSet = new Set(layers);
       const claimed = new Set();
-      const slots = layers.map((layer) => {
-        const line = rows.find((item) => item.layer === layer && !claimed.has(item.id));
-        if (line) claimed.add(line.id);
-        return { layer, line: line || null };
+      const slots = layers.map((layer) => ({ layer, line: null }));
+      rows.forEach((item) => {
+        if (!item || claimed.has(item.id)) return;
+        if (!layerSet.has(item.layer)) return;
+        const slot = slots.find((entry) => entry.layer === item.layer && !entry.line);
+        if (!slot) return;
+        slot.line = item;
+        claimed.add(item.id);
       });
-      const extras = rows.filter((item) => !claimed.has(item.id));
+      const extras = rows.filter((item) => item && !claimed.has(item.id));
       return { ply, layers, slots, extras };
     }
 
@@ -6009,6 +6265,98 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshBomViews();
       persistEditorState();
       if (next.error) showNotification(next.error, "error");
+    }
+
+    function getActiveServicesForBomPicker(selectedId) {
+      const options = services.filter((item) => item.status !== "Inactive");
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getService(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
+    function createAdditionalServiceLine(serviceId, prev) {
+      const service = getService(serviceId);
+      const formulaId = getServiceDefaultFormulaId(service && service.id);
+      const hasFormula = Boolean(formulaId && getFormula(formulaId));
+      const linkedIds = getServiceLinkedDimensionIds(service);
+      const dimensionId = prev && Object.prototype.hasOwnProperty.call(prev, "dimensionId")
+        ? prev.dimensionId
+        : pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
+      return calculateServiceCost({
+        id: prev && prev.id ? prev.id : nextBomLineId(),
+        serviceId: Number(serviceId),
+        layer: (prev && prev.layer) || "Additional",
+        calculationMethod: hasFormula ? "formula" : "manual",
+        formulaId: hasFormula ? formulaId : null,
+        dimensionId: dimensionId ? Number(dimensionId) : null,
+        manualQty: hasFormula ? null : ((prev && prev.manualQty) || 1),
+        quantity: 0,
+        rate: 0,
+        costPerPiece: 0
+      });
+    }
+
+    function addBomAdditionalService() {
+      if (!getSelectedFinishedGood()) return;
+      if (!getActiveServicesForBomPicker().length) {
+        showNotification("No services found. Add Block, Film, Plate etc. under Services first.", "error");
+        refreshBomViews();
+        return;
+      }
+      state.bomAdditionalServices = (state.bomAdditionalServices || []).concat([{
+        id: nextBomLineId(),
+        serviceId: null,
+        layer: "Additional",
+        calculationMethod: "formula",
+        formulaId: null,
+        dimensionId: null,
+        manualQty: null,
+        quantity: 0,
+        rate: 0,
+        costPerPiece: 0,
+        error: null
+      }]);
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function assignBomAdditionalService(lineId, serviceId) {
+      const line = (state.bomAdditionalServices || []).find((item) => item.id === Number(lineId));
+      if (!line) return;
+      if (!serviceId) {
+        state.bomAdditionalServices = state.bomAdditionalServices.map((item) => (
+          item.id === line.id
+            ? { ...item, serviceId: null, error: null, quantity: 0, rate: 0, costPerPiece: 0 }
+            : item
+        ));
+        recalculateBOMCosts();
+        refreshBomViews();
+        persistEditorState();
+        return;
+      }
+      const next = createAdditionalServiceLine(serviceId, line);
+      state.bomAdditionalServices = state.bomAdditionalServices.map((item) => item.id === next.id ? next : item);
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+      if (next.error) showNotification(next.error, "error");
+    }
+
+    function deleteBomAdditionalService(lineId) {
+      state.bomAdditionalServices = (state.bomAdditionalServices || []).filter((item) => item.id !== Number(lineId));
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function findBomServiceLineById(lineId) {
+      const id = Number(lineId);
+      return state.bomServices.find((item) => item.id === id)
+        || (state.bomAdditionalServices || []).find((item) => item.id === id)
+        || null;
     }
 
     function warnBomOtherMaterialPlyCatalog(ply) {
@@ -6254,6 +6602,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rate: 0,
         costPerPiece: 0
       }));
+      state.bomAdditionalServices = [];
       state.bomOtherMaterials = costCalculatorOtherLayerRows(summary)
         .filter((row) => row && row.otherRawMaterialId)
         .map((row) => calculateOtherMaterialCost({
@@ -6270,6 +6619,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           rate: 0,
           costPerPiece: 0
         }));
+      state.bomNumberOfColors = storedBomColorCount(state.costCalculator.ccNumberOfColors);
+      state.bomColorRate = storedBomOptionalNumber(state.costCalculator.ccColorRate);
+      state.bomOrderQuantity = storedBomOptionalNumber(state.costCalculator.ccOrderQuantity, { places: 4 });
+      state.bomOrderQuantityUOM = storedBomOrderQuantityUom(state.costCalculator.ccOrderQuantityUOM);
       recalculateBOMCosts();
       const record = persistNewDraftFromEditor(getBomNoForFinishedGood(fg), fg.id);
       showNotification("BOM " + record.bomNo + " saved as draft from Cost Calculator");
@@ -6391,9 +6744,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <tr><td>Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.materialCost))}</td></tr>
               <tr><td>Other Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.otherMaterialCost))}</td></tr>
               <tr><td>Service Cost</td><td class="num">${escapeHtml(formatRupees(summary.serviceCost))}</td></tr>
+              ${summary.colorCost > 0 ? `<tr><td>Color Printing Cost</td><td class="num">${escapeHtml(formatRupees(summary.colorCost))}</td></tr>` : ""}
               <tr><td>Cost Per Piece</td><td class="num">${escapeHtml(formatRupees(summary.perPiece))}</td></tr>
               <tr><td>Cost Per 100</td><td class="num">${escapeHtml(formatRupees(summary.per100))}</td></tr>
               <tr><td>Cost Per 1000</td><td class="num">${escapeHtml(formatRupees(summary.per1000))}</td></tr>
+              ${summary.totalOrderCost != null ? `<tr><td>Total Order Cost</td><td class="num">${escapeHtml(formatRupees(summary.totalOrderCost))}</td></tr>` : ""}
             </tbody>
           </table>
         </section>
@@ -6485,6 +6840,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       loadSampleBomMaterials(finishedGoodId);
       loadSampleBomServices(finishedGoodId);
       state.bomOtherMaterials = [];
+      state.bomAdditionalServices = [];
       recalculateBOMCosts();
     }
 
@@ -6514,7 +6870,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function currentBomHasCalculationErrors() {
       return (state.bomMaterials || []).some((line) => line.error)
         || (state.bomOtherMaterials || []).some((line) => line.error)
-        || (state.bomServices || []).some((line) => line.error);
+        || (state.bomServices || []).some((line) => line.error)
+        || (state.bomAdditionalServices || []).some((line) => line.error);
     }
 
     function validateCurrentBom(requirePositiveCost, options) {
@@ -6541,6 +6898,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       for (const line of state.bomServices) {
         if (!getService(line.serviceId)) return "A BOM service does not reference a valid service master record.";
         if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "A BOM service formula is missing or invalid. Set a formula on the active Service Rate.";
+      }
+
+      for (const line of state.bomAdditionalServices || []) {
+        if (!line.serviceId) continue;
+        if (!getService(line.serviceId)) return "An additional material does not reference a valid service master record.";
+        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "An additional material service formula is missing or invalid. Set a formula on the active Service Rate.";
       }
 
       if (currentBomHasCalculationErrors()) {
@@ -6574,6 +6937,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         materials: state.bomMaterials,
         otherMaterials: state.bomOtherMaterials,
         services: state.bomServices,
+        additionalServices: state.bomAdditionalServices,
         totalMaterialCost: state.totalMaterialCost,
         totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
@@ -6581,8 +6945,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         costPer100: state.costPer100,
         costPer500: state.costPer500,
         costPer1000: state.costPer1000,
+        totalColorCost: state.totalColorCost,
+        totalOrderCost: state.totalOrderCost,
         bomProfitPercent: state.bomProfitPercent,
         bomOverheadPercent: state.bomOverheadPercent,
+        bomNumberOfColors: state.bomNumberOfColors,
+        bomColorRate: state.bomColorRate,
+        bomOrderQuantity: state.bomOrderQuantity,
+        bomOrderQuantityUOM: state.bomOrderQuantityUOM,
         saleCost: state.saleCost,
         createdAt: state.currentBOM.createdAt || now,
         updatedAt: now
@@ -6595,8 +6965,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       syncEditorBomMeta(copy);
       hydrateBomEditorMaterials(copy.materials, copy.otherMaterials);
       state.bomServices = cloneData(copy.services || []);
+      state.bomAdditionalServices = cloneData(copy.additionalServices || []);
       state.bomProfitPercent = storedBomPercent(copy.bomProfitPercent ?? copy.profitPercent);
       state.bomOverheadPercent = storedBomPercent(copy.bomOverheadPercent ?? copy.overheadPercent);
+      applyBomCostingExtras(copy);
       state.searches.bomFinishedGood = "";
       state.fgSelectorOpen = false;
       state.workflowError = "";
@@ -6649,8 +7021,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomMaterials = lines.materials;
       state.bomOtherMaterials = lines.otherMaterials || [];
       state.bomServices = lines.services;
+      state.bomAdditionalServices = lines.additionalServices || [];
       state.bomProfitPercent = storedBomPercent(original.bomProfitPercent ?? original.profitPercent);
       state.bomOverheadPercent = storedBomPercent(original.bomOverheadPercent ?? original.overheadPercent);
+      applyBomCostingExtras(original);
       recalculateBOMCosts();
 
       const now = new Date().toISOString();
@@ -6670,6 +7044,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         materials: state.bomMaterials,
         otherMaterials: state.bomOtherMaterials,
         services: state.bomServices,
+        additionalServices: state.bomAdditionalServices,
         totalMaterialCost: state.totalMaterialCost,
         totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
@@ -6677,8 +7052,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         costPer100: state.costPer100,
         costPer500: state.costPer500,
         costPer1000: state.costPer1000,
+        totalColorCost: state.totalColorCost,
+        totalOrderCost: state.totalOrderCost,
         bomProfitPercent: state.bomProfitPercent,
         bomOverheadPercent: state.bomOverheadPercent,
+        bomNumberOfColors: state.bomNumberOfColors,
+        bomColorRate: state.bomColorRate,
+        bomOrderQuantity: state.bomOrderQuantity,
+        bomOrderQuantityUOM: state.bomOrderQuantityUOM,
         saleCost: state.saleCost,
         createdAt: now,
         updatedAt: now
@@ -7841,11 +8222,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         || otherMaterialDimensions.some((item) => bindingUsesFormula(item.formulaId, formula));
       const usedInEditor = state.bomMaterials.some((line) => lineUsesFormula(line, formula)) ||
         (state.bomOtherMaterials || []).some((line) => lineUsesFormula(line, formula)) ||
-        state.bomServices.some((line) => lineUsesFormula(line, formula));
+        state.bomServices.some((line) => lineUsesFormula(line, formula)) ||
+        (state.bomAdditionalServices || []).some((line) => lineUsesFormula(line, formula));
       const usedInSaved = boms.some((bom) =>
         (bom.materials || []).some((line) => lineUsesFormula(line, formula)) ||
         (bom.otherMaterials || []).some((line) => lineUsesFormula(line, formula)) ||
-        (bom.services || []).some((line) => lineUsesFormula(line, formula))
+        (bom.services || []).some((line) => lineUsesFormula(line, formula)) ||
+        (bom.additionalServices || []).some((line) => lineUsesFormula(line, formula))
       );
       return usedInMasters || usedInEditor || usedInSaved;
     }
@@ -8103,6 +8486,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomMaterials = [];
       state.bomOtherMaterials = [];
       state.bomServices = [];
+      state.bomAdditionalServices = [];
       state.bomStyleResults = [];
       state.totalMaterialCost = 0;
       state.totalOtherMaterialCost = 0;
@@ -8113,6 +8497,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.costPer1000 = 0;
       state.bomProfitPercent = 0;
       state.bomOverheadPercent = 0;
+      resetBomCostingExtras();
       state.saleCost = 0;
       state.searches.bomFinishedGood = "";
       state.fgSelectorOpen = false;
@@ -8140,6 +8525,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.fgSelectorOpen = false;
       state.bomProfitPercent = 0;
       state.bomOverheadPercent = 0;
+      resetBomCostingExtras();
       closeModal();
       loadSampleBom(item.id);
       warnBomOtherMaterialPlyCatalog(getFinishedGoodPly(item));
@@ -8373,6 +8759,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const extra = Boolean(options.extra);
       const index = options.index;
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
+      const missingMaterialId = line && line.rawMaterialId && !material ? line.rawMaterialId : null;
       const formula = line
         ? (line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId))
         : null;
@@ -8410,10 +8797,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <label class="form-label" for="${selectId}">Material</label>
           <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} material">
             <option value="">Select Material</option>
+            ${missingMaterialId ? `<option value="${escapeHtml(String(missingMaterialId))}" selected>Missing material (ID: ${escapeHtml(String(missingMaterialId))})</option>` : ""}
             ${materials.map((item) => `
               <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
+          ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${unlinked ? `<p class="stat-hint">This material is not linked in Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
@@ -8462,21 +8851,89 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         extra: true,
         index
       })).join("");
+      const additionalServiceCards = (state.bomAdditionalServices || []).map((line, index) => (
+        renderBomAdditionalServiceCard(line, index)
+      )).join("");
+      const activeServices = getActiveServicesForBomPicker();
+      const extraMaterialCost = layout.extras.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+      const additionalSectionCost = extraMaterialCost + calculateTotalAdditionalServiceCost();
+      const additionalHasErrors = layout.extras.some((line) => line.error)
+        || (state.bomAdditionalServices || []).some((line) => line.error);
       const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
       root.innerHTML = `
         <section class="card cc-card">
           <div class="card-body">
             <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
-            <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including extras.</p>
+            <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
             ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
-            ${layout.extras.length ? `
-              <div class="section-title" style="margin:16px 0 8px;">Additional materials</div>
-              <p class="stat-hint" style="margin:0 0 12px;">These lines are not structural ply slots (legacy or extra). They are kept so saved BOM data is not dropped.</p>
-              ${extraCards}
-            ` : ""}
+            <div class="section-title" style="margin:16px 0 8px;">Additional materials</div>
+            <p class="stat-hint" style="margin:0 0 12px;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
+            ${!activeServices.length ? `<p class="stat-hint">No services found. Add Block, Film, Plate etc. under Services first.</p>` : ""}
+            ${extraCards}
+            ${additionalServiceCards}
+            <div style="margin:12px 0;">
+              <button type="button" class="btn btn-sm" id="btn-add-additional-service" ${activeServices.length ? "" : "disabled"}>
+                <i data-lucide="plus"></i> Add additional service
+              </button>
+            </div>
+            <div class="cc-total-line"><span>Total Additional Materials Cost</span><strong>${additionalHasErrors ? "Error" : formatRupees(additionalSectionCost)}</strong></div>
             <div class="cc-total-line"><span>Total Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
         </section>
+      `;
+    }
+
+    function renderBomAdditionalServiceCard(line, index) {
+      const service = line ? getService(line.serviceId) : null;
+      const missingServiceId = line && line.serviceId && !service ? line.serviceId : null;
+      const formula = line && line.calculationMethod === "formula"
+        ? getFormula(getServiceDefaultFormulaId(service && service.id))
+        : getFormula(line && line.formulaId);
+      const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
+      const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
+      const options = getActiveServicesForBomPicker(line && line.serviceId);
+      const title = service ? service.name : (line && line.layer ? line.layer : "Additional");
+      const selectId = "bom-additional-svc-" + (line && line.id != null ? line.id : index);
+      const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
+      return `
+        <div class="cc-layer">
+          <div class="cc-layer-head">
+            <div class="cc-layer-title">${escapeHtml(title)} <span class="badge badge-muted">Extra</span></div>
+            ${line ? `
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-additional-service="${line.id}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            ` : ""}
+          </div>
+          <label class="form-label" for="${selectId}">Service</label>
+          <select id="${selectId}" class="full-select" data-bom-additional-service="${line ? line.id : ""}" aria-label="Additional service">
+            <option value="">Select Service</option>
+            ${missingServiceId ? `<option value="${escapeHtml(String(missingServiceId))}" selected>Missing service (ID: ${escapeHtml(String(missingServiceId))})</option>` : ""}
+            ${options.map((item) => `
+              <option value="${item.id}" ${line && Number(line.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+            `).join("")}
+          </select>
+          ${missingServiceId ? `<p class="stat-hint">Missing service (ID: ${escapeHtml(String(missingServiceId))}). Re-select a valid service to continue.</p>` : ""}
+          ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
+          ${line && line.serviceId ? `
+            <div class="cc-metrics">
+              <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
+              <div><span>Formula</span><strong class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("service", line.id, "Explain quantity")}</strong></div>
+              <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
+              <div><span>Qty / Piece</span><strong>${line.error ? "—" : formatQty(line.quantity)}</strong></div>
+              <div>
+                <span>Rate</span>
+                <strong>${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</strong>
+              </div>
+              <div><span>Cost / Piece</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
+            </div>
+          ` : `<p class="stat-hint">Select a service. Cost is calculated with the Services engine (no wastage).</p>`}
+        </div>
       `;
     }
 
@@ -8689,16 +9146,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const root = document.getElementById("bom-cost-root");
       if (!root) return;
       const hasCalcErrors = currentBomHasCalculationErrors();
+      const showColorCost = hasBomColorCost();
+      const showOrderCost = hasBomOrderQuantity();
       const total = Number(state.finalCostPerPiece) || 0;
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
       const otherPct = total > 0 ? roundTo((Number(state.totalOtherMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
+      const colorPct = showColorCost && total > 0 ? roundTo((Number(state.totalColorCost) / total) * 100, 1) : 0;
+      const colorRateValue = state.bomColorRate == null || state.bomColorRate === ""
+        ? ""
+        : formatDecimal(state.bomColorRate, 2, false);
+      const orderQtyValue = state.bomOrderQuantity == null || state.bomOrderQuantity === ""
+        ? ""
+        : formatDecimal(state.bomOrderQuantity, 4, false);
       root.innerHTML = `
         <div class="card cost-summary">
           <div class="card-body">
             <div class="section-kicker">Cost Summary (PKR)</div>
             <div class="section-title" style="margin-bottom:12px;">Per piece roll-up</div>
             ${hasCalcErrors ? `<div class="field-error" style="margin-bottom:12px;">⚠ Error calculating cost</div>` : ""}
+            <div class="cost-optional-row">
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
+                <select id="bom-number-of-colors" class="full-select" aria-label="Number of colors">
+                  ${bomColorCountOptions(state.bomNumberOfColors)}
+                </select>
+              </div>
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
+                <input class="wastage-input" type="number" min="0.01" max="999999.99" step="0.01" id="bom-color-rate" value="${escapeHtml(colorRateValue)}" placeholder="Optional" aria-label="Rate per color in rupees" />
+              </div>
+            </div>
+            <div class="cost-optional-row">
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-order-quantity">Order Quantity</label>
+                <input class="wastage-input" type="number" min="0.0001" max="999999" step="0.0001" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" placeholder="Optional" aria-label="Order quantity" />
+              </div>
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-order-quantity-uom">UOM</label>
+                <select id="bom-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
+                  ${finishedGoodUomOptions(state.bomOrderQuantityUOM || "pieces")}
+                </select>
+              </div>
+            </div>
             <div class="cost-row">
               <span>Material Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
@@ -8711,6 +9201,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <span>Service Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
             </div>
+            ${showColorCost ? `
+            <div class="cost-row">
+              <span>Color Printing Cost</span>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalColorCost)}</strong>
+            </div>
+            ` : ""}
             <div class="cost-row cost-final">
               <span>Final Cost/Piece</span>
               <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.finalCostPerPiece)}</strong>
@@ -8727,6 +9223,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <span>Cost per 1,000</span>
               <strong>${formatCurrency(state.costPer1000)}</strong>
             </div>
+            ${showOrderCost ? `
+            <div class="cost-row cost-final">
+              <span>Total Order Cost</span>
+              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.totalOrderCost)}</strong>
+            </div>
+            ` : ""}
             <div class="cost-row">
               <span>Profit %</span>
               <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" />
@@ -8744,11 +9246,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
                 <div class="cost-bar-other" style="width:${escapeHtml(otherPct)}%;"></div>
                 <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
+                ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(colorPct)}%;"></div>` : ""}
               </div>
-              <div class="cost-legend">
+              <div class="cost-legend${showColorCost ? " cost-legend-wide" : ""}">
                 <span>Material ${formatNumber(materialPct, 1)}%</span>
                 <span>Other ${formatNumber(otherPct, 1)}%</span>
                 <span>Service ${formatNumber(servicePct, 1)}%</span>
+                ${showColorCost ? `<span>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
               </div>
             </div>
             <p class="stat-hint">Final cost is Material Cost + Other Material Cost + Service Cost in Pakistani Rupees (Rs.). Rates come from master data after unit conversion.</p>
@@ -9223,7 +9727,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="fg-uom">UOM</label>
               <select id="fg-uom" class="full-select ${errors.uom ? "input-invalid" : ""}">
-                ${["pieces", "kg", "box"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+                ${finishedGoodUomOptions(draft.uom)}
               </select>
             </div>
             <div>
@@ -12509,7 +13013,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const isService = kind === "service";
       const isOther = kind === "other-material";
       const line = isService
-        ? state.bomServices.find((item) => item.id === Number(lineId))
+        ? findBomServiceLineById(lineId)
         : isOther
           ? (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId))
           : state.bomMaterials.find((item) => item.id === Number(lineId));
@@ -13699,6 +14203,66 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       persistEditorState();
     }
 
+    function restoreBomSummaryFieldFocus(fieldId, caret) {
+      const next = document.getElementById(fieldId);
+      if (!next) return;
+      next.focus();
+      try {
+        const pos = Math.min(Number(caret) || next.value.length, next.value.length);
+        next.setSelectionRange(pos, pos);
+      } catch (error) {
+        /* number inputs may not support selection ranges */
+      }
+    }
+
+    function updateBomNumberOfColors(value) {
+      state.bomNumberOfColors = storedBomColorCount(value);
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function updateBomColorRate(value) {
+      if (value === "") {
+        state.bomColorRate = null;
+      } else {
+        const parsed = parseByRule(value, "rate");
+        if (!parsed.ok) {
+          showNotification(parsed.error, "error");
+          refreshBomViews();
+          return;
+        }
+        state.bomColorRate = parsed.value;
+      }
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function updateBomOrderQuantity(value) {
+      if (value === "") {
+        state.bomOrderQuantity = null;
+      } else {
+        const parsed = parseByRule(value, "quantity");
+        if (!parsed.ok) {
+          showNotification(parsed.error, "error");
+          refreshBomViews();
+          return;
+        }
+        state.bomOrderQuantity = parsed.value;
+      }
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
+    function updateBomOrderQuantityUom(value) {
+      state.bomOrderQuantityUOM = storedBomOrderQuantityUom(value);
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+    }
+
     function updateMaterialDraftFromEvent(target) {
       if (!state.modal.draft) return false;
       const draft = state.modal.draft;
@@ -13971,7 +14535,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceBreakdownModal() {
-      const line = state.bomServices.find((item) => item.id === state.modal.lineId);
+      const line = findBomServiceLineById(state.modal.lineId);
       const fg = getSelectedFinishedGood();
       if (!line || !fg) {
         return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
@@ -14349,16 +14913,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const fieldId = event.target.id;
           const caret = event.target.selectionStart;
           updateBomMarginPercent(fieldId === "bom-profit-percent" ? "profit" : "overhead", event.target.value);
-          const next = document.getElementById(fieldId);
-          if (next) {
-            next.focus();
-            try {
-              const pos = Math.min(Number(caret) || next.value.length, next.value.length);
-              next.setSelectionRange(pos, pos);
-            } catch (error) {
-              /* number inputs may not support selection ranges */
-            }
-          }
+          restoreBomSummaryFieldFocus(fieldId, caret);
+        } else if (event.target.id === "bom-color-rate") {
+          const caret = event.target.selectionStart;
+          updateBomColorRate(event.target.value);
+          restoreBomSummaryFieldFocus("bom-color-rate", caret);
+        } else if (event.target.id === "bom-order-quantity") {
+          const caret = event.target.selectionStart;
+          updateBomOrderQuantity(event.target.value);
+          restoreBomSummaryFieldFocus("bom-order-quantity", caret);
         }
       });
 
@@ -14411,6 +14974,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           persistPrefs();
         }
+        if (event.target.id === "bom-number-of-colors") {
+          updateBomNumberOfColors(event.target.value);
+        }
+        if (event.target.id === "bom-order-quantity-uom") {
+          updateBomOrderQuantityUom(event.target.value);
+        }
         if (event.target.id === "cc-style") {
           handleCostCalculatorStyleChange(event.target.value);
           renderCostCalculator();
@@ -14461,6 +15030,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const bomExtraSelect = event.target.dataset && event.target.dataset.bomExtraMaterial;
         if (bomExtraSelect) {
           assignBomExtraMaterial(bomExtraSelect, event.target.value);
+        }
+        const bomAdditionalSelect = event.target.dataset && event.target.dataset.bomAdditionalService;
+        if (bomAdditionalSelect) {
+          assignBomAdditionalService(bomAdditionalSelect, event.target.value);
         }
         const bomOtherLayerSelect = event.target.dataset && event.target.dataset.bomOtherLayerMaterial;
         if (bomOtherLayerSelect) {
@@ -14771,6 +15344,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
+        if (event.target.closest("#btn-add-additional-service")) {
+          addBomAdditionalService();
+          return;
+        }
+
         const editBtn = event.target.closest("[data-edit-line]");
         if (editBtn) {
           openMaterialModal(editBtn.dataset.editLine);
@@ -14828,6 +15406,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const breakdownService = event.target.closest("[data-breakdown-service]");
         if (breakdownService) {
           openServiceBreakdownModal(breakdownService.dataset.breakdownService);
+          return;
+        }
+
+        const breakdownAdditional = event.target.closest("[data-breakdown-additional-service]");
+        if (breakdownAdditional) {
+          openServiceBreakdownModal(breakdownAdditional.dataset.breakdownAdditionalService);
+          return;
+        }
+
+        const deleteAdditional = event.target.closest("[data-delete-additional-service]");
+        if (deleteAdditional) {
+          deleteBomAdditionalService(deleteAdditional.dataset.deleteAdditionalService);
           return;
         }
       });
