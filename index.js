@@ -355,6 +355,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         value: ENGINE_CONSTANTS.CONVERSION_FACTOR,
         formula: "1 / (SQ_IN_TO_SQ_M × GRAM_TO_KG)",
         description: "Fixed. Combined unit conversion factor used by the formula engine."
+      },
+      {
+        code: "NO_OF_COLOR",
+        value: 1,
+        formula: "1",
+        description: "Fixed. Number of colors."
+      },
+      {
+        code: "ORDER_QTY",
+        value: 1,
+        formula: "1",
+        description: "Fixed. Pieces to manufacture."
       }
     ];
 
