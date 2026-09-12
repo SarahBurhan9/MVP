@@ -8657,21 +8657,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         extra: false,
         index
       })).join("");
-      const extraCards = layout.extras.map((line, index) => renderBomMaterialCard({
-        layer: line.layer || "Additional",
-        line,
-        ply: layout.ply,
-        extra: true,
-        index
-      })).join("");
-      const additionalServiceCards = (state.bomAdditionalServices || []).map((line, index) => (
-        renderBomAdditionalServiceCard(line, index)
-      )).join("");
-      const activeServices = getActiveServicesForBomPicker();
-      const extraMaterialCost = layout.extras.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
-      const additionalSectionCost = extraMaterialCost + calculateTotalAdditionalServiceCost();
-      const additionalHasErrors = layout.extras.some((line) => line.error)
-        || (state.bomAdditionalServices || []).some((line) => line.error);
       const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
       root.innerHTML = `
         <section class="card cc-card">
@@ -8679,17 +8664,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
             <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
             ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
-            <div class="section-title" style="margin:16px 0 8px;">Additional materials</div>
-            <p class="stat-hint" style="margin:0 0 12px;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
-            ${!activeServices.length ? `<p class="stat-hint">No services found. Add Block, Film, Plate etc. under Services first.</p>` : ""}
-            ${extraCards}
-            ${additionalServiceCards}
-            <div style="margin:12px 0;">
-              <button type="button" class="btn btn-sm" id="btn-add-additional-service" ${activeServices.length ? "" : "disabled"}>
-                <i data-lucide="plus"></i> Add additional service
-              </button>
-            </div>
-            <div class="cc-total-line"><span>Total Additional Materials Cost</span><strong>${additionalHasErrors ? "Error" : formatRupees(additionalSectionCost)}</strong></div>
             <div class="cc-total-line"><span>Total Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
         </section>
@@ -8846,6 +8820,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         extra: true,
         index
       })).join("");
+      const materialLayout = getBomMaterialSlotLayout(fg, state.bomMaterials);
+      const leftoverMaterialCards = materialLayout.extras.map((line, index) => renderBomMaterialCard({
+        layer: line.layer || "Additional",
+        line,
+        ply: materialLayout.ply,
+        extra: true,
+        index
+      })).join("");
+      const additionalServiceCards = (state.bomAdditionalServices || []).map((line, index) => (
+        renderBomAdditionalServiceCard(line, index)
+      )).join("");
+      const activeServices = getActiveServicesForBomPicker();
+      const extraMaterialCost = materialLayout.extras.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+      const additionalSectionCost = extraMaterialCost + calculateTotalAdditionalServiceCost();
+      const additionalHasErrors = materialLayout.extras.some((line) => line.error)
+        || (state.bomAdditionalServices || []).some((line) => line.error);
       const hasCalcErrors = (state.bomOtherMaterials || []).some((line) => line.error);
       root.innerHTML = `
         <section class="card cc-card">
@@ -8859,6 +8849,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${extraCards}
             ` : ""}
             <div class="cc-total-line"><span>Total Other Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalOtherMaterialCost)}</strong></div>
+            <div class="section-title" style="margin:16px 0 8px;">Additional materials</div>
+            <p class="stat-hint" style="margin:0 0 12px;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
+            ${!activeServices.length ? `<p class="stat-hint">No services found. Add Block, Film, Plate etc. under Services first.</p>` : ""}
+            ${leftoverMaterialCards}
+            ${additionalServiceCards}
+            <div style="margin:12px 0;">
+              <button type="button" class="btn btn-sm" id="btn-add-additional-service" ${activeServices.length ? "" : "disabled"}>
+                <i data-lucide="plus"></i> Add additional service
+              </button>
+            </div>
+            <div class="cc-total-line"><span>Total Additional Materials Cost</span><strong>${additionalHasErrors ? "Error" : formatRupees(additionalSectionCost)}</strong></div>
           </div>
         </section>
       `;
