@@ -11326,8 +11326,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const editing = state.modal.mode === "edit";
-      const tab = state.modal.styleTab || "info";
-      const styleVars = editing && draft.id ? getStyleVariables(draft.id) : [];
+      const tab = state.modal.styleTab === "formulas" ? "formulas" : "info";
       const infoForm = `
         <div class="form-grid">
           <div>
@@ -11348,21 +11347,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
         </div>
       `;
-      const varRows = styleVars.length
-        ? styleVars.map((row) => {
-            const catalog = getFormulaVariableByCode(row.variableCode);
-            return `
-              <tr>
-                <td class="mono">${escapeHtml(row.variableCode)}</td>
-                <td>${escapeHtml(catalog ? catalog.name : row.variableCode)}</td>
-                <td>${escapeHtml(String(normalizeStylePly(row.ply, 3)))}</td>
-                <td>${escapeHtml(formatDecimal(row.value, 4, false))}</td>
-                <td>${escapeHtml(row.unit || (catalog && catalog.unit) || "")}</td>
-                ${masterRowActions("data-edit-style-var", row.id, "data-delete-style-var", row.id)}
-              </tr>
-            `;
-          }).join("")
-        : emptyRow(6, "No variables added to this style yet.");
       const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
       const linkedIds = new Set(linkedFormulas.map((row) => Number(row.formulaId)));
       const availableFormulas = getStyleTypeFormulas().filter((item) => !linkedIds.has(item.id));
@@ -11420,29 +11404,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </table>
         </div>
       `;
-      const variablesForm = `
-        <div class="section-head">
-          <div class="section-kicker">Style variables</div>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-add-style-variable">
-            <i data-lucide="plus"></i> Add Variable to Style
-          </button>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table" style="min-width:640px;">
-            <thead>
-              <tr>
-                <th>Variable Code</th>
-                <th>Variable Name</th>
-                <th>Ply</th>
-                <th>Value</th>
-                <th>Unit</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>${varRows}</tbody>
-          </table>
-        </div>
-      `;
       return `
         <div class="modal-header">
           <div>
@@ -11455,11 +11416,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${editing ? `
             <div class="section-tabs">
               <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-style-tab="info">Style Info</button>
-              <button type="button" class="section-tab ${tab === "variables" ? "active" : ""}" data-style-tab="variables">Variables</button>
               <button type="button" class="section-tab ${tab === "formulas" ? "active" : ""}" data-style-tab="formulas">Style Formulas</button>
             </div>
-            ${tab === "variables" ? variablesForm : tab === "formulas" ? formulasForm : infoForm}
-          ` : `${infoForm}${renderPendingStyleVariables()}`}
+            ${tab === "formulas" ? formulasForm : infoForm}
+          ` : `${infoForm}`}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
@@ -15665,7 +15625,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         const styleTab = event.target.closest("[data-style-tab]");
         if (styleTab) {
-          state.modal.styleTab = styleTab.dataset.styleTab;
+          state.modal.styleTab = styleTab.dataset.styleTab === "formulas" ? "formulas" : "info";
           renderModal();
           refreshIcons();
           return;
