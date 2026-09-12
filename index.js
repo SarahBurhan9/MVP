@@ -388,8 +388,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         description: "Fixed. Color cost is colors × rate per color."
       },
       finalCost: {
-        formula: "Materials + Other Materials + Services + Color Printing",
-        description: "Fixed. Sum of material, other material, service, and color printing costs."
+        formula: "Materials + Services + Finishing Services",
+        description: "Fixed. Sum of material, service, and finishing service costs. Other materials are additional cost and are not included. Color printing is added when entered."
+      },
+      finalCostCalculator: {
+        formula: "Materials + Services + Color Printing",
+        description: "Fixed. Sum of material and service costs. Other materials are additional cost and are not included. Color printing is added when entered."
+      },
+      additionalCost: {
+        formula: "Other Materials",
+        description: "Fixed. Other materials are additional cost and are not included in Final Cost/Piece."
+      },
+      finishingCost: {
+        formula: "Materials + Services for selected finishing service",
+        description: "Fixed. Same materials and services calculated for the selected finishing service. Zero when none is selected."
       },
       per100: {
         formula: "Final Cost/Piece × 100",
@@ -503,6 +515,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       totalMaterialCost: 0,
       totalOtherMaterialCost: 0,
       totalServiceCost: 0,
+      totalFinishingServiceCost: 0,
       finalCostPerPiece: 0,
       costPer100: 0,
       costPer500: 0,
@@ -1994,6 +2007,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         totalMaterialCost: state.totalMaterialCost,
         totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
+        totalFinishingServiceCost: state.totalFinishingServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
         costPer500: state.costPer500,
@@ -2057,6 +2071,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.totalMaterialCost = snap.totalMaterialCost;
       state.totalOtherMaterialCost = snap.totalOtherMaterialCost;
       state.totalServiceCost = snap.totalServiceCost;
+      state.totalFinishingServiceCost = Number.isFinite(Number(snap.totalFinishingServiceCost))
+        ? Number(snap.totalFinishingServiceCost)
+        : 0;
       state.finalCostPerPiece = snap.finalCostPerPiece;
       state.costPer100 = snap.costPer100;
       state.costPer500 = snap.costPer500;
@@ -4938,6 +4955,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         + calculateTotalAdditionalServiceCost();
     }
 
+    function sumFinishingServiceLineCost(lines, calculateLine, hasId) {
+      return (lines || []).reduce((sum, line) => {
+        if (!hasId(line)) return sum;
+        return sum + Number(calculateLine(line).costPerPiece || 0);
+      }, 0);
+    }
+
+    function calculateTotalFinishingServiceCost() {
+      const finishingService = getSelectedFinishingService();
+      if (!finishingService) return 0;
+      const context = { finishedGood: finishingService };
+      const materialCost = sumFinishingServiceLineCost(
+        state.bomMaterials,
+        (line) => calculateMaterialCost(line, context),
+        (line) => Boolean(line.rawMaterialId)
+      );
+      const serviceCost = sumFinishingServiceLineCost(
+        state.bomServices,
+        (line) => calculateServiceCost(line, context),
+        (line) => Boolean(line.serviceId)
+      );
+      const additionalCost = sumFinishingServiceLineCost(
+        state.bomAdditionalServices,
+        (line) => calculateServiceCost(line, context),
+        (line) => Boolean(line.serviceId)
+      );
+      return materialCost + serviceCost + additionalCost;
+    }
+
     function recalculateBOMCosts() {
       state.bomMaterials = state.bomMaterials.map((line) => calculateMaterialCost(line));
       state.totalMaterialCost = roundTo(calculateTotalMaterialCost(), 2);
@@ -4951,11 +4997,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return calculateServiceCost(line);
       });
       state.totalServiceCost = roundTo(calculateTotalServiceCost(), 2);
+      state.totalFinishingServiceCost = roundTo(calculateTotalFinishingServiceCost(), 2);
       state.totalColorCost = hasBomColorCost()
         ? roundTo(Number(state.bomNumberOfColors) * Number(state.bomColorRate), 2)
         : 0;
       state.finalCostPerPiece = roundTo(
-        state.totalMaterialCost + state.totalOtherMaterialCost + state.totalServiceCost + state.totalColorCost,
+        state.totalMaterialCost + state.totalServiceCost + state.totalFinishingServiceCost + state.totalColorCost,
         2
       );
       state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
@@ -5613,7 +5660,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const colorCost = hasCostCalculatorColorCost()
         ? roundTo(Number(state.costCalculator.ccNumberOfColors) * Number(state.costCalculator.ccColorRate), 2)
         : 0;
-      const perPiece = roundTo(materialCost + otherMaterialCost + serviceCost + colorCost, 2);
+      const perPiece = roundTo(materialCost + serviceCost + colorCost, 2);
       const totalOrderCost = hasCostCalculatorOrderQuantity()
         // Known simplification: box/kg are multiplied as-is (no conversion to pieces).
         ? roundTo(perPiece * Number(state.costCalculator.ccOrderQuantity), 2)
@@ -5911,13 +5958,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </div>
               </div>
               <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
-              <div class="cc-summary-line"><span>Other Material Cost</span><strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
               <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
               ${summary.colorCost > 0 ? `<div class="cc-summary-line">${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}<strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
-              <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Cost Per Piece", FIXED_COST_FORMULAS.finalCost.formula, FIXED_COST_FORMULAS.finalCost.description)}<strong>${formatRupees(summary.perPiece)}</strong></div>
+              <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Cost Per Piece", FIXED_COST_FORMULAS.finalCostCalculator.formula, FIXED_COST_FORMULAS.finalCostCalculator.description)}<strong>${formatRupees(summary.perPiece)}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Cost Per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}<strong>${formatRupees(summary.per100)}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Cost Per 1000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}<strong>${formatRupees(summary.per1000)}</strong></div>
               ${summary.totalOrderCost != null ? `<div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Total Order Cost", FIXED_COST_FORMULAS.orderCost.formula, FIXED_COST_FORMULAS.orderCost.description)}<strong>${formatRupees(summary.totalOrderCost)}</strong></div>` : ""}
+              <div class="cc-summary-line">${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}<strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
               <div class="cc-actions">
                 <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
                 <button type="button" class="btn" id="btn-cc-export-pdf">Export PDF</button>
@@ -6544,13 +6591,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <table class="cc-pdf-totals">
             <tbody>
               <tr><td>Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.materialCost))}</td></tr>
-              <tr><td>Other Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.otherMaterialCost))}</td></tr>
               <tr><td>Service Cost</td><td class="num">${escapeHtml(formatRupees(summary.serviceCost))}</td></tr>
               ${summary.colorCost > 0 ? `<tr><td>Color Printing Cost</td><td class="num">${escapeHtml(formatRupees(summary.colorCost))}</td></tr>` : ""}
               <tr><td>Cost Per Piece</td><td class="num">${escapeHtml(formatRupees(summary.perPiece))}</td></tr>
               <tr><td>Cost Per 100</td><td class="num">${escapeHtml(formatRupees(summary.per100))}</td></tr>
               <tr><td>Cost Per 1000</td><td class="num">${escapeHtml(formatRupees(summary.per1000))}</td></tr>
               ${summary.totalOrderCost != null ? `<tr><td>Total Order Cost</td><td class="num">${escapeHtml(formatRupees(summary.totalOrderCost))}</td></tr>` : ""}
+              <tr><td>Additional Cost</td><td class="num">${escapeHtml(formatRupees(summary.otherMaterialCost))}</td></tr>
             </tbody>
           </table>
         </section>
@@ -6748,6 +6795,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         totalMaterialCost: state.totalMaterialCost,
         totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
+        totalFinishingServiceCost: state.totalFinishingServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
         costPer500: state.costPer500,
@@ -6861,6 +6909,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         totalMaterialCost: state.totalMaterialCost,
         totalOtherMaterialCost: state.totalOtherMaterialCost,
         totalServiceCost: state.totalServiceCost,
+        totalFinishingServiceCost: state.totalFinishingServiceCost,
         finalCostPerPiece: state.finalCostPerPiece,
         costPer100: state.costPer100,
         costPer500: state.costPer500,
@@ -8350,6 +8399,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.totalMaterialCost = 0;
       state.totalOtherMaterialCost = 0;
       state.totalServiceCost = 0;
+      state.totalFinishingServiceCost = 0;
       state.finalCostPerPiece = 0;
       state.costPer100 = 0;
       state.costPer500 = 0;
@@ -9104,9 +9154,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (state.currentBOM) state.currentBOM.finishingServiceId = item.id;
       state.searches.bomFinishingService = "";
       state.fsSelectorOpen = false;
+      recalculateBOMCosts();
       persistEditorState();
-      renderFinishingServicesSection();
-      refreshIcons();
+      refreshBomViews();
     }
 
     function showFsComboList() {
@@ -9192,8 +9242,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const showOrderCost = hasBomOrderQuantity();
       const total = hasCalcErrors ? 0 : (Number(state.finalCostPerPiece) || 0);
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
-      const otherPct = total > 0 ? roundTo((Number(state.totalOtherMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
+      const finishingPct = total > 0 ? roundTo((Number(state.totalFinishingServiceCost) / total) * 100, 1) : 0;
       const colorPct = showColorCost && total > 0 ? roundTo((Number(state.totalColorCost) / total) * 100, 1) : 0;
       const colorRateValue = state.bomColorRate == null || state.bomColorRate === ""
         ? ""
@@ -9236,12 +9286,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
             </div>
             <div class="cost-row">
-              <span>Other Material Cost</span>
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalOtherMaterialCost)}</strong>
-            </div>
-            <div class="cost-row">
               <span>Service Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
+            </div>
+            <div class="cost-row">
+              ${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalFinishingServiceCost)}</strong>
             </div>
             ${showColorCost ? `
             <div class="cost-row">
@@ -9272,6 +9322,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             ` : ""}
             <div class="cost-row">
+              ${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalOtherMaterialCost)}</strong>
+            </div>
+            <div class="cost-row">
               <span>Profit %</span>
               <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" />
             </div>
@@ -9287,19 +9341,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cost-bars">
               <div class="cost-bar">
                 <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
-                <div class="cost-bar-other" style="width:${escapeHtml(otherPct)}%;"></div>
                 <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
+                <div class="cost-bar-finishing" style="width:${escapeHtml(finishingPct)}%;"></div>
                 ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(colorPct)}%;"></div>` : ""}
               </div>
-              <div class="cost-legend${showColorCost ? " cost-legend-wide" : ""}">
+              <div class="cost-legend cost-legend-wide">
                 <span>Material ${formatNumber(materialPct, 1)}%</span>
-                <span>Other ${formatNumber(otherPct, 1)}%</span>
                 <span>Service ${formatNumber(servicePct, 1)}%</span>
+                <span>Finishing ${formatNumber(finishingPct, 1)}%</span>
                 ${showColorCost ? `<span>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
               </div>
             </div>
             `}
-            <p class="stat-hint">Final cost is Material Cost + Other Material Cost + Service Cost in Pakistani Rupees (Rs.). Rates come from master data after unit conversion.</p>
+            <p class="stat-hint">Final Cost/Piece is Material + Services + Finishing Services in Pakistani Rupees (Rs.). Other materials are Additional Cost and are not included. Rates come from master data after unit conversion.</p>
           </div>
         </div>
       `;
@@ -9871,7 +9925,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         showNotification("Finishing service added successfully");
       }
       closeModal();
+      recalculateBOMCosts();
       renderFinishingServicesSection();
+      renderCostSummary();
       refreshIcons();
       afterDataChange("finishingServices");
       persistEditorState();
