@@ -692,39 +692,6 @@
 
     table.data-table tbody tr:hover { background: #f8fafc; }
 
-    table.data-table td.bom-other-material-select {
-      white-space: normal;
-      min-width: 240px;
-    }
-
-    table.bom-line-table td.bom-line-material {
-      white-space: normal;
-      min-width: 220px;
-      max-width: 320px;
-    }
-
-    table.bom-line-table td.bom-line-material .form-label {
-      position: absolute;
-      width: 1px;
-      height: 1px;
-      padding: 0;
-      margin: -1px;
-      overflow: hidden;
-      clip: rect(0, 0, 0, 0);
-      white-space: nowrap;
-      border: 0;
-    }
-
-    table.bom-line-table td.bom-line-material .full-select {
-      min-width: 180px;
-      max-width: 260px;
-    }
-
-    table.bom-line-table td.bom-line-material .stat-hint {
-      margin-top: 6px;
-      white-space: normal;
-    }
-
     .badge {
       display: inline-flex;
       align-items: center;
@@ -810,14 +777,13 @@
     #bom-materials-root,
     #bom-other-materials-root,
     #bom-services-root,
-    #bom-additional-services-root,
     #bom-cost-root {
       scroll-margin-top: calc(var(--header-height) + 72px);
     }
 
     .bom-layout {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 360px);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 280px);
       gap: 16px;
       align-items: start;
     }
@@ -1125,36 +1091,8 @@
       position: sticky;
       top: 72px;
       min-width: 0;
-      max-width: 360px;
       max-height: calc(100vh - var(--header-height) - 84px);
       overflow: auto;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .cost-summary > .card-body {
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-
-    .cost-summary-zone {
-      min-width: 0;
-    }
-
-    .cost-summary-middle {
-      flex: 1 1 auto;
-      padding-top: 4px;
-    }
-
-    .cost-summary-footer {
-      margin-top: auto;
-      position: sticky;
-      bottom: 0;
-      background: #fff;
-      padding-top: 8px;
-      z-index: 1;
     }
 
     .cost-row {
@@ -1747,7 +1685,6 @@
         bottom: 0;
         top: auto;
         z-index: 15;
-        max-width: none;
         max-height: min(72vh, calc(100vh - var(--header-height) - 16px));
       }
     }

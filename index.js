@@ -78,10 +78,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 7, code: "WASTAGE", name: "Wastage Percentage", description: "Material wastage percentage", dataType: "numeric", defaultValue: 5, unit: "%", category: "Costing", isActive: true },
       { id: 8, code: "SHEET_WIDTH", name: "Sheet Width", description: "Standard sheet width", dataType: "numeric", defaultValue: 40, unit: "inch", category: "Sheet", isActive: true },
       { id: 9, code: "SHEET_LENGTH", name: "Sheet Length", description: "Standard sheet length", dataType: "numeric", defaultValue: 48, unit: "inch", category: "Sheet", isActive: true },
-      { id: 10, code: "ORDER_QTY", name: "Order Quantity", description: "Pieces to manufacture", dataType: "numeric", defaultValue: 1, unit: "pieces", category: "Costing", isActive: true, isFixed: true },
+      { id: 10, code: "ORDER_QTY", name: "Order Quantity", description: "Pieces to manufacture", dataType: "numeric", defaultValue: 1, unit: "pieces", category: "Costing", isActive: true },
       { id: 11, code: "NET_QTY", name: "Net Quantity", description: "Net quantity before wastage", dataType: "numeric", defaultValue: 1, unit: "", category: "Costing", isActive: true },
-      { id: 12, code: "SHEET_AREA", name: "Sheet Area", description: "Calculated as SHEET_WIDTH × SHEET_LENGTH", dataType: "numeric", defaultValue: null, unit: "sq.inch", category: "Sheet", isActive: true, isFixed: true },
-      { id: 19, code: "NO_OF_COLOR", name: "Number of Colors", description: "Color count from the BOM or cost calculator header", dataType: "numeric", defaultValue: 0, unit: "", category: "Costing", isActive: true, isFixed: true },
+      { id: 12, code: "SHEET_AREA", name: "Sheet Area", description: "Calculated as SHEET_WIDTH × SHEET_LENGTH", dataType: "numeric", defaultValue: null, unit: "sq.inch", category: "Sheet", isActive: true },
       { id: 13, code: "PIECE_AREA", name: "Piece Area", description: "Finished piece area", dataType: "numeric", defaultValue: 435, unit: "sq.inch", category: "Area", isActive: true },
       { id: 14, code: "MATERIAL_RATE", name: "Material Rate", description: "Purchasing rate from material master", dataType: "numeric", defaultValue: 150, unit: "Rs./kg", category: "Costing", isActive: true },
       { id: 15, code: "SERVICE_RATE", name: "Service Rate", description: "Rate from service master", dataType: "numeric", defaultValue: 2.5, unit: "Rs./piece", category: "Service", isActive: true },
@@ -103,17 +102,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const otherRawMaterials = [];
     const otherMaterialRates = [];
-
-    const uomOptions = [
-      { id: 1, value: "pieces", status: "Active" },
-      { id: 2, value: "kg", status: "Active" },
-      { id: 3, value: "box", status: "Active" }
-    ];
-    const colorCountOptions = [1, 2, 3, 4, 5, 6, 7, 8].map((n, i) => ({
-      id: i + 1,
-      value: n,
-      status: "Active"
-    }));
 
     const services = [];
 
@@ -321,25 +309,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       styleFormulas: snapshotData(styleFormulas),
       serviceDimensions: snapshotData(serviceDimensions),
       materialDimensions: snapshotData(materialDimensions),
-      otherMaterialDimensions: snapshotData(otherMaterialDimensions),
-      uomOptions: snapshotData(uomOptions),
-      colorCountOptions: snapshotData(colorCountOptions)
+      otherMaterialDimensions: snapshotData(otherMaterialDimensions)
     };
 
     const FORMULA_TYPES = ["Material", "Service", "Style"];
     const FORMULA_PURPOSES = ["Rate", "Quantity"];
-    const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Die", "Consumable"];
+    const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Consumable"];
     const MATERIAL_UOMS = ["kg", "gm", "sheet", "sq.meter"];
     const FINISHED_GOOD_UOMS = ["pieces", "kg", "box"];
 
     const BASE_VARIABLES = [
-      "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY", "NO_OF_COLOR",
+      "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY",
       "SHEET_LENGTH", "SHEET_WIDTH", "SHEET_AREA", "PIECE_AREA",
       "FLAT_LENGTH", "FLAT_WIDTH", "FLAT_AREA", "COVERED_AREA",
       "MATERIAL_RATE", "SERVICE_RATE", "PRINT_AREA", "MATERIAL_COST", "SERVICE_COST"
     ];
-
-    const FIXED_CATALOG_VARIABLE_CODES = ["ORDER_QTY", "NO_OF_COLOR", "SHEET_AREA"];
 
     const ENGINE_CONSTANTS = {
       SQ_IN_TO_SQ_M,
@@ -419,18 +403,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return String(code || "").toUpperCase() === "SHEET_AREA";
     }
 
-    function isFixedCatalogVariableCode(code) {
-      return FIXED_CATALOG_VARIABLE_CODES.includes(String(code || "").toUpperCase());
-    }
-
-    function isFixedFormulaVariable(item) {
-      return Boolean(item && (item.isFixed === true || isFixedCatalogVariableCode(item.code)));
-    }
-
-    function isFixedFormulaRecord(item) {
-      return Boolean(item && item.isFixed === true);
-    }
-
     function isReservedImplementationVariableCode(code) {
       return Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, String(code || "").toUpperCase());
     }
@@ -445,7 +417,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       WASTAGE: 5,
       NET_QTY: 1,
       ORDER_QTY: 1,
-      NO_OF_COLOR: 0,
       SHEET_WIDTH: 40,
       SHEET_LENGTH: 48,
       PIECE_AREA: 435,
@@ -462,10 +433,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const PAGE_META = {
       dashboard: { title: "Dashboard", subtitle: "Manufacturing overview" },
+      "formula-variables": { title: "Variables", subtitle: "Shared variables used by formulas" },
       formulas: { title: "Formula", subtitle: "Definitions, builder, and validation" },
       dimensions: { title: "Dimension", subtitle: "Dimension master" },
       style: { title: "Style", subtitle: "Style master and style variables" },
-      "costing-options": { title: "Costing Options", subtitle: "UOM and number of colors lists" },
       "raw-materials": { title: "Raw Material", subtitle: "Purchasing master" },
       "raw-material-rates": { title: "Raw Material Rates", subtitle: "Manage purchasing rates for raw materials" },
       services: { title: "Services", subtitle: "Conversion process master" },
@@ -489,10 +460,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         services: "",
         serviceRates: "",
         style: "",
+        formulaVariables: "",
         dimensions: "",
         formulas: "",
-        uomOptions: "",
-        colorCountOptions: "",
         bomFinishedGood: "",
         boms: ""
       },
@@ -565,15 +535,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 8;
+    const IDB_VERSION = 7;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "rawMaterials",
       "otherRawMaterials",
       "materialRates",
       "otherMaterialRates",
-      "uomOptions",
-      "colorCountOptions",
       "services",
       "serviceRates",
       "formulas",
@@ -649,8 +617,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (storeName === "otherRawMaterials") return otherRawMaterials;
       if (storeName === "materialRates") return materialRates;
       if (storeName === "otherMaterialRates") return otherMaterialRates;
-      if (storeName === "uomOptions") return uomOptions;
-      if (storeName === "colorCountOptions") return colorCountOptions;
       if (storeName === "services") return services;
       if (storeName === "serviceRates") return serviceRates;
       if (storeName === "formulas") return formulas;
@@ -936,8 +902,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         otherRawMaterials,
         materialRates,
         otherMaterialRates,
-        uomOptions,
-        colorCountOptions,
         services,
         serviceRates,
         formulas,
@@ -997,9 +961,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { name: "Styles", key: "styles" },
       { name: "Style Formulas", key: "styleFormulas" },
       { name: "Style Variables", key: "styleVariables" },
-      { name: "Dimensions", key: "dimensions" },
-      { name: "UOM Options", key: "uomOptions" },
-      { name: "Color Count Options", key: "colorCountOptions" }
+      { name: "Dimensions", key: "dimensions" }
     ];
 
     function excelCellValue(value) {
@@ -1087,7 +1049,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       appendExcelSheet(workbook, "BOMs", rowsForExcelSheet(data.boms));
       appendExcelSheet(workbook, "BOM Materials", flattenBomLineRows(data.boms, "materials"));
       appendExcelSheet(workbook, "BOM Services", flattenBomLineRows(data.boms, "services"));
-      appendExcelSheet(workbook, "BOM Addl Services", flattenBomLineRows(data.boms, "additionalServices"));
       const sequences = data.sequences || {};
       appendExcelSheet(workbook, "Sequences", [flattenRecordForExcel({
         bomSeq: sequences.bomSeq,
@@ -1135,8 +1096,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(otherRawMaterials, cloudData.otherRawMaterials || []);
       replaceArrayContents(materialRates, cloudData.materialRates || []);
       replaceArrayContents(otherMaterialRates, cloudData.otherMaterialRates || []);
-      replaceArrayContents(uomOptions, cloudData.uomOptions || []);
-      replaceArrayContents(colorCountOptions, cloudData.colorCountOptions || []);
       replaceArrayContents(services, cloudData.services || []);
       replaceArrayContents(serviceRates, cloudData.serviceRates || []);
       replaceArrayContents(formulas, cloudData.formulas || []);
@@ -1156,7 +1115,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dataMigrations[SERVICE_FORMULA_FROM_SERVICE_DIMS_MIGRATION] = false;
       }
       sanitizeNumericMasters();
-      if (!cloudCleared && !userClearedAllData) ensureDefaultCostingOptions();
       migrateQtyFormulaFromMaterialDimensions({ notify: true });
       migrateServiceFormulaFromServiceDimensions({ notify: true });
       const sequences = cloudData.sequences || {};
@@ -1185,7 +1143,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ensureSeedStyleWastageVariables();
         ensureSeedWindowLidSheetVariables();
         ensureCalculatedSheetAreaCatalog();
-        ensureFixedHeaderFormulaVariables();
         ensureServiceRates();
         ensureMaterialRates();
         ensureOtherMaterialRates();
@@ -1548,12 +1505,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             const seededWastage = ensureSeedStyleWastageVariables();
             const seededSheetVars = ensureSeedWindowLidSheetVariables();
             const seededSheetArea = ensureCalculatedSheetAreaCatalog();
-            const seededHeaderVars = ensureFixedHeaderFormulaVariables();
             const seededServiceRates = ensureServiceRates();
             const seededMaterialRates = ensureMaterialRates();
             const seededOtherMaterialRates = ensureOtherMaterialRates();
-            const seededCostingOptions = ensureDefaultCostingOptions();
-            if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededHeaderVars || seededServiceRates || seededMaterialRates || seededOtherMaterialRates || seededCostingOptions) {
+            if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededServiceRates || seededMaterialRates || seededOtherMaterialRates) {
               syncSequencesFromData();
               await persistAllCollections();
               await persistSequencesNow();
@@ -1624,8 +1579,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           expression: seed.expression,
           serviceLength: Boolean(seed.serviceLength),
           serviceWidth: Boolean(seed.serviceWidth),
-          isActive: seed.isActive !== false,
-          isFixed: Boolean(seed.isFixed)
+          isActive: seed.isActive !== false
         });
         added = true;
       });
@@ -1776,46 +1730,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.description = description;
         changed = true;
       }
-      if (item.isFixed !== true) {
-        item.isFixed = true;
-        changed = true;
-      }
-      return changed;
-    }
-
-    function ensureFixedHeaderFormulaVariables() {
-      let changed = false;
-      if (!seedCatalogBlocked() && !getFormulaVariableByCode("NO_OF_COLOR")) {
-        formulaVariables.push({
-          id: nextMasterId(formulaVariables),
-          code: "NO_OF_COLOR",
-          name: "Number of Colors",
-          description: "Color count from the BOM or cost calculator header",
-          dataType: "numeric",
-          defaultValue: 0,
-          unit: "",
-          category: "Costing",
-          isActive: true,
-          isFixed: true
-        });
-        changed = true;
-      }
-      formulaVariables.forEach((item) => {
-        const shouldFix = isFixedCatalogVariableCode(item.code);
-        if (shouldFix && item.isFixed !== true) {
-          item.isFixed = true;
-          changed = true;
-        } else if (!shouldFix && item.isFixed == null) {
-          item.isFixed = false;
-          changed = true;
-        }
-      });
-      formulas.forEach((item) => {
-        if (item.isFixed == null) {
-          item.isFixed = false;
-          changed = true;
-        }
-      });
       return changed;
     }
 
@@ -1936,6 +1850,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         services: "",
         serviceRates: "",
         style: "",
+        formulaVariables: "",
         dimensions: "",
         formulas: "",
         bomFinishedGood: "",
@@ -1988,8 +1903,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
       replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
       replaceArrayContents(otherMaterialDimensions, snapshotData(SEED_DATA.otherMaterialDimensions));
-      replaceArrayContents(uomOptions, snapshotData(SEED_DATA.uomOptions));
-      replaceArrayContents(colorCountOptions, snapshotData(SEED_DATA.colorCountOptions));
       sanitizeNumericMasters();
       migrateQtyFormulaFromMaterialDimensions({ notify: false });
       migrateServiceFormulaFromServiceDimensions({ notify: false });
@@ -2181,6 +2094,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         renderBOMPage();
         renderCostCalculator();
         renderFormulas();
+        renderFormulaVariables();
         renderDimensions();
         renderStyles();
         refreshIcons();
@@ -2401,46 +2315,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function storedBomColorCount(value) {
       if (value === "" || value == null) return null;
       const n = Number(value);
-      if (!Number.isFinite(n) || n < 1) return null;
+      if (!Number.isFinite(n) || n < 1 || n > 8) return null;
       return Math.round(n);
     }
 
     function storedBomOrderQuantityUom(value) {
       const uom = String(value || "").trim();
-      if (!uom) return getActiveUomOptionValues()[0] || "pieces";
-      const active = getActiveUomOptionValues();
-      if (active.includes(uom)) return uom;
-      if ((uomOptions || []).some((row) => row.value === uom)) return uom;
-      return active[0] || "pieces";
-    }
-
-    function ensureDefaultCostingOptions() {
-      let changed = false;
-      if (!(uomOptions || []).length) {
-        replaceArrayContents(uomOptions, snapshotData(SEED_DATA.uomOptions || []));
-        changed = true;
-      }
-      if (!(colorCountOptions || []).length) {
-        replaceArrayContents(colorCountOptions, snapshotData(SEED_DATA.colorCountOptions || []));
-        changed = true;
-      }
-      return changed;
-    }
-
-    function getActiveUomOptionValues() {
-      const rows = (uomOptions || []).filter((row) => row && row.status !== "Inactive" && String(row.value || "").trim());
-      const values = rows.map((row) => String(row.value).trim());
-      return values.length ? values : FINISHED_GOOD_UOMS.slice();
-    }
-
-    function getActiveColorCountValues() {
-      const rows = (colorCountOptions || []).filter((row) => row && row.status !== "Inactive");
-      const values = rows
-        .map((row) => Number(row.value))
-        .filter((n) => Number.isFinite(n) && n > 0)
-        .map((n) => Math.round(n));
-      const unique = Array.from(new Set(values)).sort((a, b) => a - b);
-      return unique.length ? unique : [1, 2, 3, 4, 5, 6, 7, 8];
+      return FINISHED_GOOD_UOMS.includes(uom) ? uom : "pieces";
     }
 
     function applyBomCostingExtras(source) {
@@ -2458,7 +2339,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function hasBomColorCost() {
-      return false;
+      const colors = Number(state.bomNumberOfColors);
+      const rate = Number(state.bomColorRate);
+      return Number.isFinite(colors) && colors > 0 && Number.isFinite(rate) && rate > 0;
     }
 
     function hasBomOrderQuantity() {
@@ -2478,21 +2361,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function finishedGoodUomOptions(selected) {
-      const options = getActiveUomOptionValues();
-      const current = selected || options[0] || "pieces";
-      const list = options.includes(current) ? options : [current].concat(options);
-      return list.map((uom) => `
-        <option value="${escapeHtml(uom)}" ${uom === current ? "selected" : ""}>${escapeHtml(uom)}</option>
+      return FINISHED_GOOD_UOMS.map((uom) => `
+        <option value="${escapeHtml(uom)}" ${uom === selected ? "selected" : ""}>${escapeHtml(uom)}</option>
       `).join("");
     }
 
     function bomColorCountOptions(selected) {
       const current = selected == null || selected === "" ? "" : String(selected);
-      const values = getActiveColorCountValues();
-      const list = current && !values.some((n) => String(n) === current)
-        ? [Number(current)].concat(values)
-        : values;
-      return `<option value="">None</option>` + list.map((n) => `
+      return `<option value="">None</option>` + [1, 2, 3, 4, 5, 6, 7, 8].map((n) => `
         <option value="${n}" ${current === String(n) ? "selected" : ""}>${n}</option>
       `).join("");
     }
@@ -2583,7 +2459,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (!item.status) item.status = "Active";
       });
       formulas.forEach((item) => {
-        item.isFixed = item.isFixed === true;
         if (item.type === "Style") {
           item.purpose = null;
           return;
@@ -2616,7 +2491,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         delete item.serviceRate;
       });
       formulaVariables.forEach((item) => {
-        item.isFixed = isFixedFormulaVariable(item);
         if (item.code === "SHEET_AREA") {
           item.defaultValue = null;
           item.description = item.description || "Calculated as SHEET_WIDTH × SHEET_LENGTH";
@@ -3066,26 +2940,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { context, units, sources, style, dimUnit };
     }
 
-    function liveHeaderFormulaOverrides() {
-      const fromCalculator = state.currentPage === "cost-calculator";
-      const qtyRaw = fromCalculator
-        ? (state.costCalculator && state.costCalculator.ccOrderQuantity)
-        : state.bomOrderQuantity;
-      const colorRaw = fromCalculator
-        ? (state.costCalculator && state.costCalculator.ccNumberOfColors)
-        : state.bomNumberOfColors;
-      const overrides = {};
-      const qty = numericOrNull(qtyRaw);
-      if (qty !== null) overrides.ORDER_QTY = qty;
-      const colors = numericOrNull(colorRaw);
-      if (colors !== null) overrides.NO_OF_COLOR = colors;
-      return overrides;
-    }
-
-    function withLiveHeaderFormulaOverrides(vars) {
-      return { ...(vars || {}), ...liveHeaderFormulaOverrides() };
-    }
-
     function buildFlatStyleFormulaVariables(finishedGood) {
       const { context, style } = resolveBomDimensionContext(finishedGood);
       const vars = { ...getFormulaVariableDefaults(), ...context };
@@ -3095,7 +2949,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (n !== null) vars[row.variableCode] = n;
         });
       }
-      return withLiveHeaderFormulaOverrides(vars);
+      return vars;
     }
 
     function calculateBomDimensions(finishedGood) {
@@ -3553,10 +3407,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getBomsUsingMaterial(rawMaterialId) {
       const id = Number(rawMaterialId);
-      return boms.filter((bom) =>
-        (bom.materials || []).some((line) => Number(line.rawMaterialId) === id) ||
-        (bom.otherMaterials || []).some((line) => Number(line.rawMaterialId) === id)
-      );
+      return boms.filter((bom) => (bom.materials || []).some((line) => Number(line.rawMaterialId) === id));
     }
 
     function isMaterialUsedInBoms(rawMaterialId) {
@@ -4520,7 +4371,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const L = roundTo(resolvedDims.L, 2);
       const W = roundTo(resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
-      return withLiveHeaderFormulaOverrides({
+      return {
         ...defaults,
         ...styleVals,
         L,
@@ -4540,7 +4391,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         SQ_IN_TO_SQ_M,
         GRAM_TO_KG,
         CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
-      });
+      };
     }
 
     function buildOtherMaterialFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula) {
@@ -4562,7 +4413,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const L = roundTo(resolvedDims.L, 2);
       const W = roundTo(resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
-      return withLiveHeaderFormulaOverrides({
+      return {
         ...defaults,
         ...styleVals,
         L,
@@ -4582,7 +4433,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         SQ_IN_TO_SQ_M,
         GRAM_TO_KG,
         CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
-      });
+      };
     }
 
     function calculateMaterialCost(materialLine, context) {
@@ -4907,7 +4758,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         PLY: Number(finishedGood?.ply ?? defaults.PLY),
         GLUE_FLAP: glueFlap
       });
-      return withLiveHeaderFormulaOverrides({
+      return {
         ...defaults,
         ...styleVals,
         L,
@@ -4920,7 +4771,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, defaults.PRINT_AREA),
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
         SERVICE_COST: 0
-      });
+      };
     }
 
     function calculateServiceCost(serviceLine, context) {
@@ -5041,15 +4892,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function recalculateBOMCosts() {
       state.bomMaterials = state.bomMaterials.map((line) => calculateMaterialCost(line));
       state.totalMaterialCost = roundTo(calculateTotalMaterialCost(), 2);
-      state.bomOtherMaterials = (state.bomOtherMaterials || []).map((line) => {
-        if (isEmptyBomOtherMaterialLine(line)) {
-          return { ...line, error: null, netQty: 0, grossQty: 0, rate: 0, costPerPiece: 0 };
-        }
-        if (line.rawMaterialId && getRawMaterial(line.rawMaterialId)) {
-          return calculateMaterialCost(line);
-        }
-        return calculateOtherMaterialCost(line);
-      });
+      state.bomOtherMaterials = (state.bomOtherMaterials || []).map((line) => calculateOtherMaterialCost(line));
       state.totalOtherMaterialCost = roundTo(calculateTotalOtherMaterialCost(), 2);
       state.bomServices = state.bomServices.map((line) => calculateServiceCost(line));
       state.bomAdditionalServices = (state.bomAdditionalServices || []).map((line) => {
@@ -5059,9 +4902,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return calculateServiceCost(line);
       });
       state.totalServiceCost = roundTo(calculateTotalServiceCost(), 2);
-      state.totalColorCost = 0;
+      state.totalColorCost = hasBomColorCost()
+        ? roundTo(Number(state.bomNumberOfColors) * Number(state.bomColorRate), 2)
+        : 0;
       state.finalCostPerPiece = roundTo(
-        state.totalMaterialCost + state.totalOtherMaterialCost + state.totalServiceCost,
+        state.totalMaterialCost + state.totalOtherMaterialCost + state.totalServiceCost + state.totalColorCost,
         2
       );
       state.costPer100 = roundTo(state.finalCostPerPiece * 100, 2);
@@ -6260,13 +6105,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       persistEditorState();
     }
 
-    function findBomMaterialLineById(lineId) {
-      const id = Number(lineId);
-      return state.bomMaterials.find((item) => item.id === id)
-        || (state.bomOtherMaterials || []).find((item) => item.id === id && item.rawMaterialId)
-        || null;
-    }
-
     function findBomServiceLineById(lineId) {
       const id = Number(lineId);
       return state.bomServices.find((item) => item.id === id)
@@ -6290,69 +6128,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getBomOtherSlotMaterialOptions(ply, selectedId) {
-      const options = rawMaterials.filter((item) => item.status !== "Inactive");
+      const options = getBomOtherMaterialsForPly(ply).slice();
       const id = Number(selectedId);
       if (id && !options.some((item) => item.id === id)) {
-        const current = getRawMaterial(id) || getOtherRawMaterial(id);
+        const current = getOtherRawMaterial(id);
         if (current) options.unshift(current);
       }
       return options;
     }
 
     function getBomOtherExtraMaterialOptions(selectedId) {
-      return getBomOtherSlotMaterialOptions(null, selectedId);
-    }
-
-    function isEmptyBomOtherMaterialLine(line) {
-      return !line || (!Number(line.rawMaterialId) && !Number(line.otherRawMaterialId));
-    }
-
-    function isBomOtherMaterialStructuralLine(line, layout) {
-      if (!line || !layout) return false;
-      return (layout.slots || []).some((slot) => slot.line && slot.line.id === line.id);
-    }
-
-    function addBomOtherMaterial() {
-      if (!getSelectedFinishedGood()) return;
-      state.bomOtherMaterials = (state.bomOtherMaterials || []).concat([{
-        id: nextBomLineId(),
-        rawMaterialId: null,
-        otherRawMaterialId: null,
-        layer: "Additional",
-        calculationMethod: "formula",
-        formulaId: null,
-        dimensionId: null,
-        manualQty: null,
-        wastagePercent: DEFAULT_WASTAGE_PERCENT,
-        netQty: 0,
-        grossQty: 0,
-        rate: 0,
-        costPerPiece: 0,
-        error: null
-      }]);
-      refreshBomViews();
-      persistEditorState();
+      const options = otherRawMaterials.filter((item) => item.status !== "Inactive");
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getOtherRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
     }
 
     function rebuildBomOtherMaterialLine(prev, patch) {
-      const selectedId = patch.otherRawMaterialId != null
-        ? patch.otherRawMaterialId
-        : (prev && (prev.rawMaterialId || prev.otherRawMaterialId));
-      if (getRawMaterial(selectedId)) {
-        const next = rebuildBomMaterialLine({
-          ...(prev || {}),
-          rawMaterialId: selectedId
-        }, {
-          rawMaterialId: selectedId,
-          layer: patch.layer,
-          ...(patch.calculationMethod != null ? { calculationMethod: patch.calculationMethod } : {}),
-          ...(patch.formulaId != null ? { formulaId: patch.formulaId } : {}),
-          ...(Object.prototype.hasOwnProperty.call(patch, "dimensionId") ? { dimensionId: patch.dimensionId } : {}),
-          ...(Object.prototype.hasOwnProperty.call(patch, "manualQty") ? { manualQty: patch.manualQty } : {}),
-          ...(patch.wastagePercent != null ? { wastagePercent: patch.wastagePercent } : {})
-        });
-        return { ...next, rawMaterialId: Number(selectedId), otherRawMaterialId: null };
-      }
       const draft = {
         otherRawMaterialId: patch.otherRawMaterialId,
         layer: patch.layer,
@@ -6406,8 +6201,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       persistEditorState();
       if (next.error) showNotification(next.error, "error");
       else {
-        const material = getRawMaterial(next.rawMaterialId) || getOtherRawMaterial(next.otherRawMaterialId);
-        showNotification((material ? material.name : "Material") + " selected for " + layer);
+        const material = getOtherRawMaterial(next.otherRawMaterialId);
+        showNotification((material ? material.name : "Other material") + " selected for " + layer);
       }
     }
 
@@ -6415,33 +6210,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const line = (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId));
       if (!line) return;
       if (!otherRawMaterialId) {
-        const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials);
-        if (isBomOtherMaterialStructuralLine(line, layout)) {
-          refreshBomViews();
-          return;
-        }
-        state.bomOtherMaterials = state.bomOtherMaterials.map((item) => (
-          item.id === line.id
-            ? {
-                ...item,
-                rawMaterialId: null,
-                otherRawMaterialId: null,
-                formulaId: null,
-                dimensionId: null,
-                error: null,
-                netQty: 0,
-                grossQty: 0,
-                rate: 0,
-                costPerPiece: 0
-              }
-            : item
-        ));
-        recalculateBOMCosts();
         refreshBomViews();
-        persistEditorState();
         return;
       }
-      const next = rebuildBomOtherMaterialLine(line, { otherRawMaterialId: Number(otherRawMaterialId), layer: line.layer || "Additional" });
+      const next = rebuildBomOtherMaterialLine(line, { otherRawMaterialId: Number(otherRawMaterialId), layer: line.layer });
       state.bomOtherMaterials = state.bomOtherMaterials.map((item) => item.id === next.id ? next : item);
       recalculateBOMCosts();
       refreshBomViews();
@@ -6836,12 +6608,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       };
       (state.bomMaterials || []).forEach((line) => add(line, "Raw Materials", "material"));
-      (state.bomOtherMaterials || []).forEach((line) => {
-        if (isEmptyBomOtherMaterialLine(line)) return;
-        add(line, "Additional Materials", line.rawMaterialId ? "material" : "other");
-      });
-      (state.bomServices || []).forEach((line) => add(line, "Fixed Services", "service"));
-      (state.bomAdditionalServices || []).forEach((line) => add(line, "Additional Services", "additional"));
+      (state.bomOtherMaterials || []).forEach((line) => add(line, "Other Materials", "other"));
+      (state.bomServices || []).forEach((line) => add(line, "Services", "service"));
+      (state.bomAdditionalServices || []).forEach((line) => add(line, "Additional Materials", "additional"));
       return errors;
     }
 
@@ -6879,14 +6648,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       for (const line of state.bomOtherMaterials || []) {
-        if (isEmptyBomOtherMaterialLine(line)) continue;
-        if (line.rawMaterialId) {
-          if (!getRawMaterial(line.rawMaterialId)) return "An additional material does not reference a valid raw material master record.";
-          if (line.calculationMethod === "formula" && !getMaterialQtyFormula(getRawMaterial(line.rawMaterialId))) return "An additional material formula is missing or invalid. Set Default Quantity Formula on the Raw Material master.";
-          continue;
-        }
-        if (!getOtherRawMaterial(line.otherRawMaterialId)) return "A BOM additional material does not reference a valid material master record.";
-        if (line.calculationMethod === "formula" && !getOtherMaterialQtyFormula(getOtherRawMaterial(line.otherRawMaterialId))) return "A BOM additional material formula is missing or invalid. Set Default Quantity Formula on the material master.";
+        if (!getOtherRawMaterial(line.otherRawMaterialId)) return "A BOM other material does not reference a valid Other Raw Material master record.";
+        if (line.calculationMethod === "formula" && !getOtherMaterialQtyFormula(getOtherRawMaterial(line.otherRawMaterialId))) return "A BOM other material formula is missing or invalid. Set Default Quantity Formula on the Other Raw Material master.";
       }
 
       for (const line of state.bomServices) {
@@ -6896,8 +6659,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       for (const line of state.bomAdditionalServices || []) {
         if (!line.serviceId) continue;
-        if (!getService(line.serviceId)) return "An additional service does not reference a valid service master record.";
-        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "An additional service formula is missing or invalid. Set a formula on the active Service Rate.";
+        if (!getService(line.serviceId)) return "An additional material does not reference a valid service master record.";
+        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "An additional material service formula is missing or invalid. Set a formula on the active Service Rate.";
       }
 
       if (currentBomHasCalculationErrors()) {
@@ -7224,20 +6987,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderMaterialSection();
       renderOtherMaterialSection();
       renderServiceSection();
-      renderAdditionalServicesSection();
       renderCostSummary();
-      refreshIcons();
-    }
-
-    function refreshFormulaVariableDependentViews() {
-      if (state.currentPage === "bom-costing") {
-        refreshOpenBomCalculations();
-        if (state.currentPage === "bom-costing") renderStyleFormulasSection();
-      } else if (state.currentPage === "cost-calculator") {
-        renderCostCalculator();
-      } else if (state.currentPage === "formulas") {
-        renderFormulas();
-      }
       refreshIcons();
     }
 
@@ -7452,6 +7202,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       );
     }
 
+    function filterFormulaVariables() {
+      const q = state.searches.formulaVariables;
+      return formulaVariables.filter((item) =>
+        matchesQuery([item.code, item.name, item.description, item.category, item.unit, item.dataType, item.defaultValue, item.isActive ? "Active" : "Inactive"], q)
+      );
+    }
+
     function filterBoms() {
       const q = state.searches.boms;
       const mode = state.bomListFilter;
@@ -7572,6 +7329,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="stat-label">Active BOMs</div>
             <div class="stat-value">${activeBoms}</div>
             <div class="stat-hint">Only BOMs with Active status</div>
+          </article>
+          <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="formula-variables">
+            <div class="stat-label">Variables</div>
+            <div class="stat-value">${formulaVariables.length}</div>
+            <div class="stat-hint">Shared formula variables</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="dimensions">
             <div class="stat-label">Dimension</div>
@@ -8127,173 +7889,94 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function filterUomOptions() {
-      const query = state.searches.uomOptions || "";
-      return (uomOptions || []).filter((item) => matchesQuery([item.value, item.status], query));
-    }
-
-    function filterColorCountOptions() {
-      const query = state.searches.colorCountOptions || "";
-      return (colorCountOptions || []).filter((item) => matchesQuery([item.value, item.status], query));
-    }
-
-    function renderCostingOptions() {
-      const page = document.getElementById("page-costing-options");
-      if (!page) return;
-      const uomRows = filterUomOptions();
-      const colorRows = filterColorCountOptions();
-      const uomBody = uomRows.length
-        ? uomRows.map((item) => `
-            <tr>
-              <td>${escapeHtml(item.value)}</td>
-              <td>${statusBadge(item.status)}</td>
-              ${masterRowActions("data-edit-uom-option", item.id, "data-delete-uom-option", item.id)}
-            </tr>
-          `).join("")
-        : emptyRow(3, "No UOM options match this search.");
-      const colorBody = colorRows.length
-        ? colorRows.map((item) => `
-            <tr>
-              <td>${escapeHtml(String(item.value))}</td>
-              <td>${statusBadge(item.status)}</td>
-              ${masterRowActions("data-edit-color-option", item.id, "data-delete-color-option", item.id)}
-            </tr>
-          `).join("")
-        : emptyRow(3, "No color-count options match this search.");
-      page.innerHTML = `
-        <div class="card" style="margin-bottom:16px;">
-          <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="section-kicker">Master lists</div>
-                <div class="section-title">UOM Options</div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-add-uom-option">
-                <i data-lucide="plus"></i> Add UOM
-              </button>
-            </div>
-            <div class="toolbar" style="margin:0 0 12px;">
-              <div class="toolbar-left">
-                ${toolbarSearch("uom-option-search", state.searches.uomOptions, "Search UOM...")}
-              </div>
-              <div class="toolbar-right">
-                <span class="badge badge-muted">${uomRows.length} of ${uomOptions.length}</span>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>UOM</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${uomBody}</tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="section-kicker">Master lists</div>
-                <div class="section-title">Number of Colors Options</div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-add-color-option">
-                <i data-lucide="plus"></i> Add Color Count
-              </button>
-            </div>
-            <div class="toolbar" style="margin:0 0 12px;">
-              <div class="toolbar-left">
-                ${toolbarSearch("color-option-search", state.searches.colorCountOptions, "Search color count...")}
-              </div>
-              <div class="toolbar-right">
-                <span class="badge badge-muted">${colorRows.length} of ${colorCountOptions.length}</span>
-              </div>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table">
-                <thead>
-                  <tr>
-                    <th>Colors</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${colorBody}</tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      `;
-    }
-
-    function renderFormulaVariablesManagementCard(stepLabel) {
-      const live = liveHeaderFormulaOverrides();
-      const rows = formulaVariables.slice().sort((a, b) => String(a.code).localeCompare(String(b.code)));
+    function renderFormulaVariables() {
+      const rows = filterFormulaVariables();
       const body = rows.length
         ? rows.map((item) => {
             const sheetArea = isFixedSheetAreaCode(item.code);
-            const fixed = isFixedFormulaVariable(item);
             const description = sheetArea ? FIXED_SHEET_AREA.description : (item.description || "—");
             const defaultValue = sheetArea
               ? FIXED_SHEET_AREA.formula
               : (item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : (item.dataType === "numeric" ? formatDecimal(item.defaultValue, 8, false) : item.defaultValue));
-            const liveValue = Object.prototype.hasOwnProperty.call(live, item.code)
-              ? formatDecimal(live[item.code], 8, false)
-              : "";
-            const actions = fixed
-              ? `<td>
-                  <div class="row-actions">
-                    <button type="button" class="btn btn-sm btn-icon" data-edit-fvar="${item.id}" title="Edit">
-                      <i data-lucide="pencil"></i>
-                    </button>
-                  </div>
-                </td>`
-              : masterRowActions("data-edit-fvar", item.id, "data-delete-fvar", item.id);
             return `
             <tr>
-              <td class="mono">${escapeHtml(item.code)}${fixed ? ` <span class="badge badge-muted">${sheetArea ? "Fixed Calculation" : "Fixed"}</span>` : ""}</td>
+              <td class="mono">${escapeHtml(item.code)}${sheetArea ? ` <span class="badge badge-muted">Fixed Calculation</span>` : ""}</td>
               <td>${escapeHtml(item.name)}</td>
               <td>${escapeHtml(description)}</td>
-              <td>${escapeHtml(defaultValue)}${liveValue !== "" ? ` <span class="badge badge-success" title="Live header value">Live ${escapeHtml(liveValue)}</span>` : ""}</td>
+              <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
+              <td>${escapeHtml(item.unit || "—")}</td>
+              <td>${escapeHtml(item.dataType)}</td>
+              <td>${escapeHtml(defaultValue)}</td>
               <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
-              ${actions}
+              ${sheetArea
+                ? `<td><span class="formula-src" title="${escapeHtml(FIXED_SHEET_AREA.description)}">Read only</span></td>`
+                : masterRowActions("data-edit-fvar", item.id, "data-delete-fvar", item.id)}
             </tr>
           `;
           }).join("")
-        : emptyRow(6, "No formula variables yet.");
+        : emptyRow(9, "No formula variables match this search.");
 
-      return `
-        <div class="card">
+      const fixedRows = FIXED_IMPLEMENTATION_VARIABLES.map((item) => `
+        <tr>
+          <td class="mono">${escapeHtml(item.code)} <span class="badge badge-muted">Fixed</span></td>
+          <td>${escapeHtml(item.formula)}</td>
+          <td>${escapeHtml(item.description)}</td>
+          <td>${escapeHtml(item.code === "CONVERSION_FACTOR" ? formatDecimal(item.value, 8, false) : String(item.value))}</td>
+          <td><span class="formula-src">Read only</span></td>
+        </tr>
+      `).join("");
+
+      document.getElementById("page-formula-variables").innerHTML = `
+        <div class="toolbar">
+          <div class="toolbar-left">
+            ${toolbarSearch("fvar-search", state.searches.formulaVariables, "Search code, name, category...")}
+          </div>
+          <div class="toolbar-right">
+            <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
+              <i data-lucide="plus"></i> Add Variable
+            </button>
+            <span class="badge badge-muted">${rows.length} of ${formulaVariables.length}</span>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:16px;">
           <div class="card-body">
-            <div class="section-head">
-              <div>
-                ${stepLabel ? `<div class="cc-step">${stepLabel}</div>` : `<div class="section-kicker">Formula Variables</div>`}
-                <div class="section-title">Variables</div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
-                <i data-lucide="plus"></i> Add Variable
-              </button>
-            </div>
-            <p class="stat-hint" style="margin:0 0 12px;">Catalog defaults are used unless Order Quantity or Number of Colors is entered on this BOM. Fixed variables stay editable; their codes cannot be deleted.</p>
+            <div class="section-kicker">Fixed Variables</div>
+            <div class="section-title" style="margin-bottom:8px;">System implementation constants</div>
+            <p class="stat-hint" style="margin:0 0 12px;">These values are part of the calculation engine. They cannot be edited or deleted.</p>
             <div class="table-wrap">
-              <table class="data-table" style="min-width:860px;">
+              <table class="data-table">
                 <thead>
                   <tr>
                     <th>Code</th>
-                    <th>Name</th>
+                    <th>Value / Formula</th>
                     <th>Description</th>
-                    <th>Default / Live</th>
-                    <th>Status</th>
-                    <th>Actions</th>
+                    <th>Current Value</th>
+                    <th></th>
                   </tr>
                 </thead>
-                <tbody>${body}</tbody>
+                <tbody>${fixedRows}</tbody>
               </table>
             </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data-table" style="min-width:1100px;">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Description</th>
+                  <th>Category</th>
+                  <th>Unit</th>
+                  <th>Data Type</th>
+                  <th>Default Value</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${body}</tbody>
+            </table>
           </div>
         </div>
       `;
@@ -8363,7 +8046,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? items.map((item) => `
             <tr>
               <td>${escapeHtml(item.name)}</td>
-              <td class="mono">${escapeHtml(item.code)}${isFixedFormulaRecord(item) ? ` <span class="badge badge-muted">Fixed</span>` : ""}</td>
+              <td class="mono">${escapeHtml(item.code)}</td>
               <td>${formulaTypeBadge(item.type)}</td>
               <td class="mono">${escapeHtml(item.expression)}</td>
               <td>${renderDependencyBadges(item.expression)}</td>
@@ -8458,22 +8141,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-product-root", label: "Product Information" },
       { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
-      { id: "bom-other-materials-root", label: "Additional Material" },
-      { id: "bom-services-root", label: "Fixed Services" },
-      { id: "bom-additional-services-root", label: "Additional Services" }
+      { id: "bom-other-materials-root", label: "Other Raw Materials" },
+      { id: "bom-services-root", label: "Services" }
     ];
 
     function getBomVisibleStepNumbers() {
       const fg = getSelectedFinishedGood();
+      const hasStyle = Boolean(fg && Array.isArray(state.bomStyleResults) && state.bomStyleResults.length);
       let n = 1;
       const steps = { selectFg: n++ };
       if (fg) {
         steps.product = n++;
-        steps.style = n++;
+        if (hasStyle) steps.style = n++;
         steps.materials = n++;
-        steps.additionalMaterials = n++;
-        steps.fixedServices = n++;
-        steps.additionalServices = n++;
+        steps.otherMaterials = n++;
+        steps.services = n++;
       }
       return steps;
     }
@@ -8540,7 +8222,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div id="bom-materials-root"></div>
             <div id="bom-other-materials-root"></div>
             <div id="bom-services-root"></div>
-            <div id="bom-additional-services-root"></div>
           </div>
           <aside id="bom-cost-root"></aside>
         </div>
@@ -8552,7 +8233,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderMaterialSection();
       renderOtherMaterialSection();
       renderServiceSection();
-      renderAdditionalServicesSection();
       renderCostSummary();
     }
 
@@ -8847,52 +8527,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const root = document.getElementById("bom-style-formulas-root");
       if (!root) return;
       const fg = getSelectedFinishedGood();
+      if (!fg) {
+        root.innerHTML = "";
+        return;
+      }
       const rows = Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [];
-      const steps = getBomVisibleStepNumbers();
-      const variablesStep = steps.style ? `Step ${steps.style}: Formula Variables` : "";
-      const formulasCard = fg
-        ? `
+      if (!rows.length) {
+        root.innerHTML = "";
+        return;
+      }
+      root.innerHTML = `
         <div class="card">
           <div class="card-body">
             <div class="section-head">
               <div>
-                <div class="section-kicker">Style Formulas</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().style}: Style Formulas</div>
                 <div class="section-title">Style Formulas (Auto-calculated)</div>
               </div>
               <span class="badge badge-muted">Read-only</span>
             </div>
-            <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good, style variables, Order Quantity, or Number of Colors change.</p>
+            <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
             ${renderStyleFormulaResultRows(rows)}
           </div>
-        </div>
-      `
-        : "";
-      root.innerHTML = `${renderFormulaVariablesManagementCard(variablesStep)}${formulasCard}`;
-    }
-
-    function renderBomMaterialLineTable(bodyHtml, emptyMessage) {
-      return `
-        <div class="table-wrap">
-          <table class="data-table bom-line-table" style="min-width:1280px;">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Layer</th>
-                <th>Material</th>
-                <th>Calculation</th>
-                <th>Formula</th>
-                <th>Dimension</th>
-                <th>Manual Qty</th>
-                <th>Net Qty</th>
-                <th>Wastage %</th>
-                <th>Gross Qty</th>
-                <th>Rate</th>
-                <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>${bodyHtml || emptyRow(13, emptyMessage)}</tbody>
-          </table>
         </div>
       `;
     }
@@ -8919,37 +8575,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? `data-bom-extra-material="${line.id}"`
         : `data-bom-layer-material="${escapeHtml(layer)}"`;
       const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
-      const rowNumber = options.rowNumber != null ? options.rowNumber : index + 1;
       return `
-        <tr>
-          <td>${rowNumber}</td>
-          <td>
-            <div>${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
-          </td>
-          <td class="bom-line-material">
-            <label class="form-label" for="${selectId}">Material</label>
-            <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} material">
-              <option value="">Select Material</option>
-              ${missingMaterialId ? `<option value="${escapeHtml(String(missingMaterialId))}" selected>Missing material (ID: ${escapeHtml(String(missingMaterialId))})</option>` : ""}
-              ${materials.map((item) => `
-                <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
-              `).join("")}
-            </select>
-            ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
-            ${unlinked ? `<p class="stat-hint">This material is not linked in Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
-            ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
-            ${!line ? `<p class="stat-hint">Select a material for this ply layer. Calculation details become available after a material is chosen.</p>` : ""}
-          </td>
-          <td>${line ? escapeHtml(methodLabel) : "—"}</td>
-          <td>${line ? `<span class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("material", line.id, "Explain quantity")}</span>` : "—"}</td>
-          <td>${line ? escapeHtml(dimLabel) : "—"}</td>
-          <td>${line && line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</td>
-          <td>${line && !line.error ? formatQty(line.netQty) : "—"}</td>
-          <td>${line ? `<input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />` : "—"}</td>
-          <td>${line && !line.error ? formatQty(line.grossQty) : "—"}</td>
-          <td>${line && material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
-          <td>${line ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)) : "—"}</td>
-          <td>
+        <div class="cc-layer">
+          <div class="cc-layer-head">
+            <div class="cc-layer-title">${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
             ${line ? `
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
@@ -8965,8 +8594,38 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ` : ""}
               </div>
             ` : ""}
-          </td>
-        </tr>
+          </div>
+          <label class="form-label" for="${selectId}">Material</label>
+          <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} material">
+            <option value="">Select Material</option>
+            ${missingMaterialId ? `<option value="${escapeHtml(String(missingMaterialId))}" selected>Missing material (ID: ${escapeHtml(String(missingMaterialId))})</option>` : ""}
+            ${materials.map((item) => `
+              <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+            `).join("")}
+          </select>
+          ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
+          ${unlinked ? `<p class="stat-hint">This material is not linked in Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
+          ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
+          ${line ? `
+            <div class="cc-metrics">
+              <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
+              <div><span>Formula</span><strong class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("material", line.id, "Explain quantity")}</strong></div>
+              <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
+              <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
+              <div><span>Net Qty</span><strong>${line.error ? "—" : formatQty(line.netQty)}</strong></div>
+              <div>
+                <span>Wastage %</span>
+                <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
+              </div>
+              <div><span>Gross Qty</span><strong>${line.error ? "—" : formatQty(line.grossQty)}</strong></div>
+              <div>
+                <span>Rate</span>
+                <strong>${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</strong>
+              </div>
+              <div><span>Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
+            </div>
+          ` : `<p class="stat-hint">Select a material for this ply layer. Calculation details become available after a material is chosen.</p>`}
+        </div>
       `;
     }
 
@@ -8979,45 +8638,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const layout = getBomMaterialSlotLayout(fg, state.bomMaterials);
-      const slotRows = layout.slots.map((slot, index) => renderBomMaterialCard({
+      const slotCards = layout.slots.map((slot, index) => renderBomMaterialCard({
         layer: slot.layer,
         line: slot.line,
         ply: layout.ply,
         extra: false,
-        index,
-        rowNumber: index + 1
+        index
       })).join("");
-      const extraRows = layout.extras.map((line, index) => renderBomMaterialCard({
+      const extraCards = layout.extras.map((line, index) => renderBomMaterialCard({
         layer: line.layer || "Additional",
         line,
         ply: layout.ply,
         extra: true,
-        index,
-        rowNumber: index + 1
+        index
       })).join("");
+      const additionalServiceCards = (state.bomAdditionalServices || []).map((line, index) => (
+        renderBomAdditionalServiceCard(line, index)
+      )).join("");
+      const activeServices = getActiveServicesForBomPicker();
       const extraMaterialCost = layout.extras.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
-      const additionalHasErrors = layout.extras.some((line) => line.error);
+      const additionalSectionCost = extraMaterialCost + calculateTotalAdditionalServiceCost();
+      const additionalHasErrors = layout.extras.some((line) => line.error)
+        || (state.bomAdditionalServices || []).some((line) => line.error);
       const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
       root.innerHTML = `
-        <div class="card">
+        <section class="card cc-card">
           <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
-                <div class="section-title">Ply material slots</div>
-              </div>
-            </div>
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
             <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
-            ${renderBomMaterialLineTable(slotRows, "No structural layers for this ply.")}
-            ${layout.extras.length ? `
-              <div class="section-title" style="margin:16px 0 8px;">Leftover extras</div>
-              <p class="stat-hint" style="margin:0 0 12px;">These raw-material lines are not ply slots. They stay until you delete them.</p>
-              ${renderBomMaterialLineTable(extraRows, "No leftover extras.")}
-              <div class="cc-total-line"><span>Leftover Extra Cost</span><strong>${additionalHasErrors ? "Error" : formatRupees(extraMaterialCost)}</strong></div>
-            ` : ""}
+            ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
+            <div class="section-title" style="margin:16px 0 8px;">Additional materials</div>
+            <p class="stat-hint" style="margin:0 0 12px;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
+            ${!activeServices.length ? `<p class="stat-hint">No services found. Add Block, Film, Plate etc. under Services first.</p>` : ""}
+            ${extraCards}
+            ${additionalServiceCards}
+            <div style="margin:12px 0;">
+              <button type="button" class="btn btn-sm" id="btn-add-additional-service" ${activeServices.length ? "" : "disabled"}>
+                <i data-lucide="plus"></i> Add additional service
+              </button>
+            </div>
+            <div class="cc-total-line"><span>Total Additional Materials Cost</span><strong>${additionalHasErrors ? "Error" : formatRupees(additionalSectionCost)}</strong></div>
             <div class="cc-total-line"><span>Total Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
-        </div>
+        </section>
       `;
     }
 
@@ -9041,9 +8704,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-additional-service="${line.id}" title="Edit">
-                  <i data-lucide="pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-additional-service="${line.id}" title="Delete">
                   <i data-lucide="trash-2"></i>
@@ -9080,131 +8740,115 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderBomOtherMaterialCard(options) {
       const line = options.line;
-      const structural = Boolean(options.structural);
+      const layer = options.layer;
+      const ply = options.ply;
+      const extra = Boolean(options.extra);
       const index = options.index;
-      const empty = isEmptyBomOtherMaterialLine(line);
-      const selectedId = line && (line.rawMaterialId || line.otherRawMaterialId);
-      const material = line
-        ? (getRawMaterial(line.rawMaterialId) || getOtherRawMaterial(line.otherRawMaterialId))
+      const material = line ? getOtherRawMaterial(line.otherRawMaterialId) : null;
+      const formula = line
+        ? (line.calculationMethod === "formula" ? getOtherMaterialQtyFormula(material) : getFormula(line.formulaId))
         : null;
-      const usesRawMaster = Boolean(line && line.rawMaterialId && getRawMaterial(line.rawMaterialId));
-      const formula = !empty && line
-        ? (line.calculationMethod === "formula"
-          ? (usesRawMaster ? getMaterialQtyFormula(material) : getOtherMaterialQtyFormula(material))
-          : getFormula(line.formulaId))
-        : null;
-      const methodLabel = empty ? "—" : (line.calculationMethod === "manual" ? "Manual" : "Formula");
-      const formulaLabel = !empty && line.calculationMethod === "formula" && formula ? formula.name : "—";
-      const materials = getBomOtherSlotMaterialOptions(null, selectedId);
-      const selectId = "bom-other-extra-mat-" + line.id;
-      const dimLabel = !empty && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "";
-      const layerHint = line.layer && line.layer !== "Additional" ? line.layer : "";
-      const rateRow = material
-        ? (usesRawMaster ? getMaterialRate(material.id) : getOtherMaterialRate(material.id))
-        : null;
-      const rowNumber = options.rowNumber != null ? options.rowNumber : index + 1;
+      const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
+      const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
+      const materials = extra
+        ? getBomOtherExtraMaterialOptions(line && line.otherRawMaterialId)
+        : getBomOtherSlotMaterialOptions(ply, line && line.otherRawMaterialId);
+      const unlinked = !extra && line && line.otherRawMaterialId && !isBomPlyLinkedOtherMaterial(line.otherRawMaterialId, ply);
+      const selectId = extra ? "bom-other-extra-mat-" + line.id : "bom-other-layer-mat-" + index;
+      const selectAttr = extra
+        ? `data-bom-other-extra-material="${line.id}"`
+        : `data-bom-other-layer-material="${escapeHtml(layer)}"`;
+      const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
       return `
-        <tr>
-          <td>${rowNumber}</td>
-          <td class="bom-other-material-select">
-            <select id="${selectId}" class="full-select" data-bom-other-extra-material="${line.id}" aria-label="Additional material">
-              <option value="">Select Raw Material</option>
-              ${materials.map((item) => `
-                <option value="${item.id}" ${Number(selectedId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
-              `).join("")}
-            </select>
-            ${layerHint ? `<div class="stat-hint">${escapeHtml(layerHint)}</div>` : ""}
-            ${dimLabel ? `<div class="stat-hint">${escapeHtml(dimLabel)}</div>` : ""}
-            ${line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
-          </td>
-          <td>${escapeHtml(methodLabel)}</td>
-          <td>
-            ${empty ? "—" : `
-              <span class="formula-cell">
-                ${escapeHtml(formulaLabel)}
-                ${formulaHelpButton(usesRawMaster ? "material" : "other-material", line.id, "Explain quantity")}
-              </span>
-            `}
-          </td>
-          <td>${empty || line.error ? "—" : formatQty(line.netQty)}</td>
-          <td>
-            ${!empty && material ? formatRatePkr(line.rate, (rateRow && rateRow.rateUOM) || "") : "—"}
-            ${!empty && material ? `<div class="stat-hint">Raw Material Rates</div>` : ""}
-          </td>
-          <td>${empty ? "—" : (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece))}</td>
-          <td>
-            <div class="row-actions">
-              ${!empty ? `
+        <div class="cc-layer">
+          <div class="cc-layer-head">
+            <div class="cc-layer-title">${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
+            ${line ? `
+              <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-other-line="${line.id}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-other-line="${line.id}" title="Edit">
+                <button type="button" class="btn btn-sm btn-icon" data-edit-other-line="${line.id}" title="Edit calculation details">
                   <i data-lucide="pencil"></i>
                 </button>
-              ` : ""}
-              ${!structural ? `
-                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-other-line="${line.id}" title="Delete">
-                  <i data-lucide="trash-2"></i>
-                </button>
-              ` : ""}
+                ${extra ? `
+                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-other-line="${line.id}" title="Delete">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                ` : ""}
+              </div>
+            ` : ""}
+          </div>
+          <label class="form-label" for="${selectId}">Other Material</label>
+          <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} other material">
+            <option value="">Select Other Material</option>
+            ${materials.map((item) => `
+              <option value="${item.id}" ${line && Number(line.otherRawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+            `).join("")}
+          </select>
+          ${unlinked ? `<p class="stat-hint">This material is not linked in Other Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
+          ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
+          ${line ? `
+            <div class="cc-metrics">
+              <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
+              <div><span>Formula</span><strong class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("other-material", line.id, "Explain quantity")}</strong></div>
+              <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
+              <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
+              <div><span>Net Qty</span><strong>${line.error ? "—" : formatQty(line.netQty)}</strong></div>
+              <div>
+                <span>Wastage %</span>
+                <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-other-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} other material wastage percent" />
+              </div>
+              <div><span>Gross Qty</span><strong>${line.error ? "—" : formatQty(line.grossQty)}</strong></div>
+              <div>
+                <span>Rate</span>
+                <strong>${material ? formatRatePkr(line.rate, (getOtherMaterialRate(material.id) && getOtherMaterialRate(material.id).rateUOM) || "") : "—"}</strong>
+              </div>
+              <div><span>Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
             </div>
-          </td>
-        </tr>
+          ` : `<p class="stat-hint">Optional. Select an other raw material for this ply layer, or leave empty.</p>`}
+        </div>
       `;
     }
 
     function renderOtherMaterialSection() {
       const root = document.getElementById("bom-other-materials-root");
       if (!root) return;
-      const hasFg = Boolean(getSelectedFinishedGood());
-      if (!hasFg) {
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
         root.innerHTML = "";
         return;
       }
-      const fg = getSelectedFinishedGood();
       const layout = getBomMaterialSlotLayout(fg, state.bomOtherMaterials);
-      const rows = state.bomOtherMaterials || [];
-      const body = rows.length
-        ? rows.map((line, index) => renderBomOtherMaterialCard({
-            line,
-            index,
-            structural: isBomOtherMaterialStructuralLine(line, layout),
-            rowNumber: index + 1
-          })).join("")
-        : emptyRow(8, "No additional materials added yet.");
-      const hasCalcErrors = rows.some((line) => !isEmptyBomOtherMaterialLine(line) && line.error);
+      const slotCards = layout.slots.map((slot, index) => renderBomOtherMaterialCard({
+        layer: slot.layer,
+        line: slot.line,
+        ply: layout.ply,
+        extra: false,
+        index
+      })).join("");
+      const extraCards = layout.extras.map((line, index) => renderBomOtherMaterialCard({
+        layer: line.layer || "Additional",
+        line,
+        ply: layout.ply,
+        extra: true,
+        index
+      })).join("");
+      const hasCalcErrors = (state.bomOtherMaterials || []).some((line) => line.error);
       root.innerHTML = `
-        <div class="card">
+        <section class="card cc-card">
           <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().additionalMaterials}: Additional Material</div>
-                <div class="section-title">Additional Material</div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-add-additional-material" ${hasFg ? "" : "disabled"}>
-                <i data-lucide="plus"></i> Add Additional Material
-              </button>
-            </div>
-            <div class="table-wrap">
-              <table class="data-table" style="min-width:980px;">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Material</th>
-                    <th>Calculation</th>
-                    <th>Formula</th>
-                    <th>Qty / Piece</th>
-                    <th>Rate</th>
-                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
-            <div class="cc-total-line"><span>Total Additional Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalOtherMaterialCost)}</strong></div>
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().otherMaterials}: Select Other Raw Materials</div>
+            <p class="stat-hint" style="margin:0 0 12px;">Optional ply slots for other raw materials. Empty slots do not block activation. New dimension links are currently stored as 1-ply.</p>
+            ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
+            ${layout.extras.length ? `
+              <div class="section-title" style="margin:16px 0 8px;">Additional other materials</div>
+              <p class="stat-hint" style="margin:0 0 12px;">These lines are not structural ply slots (legacy or extra). They are kept so saved BOM data is not dropped.</p>
+              ${extraCards}
+            ` : ""}
+            <div class="cc-total-line"><span>Total Other Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalOtherMaterialCost)}</strong></div>
           </div>
-        </div>
+        </section>
       `;
     }
 
@@ -9270,7 +8914,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-head">
               <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().fixedServices}: Fixed Services</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().services}: Services</div>
                 <div class="section-title">Conversion steps</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-service" ${hasFg ? "" : "disabled"}>
@@ -9299,150 +8943,123 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderAdditionalServicesSection() {
-      const root = document.getElementById("bom-additional-services-root");
-      if (!root) return;
-      const hasFg = Boolean(getSelectedFinishedGood());
-      if (!hasFg) {
-        root.innerHTML = "";
-        return;
-      }
-      const cards = (state.bomAdditionalServices || []).map((line, index) => (
-        renderBomAdditionalServiceCard(line, index)
-      )).join("");
-      const activeServices = getActiveServicesForBomPicker();
-      const hasErrors = (state.bomAdditionalServices || []).some((line) => line.error);
-      root.innerHTML = `
-        <div class="card">
-          <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().additionalServices}: Additional Services</div>
-                <div class="section-title">Optional conversion extras</div>
-              </div>
-              <button type="button" class="btn btn-primary" id="btn-add-additional-service" ${hasFg && activeServices.length ? "" : "disabled"}>
-                <i data-lucide="plus"></i> Add additional service
-              </button>
-            </div>
-            ${!activeServices.length ? `<p class="stat-hint" style="margin:0 0 12px;">No services found. Add them under Services first.</p>` : ""}
-            ${cards || `<p class="stat-hint">No additional services added yet.</p>`}
-            <div class="cc-total-line"><span>Total Additional Service Cost</span><strong>${hasErrors ? "Error" : formatRupees(calculateTotalAdditionalServiceCost())}</strong></div>
-          </div>
-        </div>
-      `;
-    }
-
     function renderCostSummary() {
       const root = document.getElementById("bom-cost-root");
       if (!root) return;
       const calcErrors = collectBomCalculationErrors();
       const hasCalcErrors = calcErrors.length > 0;
+      const showColorCost = hasBomColorCost();
       const showOrderCost = hasBomOrderQuantity();
       const total = hasCalcErrors ? 0 : (Number(state.finalCostPerPiece) || 0);
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
       const otherPct = total > 0 ? roundTo((Number(state.totalOtherMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
+      const colorPct = showColorCost && total > 0 ? roundTo((Number(state.totalColorCost) / total) * 100, 1) : 0;
+      const colorRateValue = state.bomColorRate == null || state.bomColorRate === ""
+        ? ""
+        : formatDecimal(state.bomColorRate, 2, false);
       const orderQtyValue = state.bomOrderQuantity == null || state.bomOrderQuantity === ""
         ? ""
         : formatDecimal(state.bomOrderQuantity, 4, false);
-      const bomFinalCostFormula = {
-        formula: "Materials + Other Materials + Services",
-        description: "Sum of ply materials, additional materials, other materials, and services."
-      };
       root.innerHTML = `
         <div class="card cost-summary">
           <div class="card-body">
-            <div class="cost-summary-zone">
-              <div class="section-kicker">Cost Summary (PKR)</div>
-              <div class="section-title" style="margin-bottom:12px;">Per piece roll-up</div>
-              ${renderBomCalculationErrorBanner(calcErrors)}
-              <div class="cost-optional-row">
-                <div class="cost-optional-field">
-                  <label class="form-label" for="bom-order-quantity">Order Quantity</label>
-                  <input class="wastage-input" type="number" min="0.0001" max="999999" step="0.0001" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" placeholder="Optional" aria-label="Order quantity" />
-                </div>
-                <div class="cost-optional-field">
-                  <label class="form-label" for="bom-order-quantity-uom">UOM</label>
-                  <select id="bom-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
-                    ${finishedGoodUomOptions(state.bomOrderQuantityUOM || "pieces")}
-                  </select>
-                </div>
+            <div class="section-kicker">Cost Summary (PKR)</div>
+            <div class="section-title" style="margin-bottom:12px;">Per piece roll-up</div>
+            ${renderBomCalculationErrorBanner(calcErrors)}
+            <div class="cost-optional-row">
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
+                <select id="bom-number-of-colors" class="full-select" aria-label="Number of colors">
+                  ${bomColorCountOptions(state.bomNumberOfColors)}
+                </select>
               </div>
-              <div class="cost-optional-row">
-                <div class="cost-optional-field">
-                  <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
-                  <select id="bom-number-of-colors" class="full-select" aria-label="Number of colors">
-                    ${bomColorCountOptions(state.bomNumberOfColors)}
-                  </select>
-                </div>
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
+                <input class="wastage-input" type="number" min="0.01" max="999999.99" step="0.01" id="bom-color-rate" value="${escapeHtml(colorRateValue)}" placeholder="Optional" aria-label="Rate per color in rupees" />
               </div>
             </div>
-            <div class="cost-summary-zone cost-summary-middle">
-              <div class="section-kicker" style="margin-top:8px;">Summary</div>
-              <div class="cost-row">
-                <span>Material Cost</span>
-                <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
+            <div class="cost-optional-row">
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-order-quantity">Order Quantity</label>
+                <input class="wastage-input" type="number" min="0.0001" max="999999" step="0.0001" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" placeholder="Optional" aria-label="Order quantity" />
               </div>
-              <div class="cost-row">
-                <span>Additional Material Cost</span>
-                <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalOtherMaterialCost)}</strong>
-              </div>
-              <div class="cost-row">
-                <span>Service Cost</span>
-                <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
-              </div>
-              <div class="cost-row cost-final">
-                ${labeledFixedFormula("Final Cost/Piece", bomFinalCostFormula.formula, bomFinalCostFormula.description)}
-                <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.finalCostPerPiece)}</strong>
-              </div>
-              <div class="cost-row">
-                ${labeledFixedFormula("Cost per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}
-                <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer100)}</strong>
-              </div>
-              <div class="cost-row">
-                ${labeledFixedFormula("Cost per 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}
-                <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer500)}</strong>
-              </div>
-              <div class="cost-row">
-                ${labeledFixedFormula("Cost per 1,000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}
-                <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1000)}</strong>
-              </div>
-              ${showOrderCost ? `
-              <div class="cost-row cost-final">
-                ${labeledFixedFormula("Total Order Cost", FIXED_COST_FORMULAS.orderCost.formula, FIXED_COST_FORMULAS.orderCost.description)}
-                <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.totalOrderCost)}</strong>
-              </div>
-              ` : ""}
-              ${hasCalcErrors ? "" : `
-              <div class="cost-bars">
-                <div class="cost-bar">
-                  <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
-                  <div class="cost-bar-other" style="width:${escapeHtml(otherPct)}%;"></div>
-                  <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
-                </div>
-                <div class="cost-legend">
-                  <span>Material ${formatNumber(materialPct, 1)}%</span>
-                  <span>Other ${formatNumber(otherPct, 1)}%</span>
-                  <span>Service ${formatNumber(servicePct, 1)}%</span>
-                </div>
-              </div>
-              `}
-              <p class="stat-hint">Final cost is Material Cost + Additional Material Cost + Service Cost in Pakistani Rupees (Rs.). Color printing is not applied on this page.</p>
-            </div>
-            <div class="cost-summary-zone cost-summary-footer">
-              <div class="cost-row">
-                <span>Profit %</span>
-                <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" />
-              </div>
-              <div class="cost-row">
-                <span>Overhead %</span>
-                <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-overhead-percent" value="${escapeHtml(formatDecimal(state.bomOverheadPercent, 2, false))}" />
-              </div>
-              <div class="cost-row cost-final">
-                ${labeledFixedFormula("Sale Cost", FIXED_COST_FORMULAS.saleCost.formula, FIXED_COST_FORMULAS.saleCost.description)}
-                <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.saleCost)}</strong>
+              <div class="cost-optional-field">
+                <label class="form-label" for="bom-order-quantity-uom">UOM</label>
+                <select id="bom-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
+                  ${finishedGoodUomOptions(state.bomOrderQuantityUOM || "pieces")}
+                </select>
               </div>
             </div>
+            <div class="cost-row">
+              <span>Material Cost</span>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
+            </div>
+            <div class="cost-row">
+              <span>Other Material Cost</span>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalOtherMaterialCost)}</strong>
+            </div>
+            <div class="cost-row">
+              <span>Service Cost</span>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
+            </div>
+            ${showColorCost ? `
+            <div class="cost-row">
+              ${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalColorCost)}</strong>
+            </div>
+            ` : ""}
+            <div class="cost-row cost-final">
+              ${labeledFixedFormula("Final Cost/Piece", FIXED_COST_FORMULAS.finalCost.formula, FIXED_COST_FORMULAS.finalCost.description)}
+              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.finalCostPerPiece)}</strong>
+            </div>
+            <div class="cost-row">
+              ${labeledFixedFormula("Cost per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer100)}</strong>
+            </div>
+            <div class="cost-row">
+              ${labeledFixedFormula("Cost per 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer500)}</strong>
+            </div>
+            <div class="cost-row">
+              ${labeledFixedFormula("Cost per 1,000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1000)}</strong>
+            </div>
+            ${showOrderCost ? `
+            <div class="cost-row cost-final">
+              ${labeledFixedFormula("Total Order Cost", FIXED_COST_FORMULAS.orderCost.formula, FIXED_COST_FORMULAS.orderCost.description)}
+              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.totalOrderCost)}</strong>
+            </div>
+            ` : ""}
+            <div class="cost-row">
+              <span>Profit %</span>
+              <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" />
+            </div>
+            <div class="cost-row">
+              <span>Overhead %</span>
+              <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-overhead-percent" value="${escapeHtml(formatDecimal(state.bomOverheadPercent, 2, false))}" />
+            </div>
+            <div class="cost-row cost-final">
+              ${labeledFixedFormula("Sale Cost", FIXED_COST_FORMULAS.saleCost.formula, FIXED_COST_FORMULAS.saleCost.description)}
+              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.saleCost)}</strong>
+            </div>
+            ${hasCalcErrors ? "" : `
+            <div class="cost-bars">
+              <div class="cost-bar">
+                <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
+                <div class="cost-bar-other" style="width:${escapeHtml(otherPct)}%;"></div>
+                <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
+                ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(colorPct)}%;"></div>` : ""}
+              </div>
+              <div class="cost-legend${showColorCost ? " cost-legend-wide" : ""}">
+                <span>Material ${formatNumber(materialPct, 1)}%</span>
+                <span>Other ${formatNumber(otherPct, 1)}%</span>
+                <span>Service ${formatNumber(servicePct, 1)}%</span>
+                ${showColorCost ? `<span>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
+              </div>
+            </div>
+            `}
+            <p class="stat-hint">Final cost is Material Cost + Other Material Cost + Service Cost in Pakistani Rupees (Rs.). Rates come from master data after unit conversion.</p>
           </div>
         </div>
       `;
@@ -9533,7 +9150,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
               <div>
                 <label class="form-label" for="fb-code">Formula Code</label>
-                <input id="fb-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="FLAT_LENGTH" ${draft.id && isFixedFormulaRecord(getFormula(draft.id)) ? "disabled" : ""} />
+                <input id="fb-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="FLAT_LENGTH" />
                 ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
               </div>
               <div>
@@ -9761,8 +9378,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         expression: String(draft.expression).trim(),
         serviceLength: Boolean(draft.serviceLength),
         serviceWidth: Boolean(draft.serviceWidth),
-        isActive: draft.id ? (getFormula(draft.id)?.isActive !== false) : true,
-        isFixed: draft.id ? isFixedFormulaRecord(getFormula(draft.id)) : false
+        isActive: draft.id ? (getFormula(draft.id)?.isActive !== false) : true
       };
 
       if (draft.id) {
@@ -12403,8 +12019,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dataType: "numeric",
         unit: "inch",
         defaultValue: "",
-        isActive: true,
-        isFixed: false
+        isActive: true
       };
     }
 
@@ -12500,13 +12115,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openFormulaVariableModal(id) {
       const item = id ? formulaVariables.find((row) => row.id === Number(id)) : null;
+      if (item && isFixedSheetAreaCode(item.code)) {
+        showNotification("SHEET_AREA is a fixed calculation and cannot be edited.", "error");
+        return;
+      }
       state.modal = {
         type: "formula-variable",
         selectedId: item ? item.id : null,
         mode: item ? "edit" : "add",
         lineId: null,
         draft: item
-          ? { id: item.id, code: item.code, name: item.name, description: item.description || "", category: item.category, dataType: item.dataType, unit: item.unit || "", defaultValue: item.defaultValue == null ? "" : item.defaultValue, isActive: item.isActive !== false, isFixed: isFixedFormulaVariable(item) }
+          ? { id: item.id, code: item.code, name: item.name, description: item.description || "", category: item.category, dataType: item.dataType, unit: item.unit || "", defaultValue: item.defaultValue == null ? "" : item.defaultValue, isActive: item.isActive !== false }
           : defaultFormulaVariableDraft(),
         errors: {}
       };
@@ -12539,26 +12158,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
       if (state.modal.mode === "edit" && draft.id) {
         const existing = formulaVariables.find((row) => row.id === draft.id);
-        const index = formulaVariables.findIndex((row) => row.id === draft.id);
-        if (index >= 0) {
-          formulaVariables[index] = {
-            ...formulaVariables[index],
-            ...payload,
-            isFixed: isFixedFormulaVariable(existing)
-          };
+        if (existing && isFixedSheetAreaCode(existing.code)) {
+          showNotification("SHEET_AREA is a fixed calculation and cannot be edited.", "error");
+          return;
         }
+        const index = formulaVariables.findIndex((row) => row.id === draft.id);
+        if (index >= 0) formulaVariables[index] = { ...formulaVariables[index], ...payload };
         showNotification("Variable updated successfully");
       } else {
         formulaVariables.push({
           id: nextMasterId(formulaVariables),
           code: String(draft.code).trim().toUpperCase(),
-          isFixed: false,
           ...payload
         });
         showNotification("Variable added successfully");
       }
       closeModal();
-      refreshFormulaVariableDependentViews();
+      renderFormulaVariables();
+      refreshIcons();
       afterDataChange("formulaVariables");
     }
 
@@ -12573,116 +12190,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "fvar-unit") draft.unit = target.value;
       else if (target.id === "fvar-default") draft.defaultValue = target.value;
       else if (target.id === "fvar-status") draft.isActive = target.value === "Active";
-      else return false;
-      return true;
-    }
-
-    function uomOptionUsageMessage(value) {
-      const uom = String(value || "").trim();
-      if (!uom) return "";
-      const usedOnFg = finishedGoods.some((item) => String(item.uom || "") === uom);
-      const usedOnBom = boms.some((bom) => String(bom.bomOrderQuantityUOM || "") === uom)
-        || String(state.bomOrderQuantityUOM || "") === uom;
-      if (usedOnFg || usedOnBom) return "Cannot delete. This UOM is used on a finished good or BOM.";
-      return "";
-    }
-
-    function openCostingOptionModal(kind, id) {
-      const list = kind === "uom" ? uomOptions : colorCountOptions;
-      const item = id ? list.find((row) => row.id === Number(id)) : null;
-      state.modal = {
-        type: kind === "uom" ? "uom-option" : "color-count-option",
-        selectedId: item ? item.id : null,
-        mode: item ? "edit" : "add",
-        lineId: null,
-        draft: item
-          ? { id: item.id, value: item.value, status: item.status || "Active" }
-          : { id: null, value: "", status: "Active" },
-        errors: {}
-      };
-      renderModal();
-    }
-
-    function renderCostingOptionFormModal() {
-      const isUom = state.modal.type === "uom-option";
-      const draft = state.modal.draft || {};
-      const errors = state.modal.errors || {};
-      const title = isUom
-        ? (state.modal.mode === "edit" ? "Edit UOM Option" : "Add UOM Option")
-        : (state.modal.mode === "edit" ? "Edit Color Count" : "Add Color Count");
-      return `
-        <div class="modal-header">
-          <div>
-            <div class="section-kicker">Costing Options</div>
-            <strong>${escapeHtml(title)}</strong>
-          </div>
-          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
-        </div>
-        <div class="modal-body">
-          <label class="form-label" for="costing-option-value">${isUom ? "UOM" : "Number of colors"}</label>
-          <input id="costing-option-value" class="full-select ${errors.value ? "input-invalid" : ""}" type="${isUom ? "text" : "number"}" min="${isUom ? "" : "1"}" step="${isUom ? "" : "1"}" value="${escapeHtml(draft.value == null ? "" : String(draft.value))}" />
-          ${errors.value ? `<div class="field-error">${escapeHtml(errors.value)}</div>` : ""}
-          <label class="form-label" for="costing-option-status" style="margin-top:12px;">Status</label>
-          <select id="costing-option-status" class="full-select">
-            <option value="Active" ${draft.status === "Active" ? "selected" : ""}>Active</option>
-            <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
-          </select>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-costing-option">Save</button>
-        </div>
-      `;
-    }
-
-    function saveCostingOptionFromModal() {
-      const isUom = state.modal.type === "uom-option";
-      const draft = state.modal.draft || {};
-      const raw = String(draft.value == null ? "" : draft.value).trim();
-      const errors = {};
-      let value = raw;
-      if (isUom) {
-        if (!raw) errors.value = "UOM is required.";
-        else if ((uomOptions || []).some((row) => row.id !== draft.id && String(row.value).toLowerCase() === raw.toLowerCase())) {
-          errors.value = "This UOM already exists.";
-        }
-      } else {
-        const n = Number(raw);
-        if (!Number.isFinite(n) || n < 1 || Math.round(n) !== n) errors.value = "Enter a whole number of 1 or more.";
-        else if ((colorCountOptions || []).some((row) => row.id !== draft.id && Number(row.value) === n)) {
-          errors.value = "This color count already exists.";
-        } else value = n;
-      }
-      state.modal.errors = errors;
-      if (Object.keys(errors).length) {
-        showFirstValidationError(errors);
-        renderModal();
-        return;
-      }
-      const list = isUom ? uomOptions : colorCountOptions;
-      const store = isUom ? "uomOptions" : "colorCountOptions";
-      if (state.modal.mode === "edit" && draft.id) {
-        const index = list.findIndex((row) => row.id === draft.id);
-        if (index >= 0) list[index] = { ...list[index], value, status: draft.status || "Active" };
-        showNotification(isUom ? "UOM option updated" : "Color count option updated");
-      } else {
-        list.push({
-          id: nextMasterId(list),
-          value,
-          status: draft.status || "Active"
-        });
-        showNotification(isUom ? "UOM option added" : "Color count option added");
-      }
-      closeModal();
-      renderCostingOptions();
-      refreshIcons();
-      afterDataChange(store);
-    }
-
-    function updateCostingOptionDraftFromEvent(target) {
-      if (!state.modal.draft || (state.modal.type !== "uom-option" && state.modal.type !== "color-count-option")) return false;
-      if (target.id === "costing-option-value") state.modal.draft.value = target.value;
-      else if (target.id === "costing-option-status") state.modal.draft.status = target.value;
       else return false;
       return true;
     }
@@ -12862,8 +12369,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         afterDataChange("dimensions", "serviceDimensions", "materialDimensions", "otherMaterialDimensions", "services", "rawMaterials", "otherRawMaterials");
       } else if (entity === "formula-variable") {
         const variable = formulaVariables.find((item) => item.id === id);
-        if (isFixedFormulaVariable(variable)) {
-          showNotification((variable && variable.code ? variable.code : "This variable") + " is fixed and cannot be deleted.", "error");
+        if (variable && isFixedSheetAreaCode(variable.code)) {
+          showNotification("SHEET_AREA is a fixed calculation and cannot be deleted.", "error");
           return;
         }
         const used = variable ? formulasUsingVariable(variable.code) : [];
@@ -12874,29 +12381,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const index = formulaVariables.findIndex((item) => item.id === id);
         if (index >= 0) formulaVariables.splice(index, 1);
         closeModal();
-        refreshFormulaVariableDependentViews();
+        renderFormulaVariables();
         showNotification("Variable deleted successfully");
         afterDataChange("formulaVariables");
-      } else if (entity === "uom-option") {
-        const item = uomOptions.find((row) => row.id === id);
-        const usage = item ? uomOptionUsageMessage(item.value) : "";
-        if (usage) {
-          showNotification(usage, "error");
-          return;
-        }
-        const index = uomOptions.findIndex((row) => row.id === id);
-        if (index >= 0) uomOptions.splice(index, 1);
-        closeModal();
-        renderCostingOptions();
-        showNotification("UOM option deleted");
-        afterDataChange("uomOptions");
-      } else if (entity === "color-count-option") {
-        const index = colorCountOptions.findIndex((row) => row.id === id);
-        if (index >= 0) colorCountOptions.splice(index, 1);
-        closeModal();
-        renderCostingOptions();
-        showNotification("Color count option deleted");
-        afterDataChange("colorCountOptions");
       } else if (entity === "style-variable") {
         const parent = state.modal.parentStyle;
         const row = styleVariables.find((item) => item.id === id);
@@ -13356,7 +12843,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? findBomServiceLineById(lineId)
         : isOther
           ? (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId))
-          : findBomMaterialLineById(lineId);
+          : state.bomMaterials.find((item) => item.id === Number(lineId));
       if (!line || !fg) {
         return { error: "Calculation details are unavailable." };
       }
@@ -14055,7 +13542,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBreakdownModal() {
-      const line = findBomMaterialLineById(state.modal.lineId);
+      const line = state.bomMaterials.find((item) => item.id === state.modal.lineId);
       const fg = getSelectedFinishedGood();
       if (!line || !fg) {
         return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
@@ -14168,8 +13655,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderStyleFormModal();
       } else if (state.modal.type === "dimension-master") {
         dialog.innerHTML = renderDimensionFormModal();
-      } else if (state.modal.type === "uom-option" || state.modal.type === "color-count-option") {
-        dialog.innerHTML = renderCostingOptionFormModal();
       } else if (state.modal.type === "formula-variable") {
         dialog.innerHTML = renderFormulaVariableFormModal();
       } else if (state.modal.type === "confirm-delete-master") {
@@ -14254,7 +13739,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openMaterialModal(lineId) {
       if (!getSelectedFinishedGood() || !lineId) return;
-      const line = findBomMaterialLineById(lineId);
+      const line = state.bomMaterials.find((item) => item.id === Number(lineId));
       if (!line) return;
       const draft = defaultMaterialDraft(line);
       if (draft.rawMaterialId) applyMaterialFormulaBindings(draft);
@@ -14322,9 +13807,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         costPerPiece: 0
       });
 
-      if ((state.bomOtherMaterials || []).some((line) => line.id === nextLine.id)) {
-        state.bomOtherMaterials = state.bomOtherMaterials.map((line) => line.id === nextLine.id ? { ...nextLine, layer: line.layer || "Additional" } : line);
-      } else if (state.modal.mode === "edit") {
+      if (state.modal.mode === "edit") {
         state.bomMaterials = state.bomMaterials.map((line) => line.id === nextLine.id ? nextLine : line);
       } else {
         state.bomMaterials.push(nextLine);
@@ -14351,14 +13834,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         refreshBomViews();
         return;
       }
-      const applyWastage = (rows) => rows.map((line) => (
-        line.id !== Number(lineId) ? line : { ...line, wastagePercent: parsed.value }
-      ));
-      if ((state.bomOtherMaterials || []).some((line) => line.id === Number(lineId))) {
-        state.bomOtherMaterials = applyWastage(state.bomOtherMaterials);
-      } else {
-        state.bomMaterials = applyWastage(state.bomMaterials);
-      }
+      state.bomMaterials = state.bomMaterials.map((line) => {
+        if (line.id !== Number(lineId)) return line;
+        return { ...line, wastagePercent: parsed.value };
+      });
       recalculateBOMCosts();
       refreshBomViews();
       persistEditorState();
@@ -14368,10 +13847,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!getSelectedFinishedGood() || !lineId) return;
       const line = (state.bomOtherMaterials || []).find((item) => item.id === Number(lineId));
       if (!line) return;
-      if (line.rawMaterialId) {
-        openMaterialModal(line.id);
-        return;
-      }
       const draft = {
         otherRawMaterialId: line.otherRawMaterialId,
         layer: line.layer,
@@ -14458,13 +13933,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function confirmDeleteOtherMaterial() {
-      const line = (state.bomOtherMaterials || []).find((item) => item.id === state.modal.lineId);
-      const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials);
-      if (isBomOtherMaterialStructuralLine(line, layout)) {
-        closeModal();
-        return;
-      }
-      state.bomOtherMaterials = (state.bomOtherMaterials || []).filter((item) => item.id !== state.modal.lineId);
+      state.bomOtherMaterials = (state.bomOtherMaterials || []).filter((line) => line.id !== state.modal.lineId);
       recalculateBOMCosts();
       closeModal();
       refreshBomViews();
@@ -14940,7 +14409,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openServiceModal(lineId) {
       if (!getSelectedFinishedGood()) return;
-      const line = lineId ? findBomServiceLineById(lineId) : null;
+      const line = lineId ? state.bomServices.find((item) => item.id === Number(lineId)) : null;
       state.modal = {
         type: "service",
         selectedId: line ? line.serviceId : null,
@@ -15000,11 +14469,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         costPerPiece: 0
       });
 
-      if ((state.bomAdditionalServices || []).some((line) => line.id === nextLine.id)) {
-        state.bomAdditionalServices = state.bomAdditionalServices.map((line) => (
-          line.id === nextLine.id ? { ...nextLine, layer: line.layer || "Additional" } : line
-        ));
-      } else if (state.modal.mode === "edit") {
+      if (state.modal.mode === "edit") {
         state.bomServices = state.bomServices.map((line) => line.id === nextLine.id ? nextLine : line);
       } else {
         state.bomServices.push(nextLine);
@@ -15068,10 +14533,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCurrentPage() {
       const page = state.currentPage;
       if (page === "dashboard") renderDashboard();
+      if (page === "formula-variables") renderFormulaVariables();
       if (page === "formulas") renderFormulas();
       if (page === "dimensions") renderDimensions();
       if (page === "style") renderStyles();
-      if (page === "costing-options") renderCostingOptions();
       if (page === "raw-materials") renderRawMaterials();
       if (page === "raw-material-rates") renderRawMaterialRates();
       if (page === "other-raw-materials") renderOtherRawMaterials();
@@ -15218,21 +14683,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
+        } else if (id === "fvar-search") {
+          state.searches.formulaVariables = event.target.value;
+          renderFormulaVariables();
+          refreshIcons();
+          restoreFocus(id);
+          persistPrefs();
         } else if (id === "dim-search") {
           state.searches.dimensions = event.target.value;
           renderDimensions();
-          refreshIcons();
-          restoreFocus(id);
-          persistPrefs();
-        } else if (id === "uom-option-search") {
-          state.searches.uomOptions = event.target.value;
-          renderCostingOptions();
-          refreshIcons();
-          restoreFocus(id);
-          persistPrefs();
-        } else if (id === "color-option-search") {
-          state.searches.colorCountOptions = event.target.value;
-          renderCostingOptions();
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
@@ -15282,6 +14741,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const caret = event.target.selectionStart;
           updateBomMarginPercent(fieldId === "bom-profit-percent" ? "profit" : "overhead", event.target.value);
           restoreBomSummaryFieldFocus(fieldId, caret);
+        } else if (event.target.id === "bom-color-rate") {
+          const caret = event.target.selectionStart;
+          updateBomColorRate(event.target.value);
+          restoreBomSummaryFieldFocus("bom-color-rate", caret);
         } else if (event.target.id === "bom-order-quantity") {
           const caret = event.target.selectionStart;
           updateBomOrderQuantity(event.target.value);
@@ -15556,14 +15019,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           openDimensionModal();
           return;
         }
-        if (event.target.closest("#btn-add-uom-option")) {
-          openCostingOptionModal("uom");
-          return;
-        }
-        if (event.target.closest("#btn-add-color-option")) {
-          openCostingOptionModal("color");
-          return;
-        }
         const editFg = event.target.closest("[data-edit-fg]");
         if (editFg) {
           openFinishedGoodModal(editFg.dataset.editFg);
@@ -15678,8 +15133,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteFvar = event.target.closest("[data-delete-fvar]");
         if (deleteFvar) {
           const item = formulaVariables.find((row) => row.id === Number(deleteFvar.dataset.deleteFvar));
-          if (isFixedFormulaVariable(item)) {
-            showNotification((item && item.code ? item.code : "This variable") + " is fixed and cannot be deleted.", "error");
+          if (item && isFixedSheetAreaCode(item.code)) {
+            showNotification("SHEET_AREA is a fixed calculation and cannot be deleted.", "error");
             return;
           }
           if (item) {
@@ -15720,15 +15175,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        if (event.target.closest("#btn-add-additional-material")) {
-          addBomOtherMaterial();
-          return;
-        }
-
         if (event.target.closest("#btn-add-additional-service")) {
           addBomAdditionalService();
           return;
         }
+
         const editBtn = event.target.closest("[data-edit-line]");
         if (editBtn) {
           openMaterialModal(editBtn.dataset.editLine);
@@ -15743,27 +15194,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
         const editOtherBtn = event.target.closest("[data-edit-other-line]");
         if (editOtherBtn) {
-          const otherLine = (state.bomOtherMaterials || []).find((item) => item.id === Number(editOtherBtn.dataset.editOtherLine));
-          if (!otherLine || isEmptyBomOtherMaterialLine(otherLine)) return;
-          if (otherLine.rawMaterialId) openMaterialModal(otherLine.id);
-          else openOtherMaterialModal(editOtherBtn.dataset.editOtherLine);
+          openOtherMaterialModal(editOtherBtn.dataset.editOtherLine);
           return;
         }
 
         const deleteOtherBtn = event.target.closest("[data-delete-other-line]");
         if (deleteOtherBtn) {
-          const otherLine = (state.bomOtherMaterials || []).find((item) => item.id === Number(deleteOtherBtn.dataset.deleteOtherLine));
-          const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials);
-          if (isBomOtherMaterialStructuralLine(otherLine, layout)) return;
           openDeleteOtherMaterialModal(deleteOtherBtn.dataset.deleteOtherLine);
           return;
         }
 
         const breakdownOtherBtn = event.target.closest("[data-breakdown-other-line]");
         if (breakdownOtherBtn) {
-          const otherLine = (state.bomOtherMaterials || []).find((item) => item.id === Number(breakdownOtherBtn.dataset.breakdownOtherLine));
-          if (otherLine && otherLine.rawMaterialId) openBreakdownModal(otherLine.id);
-          else openOtherBreakdownModal(breakdownOtherBtn.dataset.breakdownOtherLine);
+          openOtherBreakdownModal(breakdownOtherBtn.dataset.breakdownOtherLine);
           return;
         }
 
@@ -15806,38 +15249,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteAdditional = event.target.closest("[data-delete-additional-service]");
         if (deleteAdditional) {
           deleteBomAdditionalService(deleteAdditional.dataset.deleteAdditionalService);
-          return;
-        }
-        const editAdditionalService = event.target.closest("[data-edit-additional-service]");
-        if (editAdditionalService) {
-          openServiceModal(editAdditionalService.dataset.editAdditionalService);
-          return;
-        }
-        const editUomOption = event.target.closest("[data-edit-uom-option]");
-        if (editUomOption) {
-          openCostingOptionModal("uom", editUomOption.dataset.editUomOption);
-          return;
-        }
-        const deleteUomOption = event.target.closest("[data-delete-uom-option]");
-        if (deleteUomOption) {
-          const item = uomOptions.find((row) => row.id === Number(deleteUomOption.dataset.deleteUomOption));
-          const usage = item ? uomOptionUsageMessage(item.value) : "";
-          if (usage) {
-            showNotification(usage, "error");
-            return;
-          }
-          openMasterDeleteModal("uom-option", deleteUomOption.dataset.deleteUomOption, item ? item.value : "this UOM");
-          return;
-        }
-        const editColorOption = event.target.closest("[data-edit-color-option]");
-        if (editColorOption) {
-          openCostingOptionModal("color", editColorOption.dataset.editColorOption);
-          return;
-        }
-        const deleteColorOption = event.target.closest("[data-delete-color-option]");
-        if (deleteColorOption) {
-          const item = colorCountOptions.find((row) => row.id === Number(deleteColorOption.dataset.deleteColorOption));
-          openMasterDeleteModal("color-count-option", deleteColorOption.dataset.deleteColorOption, item ? String(item.value) : "this color count");
           return;
         }
       });
@@ -15986,7 +15397,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (updateFormulaVariableDraftFromEvent(event.target)) return;
-        if (updateCostingOptionDraftFromEvent(event.target)) return;
         if (updateDimensionDraftFromEvent(event.target)) {
           if (event.target.id === "dim-l") normalizeDraftNumber(event.target, "L", "dimension");
           else if (event.target.id === "dim-w") normalizeDraftNumber(event.target, "W", "dimension");
@@ -16064,9 +15474,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (updateFormulaVariableDraftFromEvent(event.target)) {
           if (event.target.id === "fvar-code") event.target.value = String(event.target.value || "").toUpperCase();
-          restoreFocus(event.target.id);
-        }
-        if (updateCostingOptionDraftFromEvent(event.target)) {
           restoreFocus(event.target.id);
         }
         if (updateDimensionDraftFromEvent(event.target)) {
@@ -16287,10 +15694,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-save-formula-variable")) {
           saveFormulaVariableFromModal();
-          return;
-        }
-        if (event.target.closest("#btn-save-costing-option")) {
-          saveCostingOptionFromModal();
           return;
         }
         if (event.target.closest("#btn-confirm-master-delete")) {
