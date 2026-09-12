@@ -854,6 +854,7 @@
     .section-title { font-size: 16px; font-weight: 650; }
 
     .fg-combo { position: relative; min-width: 0; }
+    #fs-combo { margin: 4px 0 16px; }
     .fg-combo label {
       display: block;
       font-weight: 600;

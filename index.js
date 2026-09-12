@@ -30,6 +30,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const finishedGoods = [];
+    const finishingServices = [];
 
     const styles = [
       { id: 101, name: "WINDOW LID", description: "Lid with window cutout", status: "Active" },
@@ -294,6 +295,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const SEED_DATA = {
       finishedGoods: snapshotData(finishedGoods),
+      finishingServices: snapshotData(finishingServices),
       rawMaterials: snapshotData(rawMaterials),
       otherRawMaterials: snapshotData(otherRawMaterials),
       materialRates: snapshotData(materialRates),
@@ -476,6 +478,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensions: "",
         formulas: "",
         bomFinishedGood: "",
+        bomFinishingService: "",
         boms: ""
       },
       formulaFilter: "all",
@@ -490,6 +493,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       notification: null,
       sidebarOpen: false,
       selectedFinishedGoodId: null,
+      selectedFinishingServiceId: null,
       currentBOM: null,
       bomMaterials: [],
       bomOtherMaterials: [],
@@ -513,6 +517,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       bomOrderQuantityUOM: "pieces",
       saleCost: 0,
       fgSelectorOpen: false,
+      fsSelectorOpen: false,
       cleaningUserData: false,
       bomFlowSection: "fg-selector-root",
       modal: {
@@ -547,9 +552,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 7;
+    const IDB_VERSION = 8;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
+      "finishingServices",
       "rawMaterials",
       "otherRawMaterials",
       "materialRates",
@@ -625,6 +631,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getCollectionArray(storeName) {
       if (storeName === "finishedGoods") return finishedGoods;
+      if (storeName === "finishingServices") return finishingServices;
       if (storeName === "rawMaterials") return rawMaterials;
       if (storeName === "otherRawMaterials") return otherRawMaterials;
       if (storeName === "materialRates") return materialRates;
@@ -736,6 +743,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return putAppStateRecord({
         key: "editor",
         selectedFinishedGoodId: state.selectedFinishedGoodId,
+        selectedFinishingServiceId: state.selectedFinishingServiceId,
         currentBOM: state.currentBOM,
         bomMaterials: state.bomMaterials,
         bomOtherMaterials: state.bomOtherMaterials,
@@ -910,6 +918,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function collectCloudBackupPayload() {
       return snapshotData({
         finishedGoods,
+        finishingServices,
         rawMaterials,
         otherRawMaterials,
         materialRates,
@@ -933,6 +942,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         },
         editor: {
           selectedFinishedGoodId: state.selectedFinishedGoodId,
+          selectedFinishingServiceId: state.selectedFinishingServiceId,
           currentBOM: state.currentBOM,
           bomMaterials: state.bomMaterials,
           bomOtherMaterials: state.bomOtherMaterials,
@@ -959,6 +969,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const EXCEL_EXPORT_SHEETS = [
       { name: "Finished Goods", key: "finishedGoods" },
+      { name: "Finishing Services", key: "finishingServices" },
       { name: "Raw Materials", key: "rawMaterials" },
       { name: "Material Rates", key: "materialRates" },
       { name: "Material Dimensions", key: "materialDimensions" },
@@ -1104,6 +1115,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         hydratedFromSeed = cloudData.hydratedFromSeed;
       }
       replaceArrayContents(finishedGoods, cloudData.finishedGoods || []);
+      replaceArrayContents(finishingServices, cloudData.finishingServices || []);
       replaceArrayContents(rawMaterials, cloudData.rawMaterials || []);
       replaceArrayContents(otherRawMaterials, cloudData.otherRawMaterials || []);
       replaceArrayContents(materialRates, cloudData.materialRates || []);
@@ -1136,6 +1148,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const editor = cloudData.editor;
       if (editor) {
         state.selectedFinishedGoodId = editor.selectedFinishedGoodId || null;
+        state.selectedFinishingServiceId = editor.selectedFinishingServiceId || (editor.currentBOM && editor.currentBOM.finishingServiceId) || null;
         state.currentBOM = editor.currentBOM || null;
         hydrateBomEditorMaterials(editor.bomMaterials, editor.bomOtherMaterials);
         state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
@@ -1500,6 +1513,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const editor = await getAppStateRecord("editor");
           if (editor) {
             state.selectedFinishedGoodId = editor.selectedFinishedGoodId || null;
+            state.selectedFinishingServiceId = editor.selectedFinishingServiceId || (editor.currentBOM && editor.currentBOM.finishingServiceId) || null;
             state.currentBOM = editor.currentBOM || null;
             hydrateBomEditorMaterials(editor.bomMaterials, editor.bomOtherMaterials);
             state.bomServices = Array.isArray(editor.bomServices) ? editor.bomServices : [];
@@ -1866,6 +1880,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensions: "",
         formulas: "",
         bomFinishedGood: "",
+        bomFinishingService: "",
         boms: ""
       };
       state.formulaFilter = "all";
@@ -1899,6 +1914,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function applySeedDataInMemory() {
       replaceArrayContents(finishedGoods, snapshotData(SEED_DATA.finishedGoods));
+      replaceArrayContents(finishingServices, snapshotData(SEED_DATA.finishingServices));
       replaceArrayContents(rawMaterials, snapshotData(SEED_DATA.rawMaterials));
       replaceArrayContents(otherRawMaterials, snapshotData(SEED_DATA.otherRawMaterials));
       replaceArrayContents(materialRates, snapshotData(SEED_DATA.materialRates));
@@ -1968,6 +1984,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         bomSeq,
         formulaSeq,
         selectedFinishedGoodId: state.selectedFinishedGoodId,
+        selectedFinishingServiceId: state.selectedFinishingServiceId,
         currentBOM: snapshotData(state.currentBOM),
         bomMaterials: snapshotData(state.bomMaterials),
         bomOtherMaterials: snapshotData(state.bomOtherMaterials),
@@ -2011,6 +2028,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       } else {
         replaceArrayContents(finishedGoods, snap.finishedGoods);
+        replaceArrayContents(finishingServices, snap.finishingServices || []);
         replaceArrayContents(rawMaterials, snap.rawMaterials);
         replaceArrayContents(otherRawMaterials, snap.otherRawMaterials || []);
         replaceArrayContents(materialRates, snap.materialRates);
@@ -2028,6 +2046,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       bomSeq = snap.bomSeq;
       if (Number.isFinite(snap.formulaSeq)) formulaSeq = snap.formulaSeq;
       state.selectedFinishedGoodId = snap.selectedFinishedGoodId;
+      state.selectedFinishingServiceId = snap.selectedFinishingServiceId != null
+        ? snap.selectedFinishingServiceId
+        : (snap.currentBOM && snap.currentBOM.finishingServiceId) || null;
       state.currentBOM = snap.currentBOM;
       hydrateBomEditorMaterials(snap.bomMaterials, snap.bomOtherMaterials);
       state.bomServices = Array.isArray(snap.bomServices) ? snap.bomServices : [];
@@ -2432,6 +2453,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         item.dimensions.W = roundTo(item.dimensions?.W, 2);
         item.dimensions.H = roundTo(item.dimensions?.H, 2);
         delete item.material;
+        item.displayName = formatFinishedGoodDisplayName(item);
+      });
+      finishingServices.forEach((item) => {
+        if (!item.dimensions) return;
+        item.dimensions.L = roundTo(item.dimensions?.L, 2);
+        item.dimensions.W = roundTo(item.dimensions?.W, 2);
+        item.dimensions.H = roundTo(item.dimensions?.H, 2);
         item.displayName = formatFinishedGoodDisplayName(item);
       });
       rawMaterials.forEach((item) => {
@@ -3020,19 +3048,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return rows;
     }
 
-    function renderCalculatedDimensionsSection(finishedGood) {
+    function renderCalculatedDimensionsSection(finishedGood, options) {
       const rows = calculateBomDimensions(finishedGood);
       if (!rows.length) return "";
+      const title = (options && options.title) || "Variable values for this finished good";
+      const sectionId = (options && options.sectionId) || "calculatedDimensionsSection";
+      const gridId = (options && options.gridId) || "dimensionsGrid";
       return `
-        <div id="calculatedDimensionsSection" class="calc-dims">
+        <div id="${escapeHtml(sectionId)}" class="calc-dims">
           <div class="calc-dims-head">
             <div>
               <div class="section-kicker">Calculated dimensions</div>
-              <div class="section-title">Variable values for this finished good</div>
+              <div class="section-title">${escapeHtml(title)}</div>
             </div>
             <span class="badge badge-muted">Live</span>
           </div>
-          <div id="dimensionsGrid" class="calc-dims-grid">
+          <div id="${escapeHtml(gridId)}" class="calc-dims-grid">
             ${rows.map((row) => {
               const valueText = formatDimensionDisplayValue(row.value);
               const unit = row.unit ? ` ${row.unit}` : "";
@@ -3372,6 +3403,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return finishedGoods.find((item) => item.id === state.selectedFinishedGoodId) || null;
     }
 
+    function getSelectedFinishingService() {
+      if (state.selectedFinishingServiceId == null) return null;
+      return finishingServices.find((item) => item.id === state.selectedFinishingServiceId) || null;
+    }
+
     function generateBomNo(item) {
       const family = String(item?.product ?? "ITEM").replace(/\s*Box$/i, "").trim().toUpperCase().replace(/\s+/g, "-") || "ITEM";
       const siblings = finishedGoods.filter((fg) => fg?.product === item?.product);
@@ -3509,6 +3545,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: record.id,
         bomNo: record.bomNo,
         finishedGoodId: record.finishedGoodId,
+        finishingServiceId: record.finishingServiceId || state.selectedFinishingServiceId || null,
         version: record.version,
         status: record.status,
         createdAt: record.createdAt
@@ -6694,6 +6731,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: state.currentBOM.id || nextBomId(),
         bomNo: state.currentBOM.bomNo,
         finishedGoodId: fg?.id,
+        finishingServiceId: state.selectedFinishingServiceId || null,
         finishedGoodName: fg?.product ?? "missing data",
         variant: fg?.variant ?? "",
         style: fg?.style ?? "",
@@ -6731,6 +6769,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applyBomRecordToEditor(record) {
       const copy = cloneData(record);
       state.selectedFinishedGoodId = copy.finishedGoodId;
+      state.selectedFinishingServiceId = copy.finishingServiceId || null;
       syncEditorBomMeta(copy);
       hydrateBomEditorMaterials(copy.materials, copy.otherMaterials);
       state.bomServices = cloneData(copy.services || []);
@@ -6739,7 +6778,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.bomOverheadPercent = storedBomPercent(copy.bomOverheadPercent ?? copy.overheadPercent);
       applyBomCostingExtras(copy);
       state.searches.bomFinishedGood = "";
+      state.searches.bomFinishingService = "";
       state.fgSelectorOpen = false;
+      state.fsSelectorOpen = false;
       state.workflowError = "";
       recalculateBOMCosts();
       warnBomMaterialSlotLayout(getSelectedFinishedGood(), getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomMaterials), "saved-bom");
@@ -6768,6 +6809,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: null,
         bomNo,
         finishedGoodId,
+        finishingServiceId: state.selectedFinishingServiceId || null,
         version: nextVersionForBomNo(bomNo),
         status: "Draft",
         createdAt: null
@@ -6787,6 +6829,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       const lines = copyLinesForEditor(original);
       state.selectedFinishedGoodId = fg.id;
+      state.selectedFinishingServiceId = original.finishingServiceId || null;
       state.bomMaterials = lines.materials;
       state.bomOtherMaterials = lines.otherMaterials || [];
       state.bomServices = lines.services;
@@ -6801,6 +6844,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: nextBomId(),
         bomNo: original.bomNo,
         finishedGoodId: original.finishedGoodId,
+        finishingServiceId: original.finishingServiceId || state.selectedFinishingServiceId || null,
         finishedGoodName: original.finishedGoodName || fg?.product,
         variant: original.variant || fg?.variant,
         style: original.style || fg?.style,
@@ -6999,6 +7043,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderMaterialSection();
       renderOtherMaterialSection();
       renderServiceSection();
+      renderFinishingServicesSection();
       renderCostSummary();
       refreshIcons();
     }
@@ -8154,7 +8199,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
       { id: "bom-other-materials-root", label: "Other Raw Materials" },
-      { id: "bom-services-root", label: "Services" }
+      { id: "bom-services-root", label: "Services" },
+      { id: "bom-finishing-root", label: "Finishing Services" }
     ];
 
     function getBomVisibleStepNumbers() {
@@ -8168,6 +8214,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         steps.materials = n++;
         steps.otherMaterials = n++;
         steps.services = n++;
+        steps.finishing = n++;
       }
       return steps;
     }
@@ -8234,6 +8281,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div id="bom-materials-root"></div>
             <div id="bom-other-materials-root"></div>
             <div id="bom-services-root"></div>
+            <div id="bom-finishing-root"></div>
           </div>
           <aside id="bom-cost-root"></aside>
         </div>
@@ -8245,6 +8293,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderMaterialSection();
       renderOtherMaterialSection();
       renderServiceSection();
+      renderFinishingServicesSection();
       renderCostSummary();
     }
 
@@ -8291,6 +8340,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function resetBomEditor(options) {
       const opts = options || {};
       state.selectedFinishedGoodId = null;
+      state.selectedFinishingServiceId = null;
       state.currentBOM = null;
       state.bomMaterials = [];
       state.bomOtherMaterials = [];
@@ -8309,7 +8359,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       resetBomCostingExtras();
       state.saleCost = 0;
       state.searches.bomFinishedGood = "";
+      state.searches.bomFinishingService = "";
       state.fgSelectorOpen = false;
+      state.fsSelectorOpen = false;
       state.workflowError = "";
       if (!opts.keepModal) closeModal();
       if (!opts.skipPersist) persistEditorState();
@@ -8325,13 +8377,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.currentBOM = {
         id: null,
         finishedGoodId: item.id,
+        finishingServiceId: null,
         bomNo: getBomNoForFinishedGood(item),
         version: existing.length ? nextVersionForBomNo(getBomNoForFinishedGood(item)) : "1.0",
         status: "Draft"
       };
       state.workflowError = "";
       state.searches.bomFinishedGood = "";
+      state.searches.bomFinishingService = "";
       state.fgSelectorOpen = false;
+      state.fsSelectorOpen = false;
+      state.selectedFinishingServiceId = null;
       state.bomProfitPercent = 0;
       state.bomOverheadPercent = 0;
       resetBomCostingExtras();
@@ -8475,6 +8531,51 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderProductInformationCard(item, options) {
+      const opts = options || {};
+      const kicker = opts.kicker || "Finished Good";
+      return `
+        <div class="pi-grid">
+          <div>
+            <div class="section-kicker">${escapeHtml(kicker)}</div>
+            <div class="pi-fields">
+              <div class="product-name">${escapeHtml(item?.product ?? "missing data")}</div>
+              <div>
+                <div class="field-label">Variant</div>
+                <div class="field-value">${escapeHtml(item?.variant ?? "—")}</div>
+              </div>
+              <div>
+                <div class="field-label">Style</div>
+                <div class="field-value">${escapeHtml(item?.style ?? "—")}</div>
+              </div>
+              <div>
+                <div class="field-label">Ply</div>
+                <div class="field-value">${escapeHtml(item?.ply ?? "—")} Ply</div>
+              </div>
+              <div>
+                <div class="field-label">UOM</div>
+                <div class="field-value">${escapeHtml(item?.uom ?? "—")}</div>
+              </div>
+              <div>
+                <div class="field-label">Dimensions</div>
+                <div class="field-value">${escapeHtml(formatDimensions(item) || "missing data")}</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="section-kicker" style="margin-bottom:8px;">${escapeHtml(item?.ply ?? "—")} Ply Structure</div>
+            ${renderPlyVisualization(item?.ply)}
+            ${plyLayerMappingHint()}
+          </div>
+        </div>
+        ${renderCalculatedDimensionsSection(item, {
+          title: opts.calculatedTitle,
+          sectionId: opts.sectionId,
+          gridId: opts.gridId
+        })}
+      `;
+    }
+
     function renderProductInformation() {
       const root = document.getElementById("bom-product-root");
       if (!root) return;
@@ -8496,40 +8597,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="card">
           <div class="card-body">
             <div class="cc-step">Step ${getBomVisibleStepNumbers().product}: Product Information</div>
-            <div class="pi-grid">
-              <div>
-                <div class="section-kicker">Finished Good</div>
-                <div class="pi-fields">
-                  <div class="product-name">${escapeHtml(fg?.product ?? "missing data")}</div>
-                  <div>
-                    <div class="field-label">Variant</div>
-                    <div class="field-value">${escapeHtml(fg?.variant ?? "—")}</div>
-                  </div>
-                  <div>
-                    <div class="field-label">Style</div>
-                    <div class="field-value">${escapeHtml(fg?.style ?? "—")}</div>
-                  </div>
-                  <div>
-                    <div class="field-label">Ply</div>
-                    <div class="field-value">${escapeHtml(fg?.ply ?? "—")} Ply</div>
-                  </div>
-                  <div>
-                    <div class="field-label">UOM</div>
-                    <div class="field-value">${escapeHtml(fg?.uom ?? "—")}</div>
-                  </div>
-                  <div>
-                    <div class="field-label">Dimensions</div>
-                    <div class="field-value">${escapeHtml(formatDimensions(fg) || "missing data")}</div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <div class="section-kicker" style="margin-bottom:8px;">${escapeHtml(fg?.ply ?? "—")} Ply Structure</div>
-                ${renderPlyVisualization(fg?.ply)}
-                ${plyLayerMappingHint()}
-              </div>
-            </div>
-            ${renderCalculatedDimensionsSection(fg)}
+            ${renderProductInformationCard(fg, {
+              kicker: "Finished Good",
+              calculatedTitle: "Variable values for this finished good"
+            })}
           </div>
         </div>
       `;
@@ -9011,6 +9082,102 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>${body}</tbody>
               </table>
             </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function filterBomFinishingServices(query) {
+      return finishingServices.filter((item) =>
+        matchesQuery(
+          [item?.product, item?.variant, item?.style, item?.ply, item?.dimensions?.L, item?.dimensions?.W, item?.dimensions?.H, formatDimensions(item), formatFinishedGoodDisplayName(item)],
+          query
+        )
+      );
+    }
+
+    function handleFinishingServiceChange(id) {
+      const nextId = Number(id);
+      const item = finishingServices.find((row) => row.id === nextId);
+      if (!item) return;
+      state.selectedFinishingServiceId = item.id;
+      if (state.currentBOM) state.currentBOM.finishingServiceId = item.id;
+      state.searches.bomFinishingService = "";
+      state.fsSelectorOpen = false;
+      persistEditorState();
+      renderFinishingServicesSection();
+      refreshIcons();
+    }
+
+    function showFsComboList() {
+      state.fsSelectorOpen = true;
+      const list = document.getElementById("fs-combo-list");
+      if (list) list.classList.add("open");
+    }
+
+    function renderFinishingServicesSection() {
+      const root = document.getElementById("bom-finishing-root");
+      if (!root) return;
+      const hasFg = Boolean(getSelectedFinishedGood());
+      if (!hasFg) {
+        root.innerHTML = "";
+        return;
+      }
+
+      const selected = getSelectedFinishingService();
+      const query = state.searches.bomFinishingService;
+      const options = filterBomFinishingServices(query);
+      const inputValue = state.fsSelectorOpen || !selected ? query : formatFinishedGoodOption(selected);
+      const list = options.length
+        ? options.map((item) => `
+            <button type="button" class="fg-option ${item.id === state.selectedFinishingServiceId ? "selected" : ""}" data-fs-id="${item.id}">
+              ${escapeHtml(formatFinishedGoodOption(item))}
+            </button>
+          `).join("")
+        : `<div class="empty">No finishing services match this search.</div>`;
+
+      const details = selected
+        ? renderProductInformationCard(selected, {
+            kicker: "Finishing Service",
+            calculatedTitle: "Variable values for this finishing service",
+            sectionId: "finishingCalculatedDimensionsSection",
+            gridId: "finishingDimensionsGrid"
+          })
+        : `
+          <div class="placeholder-panel" style="padding:8px 0 0;">
+            <h2>Select a finishing service to view product details.</h2>
+            <p>Details, ply structure, and calculated dimensions use the same layout as finished goods.</p>
+          </div>
+        `;
+
+      root.innerHTML = `
+        <div class="card">
+          <div class="card-body">
+            <div class="section-head">
+              <div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().finishing}: Finishing Services</div>
+              </div>
+              <div class="row-actions">
+                ${selected ? `<button type="button" class="btn btn-sm" id="btn-edit-finishing-service">Edit</button>` : ""}
+                <button type="button" class="btn btn-primary" id="btn-add-finishing-service">
+                  <i data-lucide="plus"></i> Add Finishing Service
+                </button>
+              </div>
+            </div>
+            <div class="fg-combo" id="fs-combo">
+              <label for="fs-combo-search">Select Finishing Service</label>
+              <div class="fg-combo-control">
+                <div class="fg-combo-wrap">
+                  <i data-lucide="search"></i>
+                  <input id="fs-combo-search" type="search" autocomplete="off" placeholder="Search product, variant, style, ply, dimensions..." value="${escapeHtml(inputValue)}" title="${escapeHtml(inputValue)}" />
+                </div>
+                <button type="button" class="fg-combo-toggle" id="fs-combo-toggle" aria-label="Toggle finishing service list">
+                  <i data-lucide="chevron-down"></i>
+                </button>
+              </div>
+              <div class="fg-combo-list ${state.fsSelectorOpen ? "open" : ""}" id="fs-combo-list">${list}</div>
+            </div>
+            ${details}
           </div>
         </div>
       `;
@@ -9551,11 +9718,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderFinishedGoodFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
+      const isFinishing = state.modal.type === "finishing-service";
+      const kicker = isFinishing ? "Finishing service" : "Product master";
+      const title = isFinishing
+        ? (state.modal.mode === "edit" ? "Edit Finishing Service" : "Add Finishing Service")
+        : (state.modal.mode === "edit" ? "Edit Finished Good" : "Add New Finished Good");
+      const saveLabel = isFinishing
+        ? (state.modal.mode === "edit" ? "Update Finishing Service" : "Add Finishing Service")
+        : (state.modal.mode === "edit" ? "Update Product" : "Add Product");
       return `
         <div class="modal-header">
           <div>
-            <div class="section-kicker">Product master</div>
-            <strong>${state.modal.mode === "edit" ? "Edit Finished Good" : "Add New Finished Good"}</strong>
+            <div class="section-kicker">${kicker}</div>
+            <strong>${title}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
@@ -9626,7 +9801,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-finished-good">${state.modal.mode === "edit" ? "Update Product" : "Add Product"}</button>
+          <button type="button" class="btn btn-primary" id="btn-save-finished-good">${saveLabel}</button>
         </div>
       `;
     }
@@ -9646,6 +9821,60 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         uom: item?.uom,
         status: item?.status
       };
+    }
+
+    function openFinishingServiceModal(id) {
+      const item = id ? finishingServices.find((row) => row.id === Number(id)) : null;
+      state.modal = {
+        type: "finishing-service",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
+        lineId: null,
+        draft: item ? finishedGoodToDraft(item) : defaultFinishedGoodDraft(),
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function saveFinishingServiceFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateFinishedGoodDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const parsedL = parseByRule(draft.L, "dimension");
+      const parsedW = parseByRule(draft.W, "dimension");
+      const parsedH = parseByRule(draft.H, "dimension");
+      const payload = {
+        product: String(draft.product).trim(),
+        style: String(draft.style).trim(),
+        variant: String(draft.variant).trim(),
+        ply: Number(draft.ply),
+        dimensions: { L: parsedL.value, W: parsedW.value, H: parsedH.value },
+        dimensionUOM: draft.dimensionUOM,
+        uom: draft.uom,
+        status: draft.status
+      };
+      payload.displayName = formatFinishedGoodDisplayName(payload);
+      if (state.modal.mode === "edit" && draft.id) {
+        const index = finishingServices.findIndex((row) => row.id === draft.id);
+        if (index >= 0) finishingServices[index] = { ...finishingServices[index], ...payload };
+        showNotification("Finishing service updated successfully");
+      } else {
+        const item = { id: nextMasterId(finishingServices), ...payload };
+        finishingServices.push(item);
+        state.selectedFinishingServiceId = item.id;
+        if (state.currentBOM) state.currentBOM.finishingServiceId = item.id;
+        showNotification("Finishing service added successfully");
+      }
+      closeModal();
+      renderFinishingServicesSection();
+      refreshIcons();
+      afterDataChange("finishingServices");
+      persistEditorState();
     }
 
     function openFinishedGoodModal(id) {
@@ -9704,7 +9933,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function updateFinishedGoodDraftFromEvent(target) {
-      if (!state.modal.draft || state.modal.type !== "finished-good") return false;
+      if (!state.modal.draft || (state.modal.type !== "finished-good" && state.modal.type !== "finishing-service")) return false;
       const draft = state.modal.draft;
       if (target.id === "fg-product") draft.product = target.value;
       else if (target.id === "fg-style") draft.style = target.value;
@@ -11537,13 +11766,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           finishedGoods.forEach((fg) => {
             if (String(fg?.style ?? "").toLowerCase() === String(previous).toLowerCase()) fg.style = payload.name;
           });
+          finishingServices.forEach((item) => {
+            if (String(item?.style ?? "").toLowerCase() === String(previous).toLowerCase()) item.style = payload.name;
+          });
         }
         showNotification("Style updated successfully");
         state.modal.errors = {};
         renderModal();
         renderStyles();
         refreshIcons();
-        afterDataChange("styles", "finishedGoods");
+        afterDataChange("styles", "finishedGoods", "finishingServices");
         refreshOpenBomCalculations();
         return;
       }
@@ -13658,11 +13890,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "finishing-service" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
       dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "other-material" || state.modal.type === "service");
 
-      if (state.modal.type === "finished-good") {
+      if (state.modal.type === "finished-good" || state.modal.type === "finishing-service") {
         dialog.innerHTML = renderFinishedGoodFormModal();
       } else if (state.modal.type === "raw-material-master" && state.modal.sub && state.modal.sub.type === "material-dimension") {
         dialog.innerHTML = renderMaterialDimensionLinkModal();
@@ -14764,6 +14996,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
+        } else if (id === "fs-combo-search") {
+          state.searches.bomFinishingService = event.target.value;
+          state.fsSelectorOpen = true;
+          renderFinishingServicesSection();
+          refreshIcons();
+          restoreFocus(id);
+          persistPrefs();
         } else if (event.target.dataset.wastageLine) {
           const lineId = event.target.dataset.wastageLine;
           const caret = event.target.selectionStart;
@@ -14941,7 +15180,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        if (event.target.closest("#fg-combo")) {
+        if (event.target.closest("#fg-combo") || event.target.closest("#fs-combo")) {
           event.stopPropagation();
         }
 
@@ -14958,6 +15197,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const option = event.target.closest("[data-fg-id]");
         if (option) {
           handleFinishedGoodChange(option.dataset.fgId);
+          return;
+        }
+
+        if (event.target.closest("#fs-combo-toggle")) {
+          state.fsSelectorOpen = !state.fsSelectorOpen;
+          if (state.fsSelectorOpen && getSelectedFinishingService() && !state.searches.bomFinishingService) {
+            state.searches.bomFinishingService = "";
+          }
+          renderFinishingServicesSection();
+          refreshIcons();
+          return;
+        }
+
+        const finishingOption = event.target.closest("[data-fs-id]");
+        if (finishingOption) {
+          handleFinishingServiceChange(finishingOption.dataset.fsId);
+          return;
+        }
+
+        if (event.target.closest("#btn-add-finishing-service")) {
+          openFinishingServiceModal();
+          return;
+        }
+        if (event.target.closest("#btn-edit-finishing-service")) {
+          const selected = getSelectedFinishingService();
+          if (selected) openFinishingServiceModal(selected.id);
           return;
         }
 
@@ -15319,18 +15584,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "fg-combo-search" && !state.fgSelectorOpen) {
           showFgComboList();
         }
+        if (event.target.id === "fs-combo-search" && !state.fsSelectorOpen) {
+          showFsComboList();
+        }
         if (event.target.closest("[data-cc-ply]") && !event.target.disabled) {
           if (openCostCalculatorStyleFormulas()) refreshCostCalculatorStyleFormulas();
         }
       });
 
       document.addEventListener("click", (event) => {
-        if (!state.fgSelectorOpen) return;
-        if (event.target.closest("#fg-combo") || event.target.closest("#fg-combo-toggle")) return;
-        state.fgSelectorOpen = false;
-        if (state.currentPage === "bom-costing") {
-          renderFinishedGoodSelector();
-          refreshIcons();
+        if (state.fgSelectorOpen && !event.target.closest("#fg-combo") && !event.target.closest("#fg-combo-toggle")) {
+          state.fgSelectorOpen = false;
+          if (state.currentPage === "bom-costing") {
+            renderFinishedGoodSelector();
+            refreshIcons();
+          }
+        }
+        if (state.fsSelectorOpen && !event.target.closest("#fs-combo") && !event.target.closest("#fs-combo-toggle")) {
+          state.fsSelectorOpen = false;
+          if (state.currentPage === "bom-costing") {
+            renderFinishingServicesSection();
+            refreshIcons();
+          }
         }
       });
 
@@ -15577,7 +15852,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (event.target.closest("#btn-save-finished-good")) {
-          saveFinishedGoodFromModal();
+          if (state.modal.type === "finishing-service") saveFinishingServiceFromModal();
+          else saveFinishedGoodFromModal();
           return;
         }
         if (event.target.closest("#btn-save-raw-material")) {
