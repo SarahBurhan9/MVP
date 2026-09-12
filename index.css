@@ -1103,6 +1103,14 @@
       border-bottom: 1px solid var(--border);
     }
 
+    .cost-row > span .formula-src,
+    .cc-summary-line > span .formula-src,
+    .cc-metrics > div > span .formula-src,
+    .calc-dims-name .formula-src {
+      display: block;
+      margin-top: 2px;
+    }
+
     .cost-row:last-child { border-bottom: 0; }
     .cost-final { margin-top: 8px; padding-top: 12px; border-top: 1px solid var(--border); }
     .cost-final .field-value, .cost-final strong { font-size: 18px; }
@@ -1564,6 +1572,7 @@
     }
     .fb-flag input { margin: 0; }
     .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip .formula-src { margin-left: 4px; }
     .chip, .op-btn {
       border: 1px solid var(--border);
       background: #fff;
