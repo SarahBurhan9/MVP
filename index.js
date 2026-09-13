@@ -3820,7 +3820,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function bomCollectionToServiceCategory(collection) {
       if (collection === "finishing") return "finishing";
-      if (collection === "additional") return "other";
+      if (collection === "additional") return "general";
       return "general";
     }
 
@@ -6206,7 +6206,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div class="section-title">Conversion steps</div>
                   </div>
                   <button type="button" class="btn btn-primary" id="btn-cc-add-service" ${steps.hasPly ? "" : "disabled"}>
-                    <i data-lucide="plus"></i> Add Service
+                    <i data-lucide="plus"></i> Add Material
                   </button>
                 </div>
                 ${serviceRows}
@@ -9110,7 +9110,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : getFormula(line && line.formulaId);
       const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
       const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
-      const options = getActiveServicesForBomPicker(line && line.serviceId, "other");
+      const options = getActiveServicesForBomPicker(line && line.serviceId, "general");
       const title = service ? service.name : (line && line.layer ? line.layer : "Additional");
       const selectId = "bom-additional-svc-" + (line && line.id != null ? line.id : index);
       const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
@@ -9304,7 +9304,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <p class="stat-hint" style="margin:0;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-additional-service">
-                <i data-lucide="plus"></i> Add Service
+                <i data-lucide="plus"></i> Add Material
               </button>
             </div>
             ${leftoverMaterialCards}
@@ -9397,7 +9397,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="section-title">Conversion steps</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-service" ${hasFg ? "" : "disabled"}>
-                <i data-lucide="plus"></i> Add Service
+                <i data-lucide="plus"></i> Add Material
               </button>
             </div>
             <div class="table-wrap">
