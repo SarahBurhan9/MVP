@@ -769,7 +769,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         bomNumberOfColors: state.bomNumberOfColors,
         bomColorRate: state.bomColorRate,
         bomOrderQuantity: state.bomOrderQuantity,
-        bomOrderQuantityUOM: state.bomOrderQuantityUOM
+        bomOrderQuantityUOM: state.bomOrderQuantityUOM,
+        costCalculator: snapshotData(state.costCalculator)
       });
     }
 
@@ -969,7 +970,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           bomNumberOfColors: state.bomNumberOfColors,
           bomColorRate: state.bomColorRate,
           bomOrderQuantity: state.bomOrderQuantity,
-          bomOrderQuantityUOM: state.bomOrderQuantityUOM
+          bomOrderQuantityUOM: state.bomOrderQuantityUOM,
+          costCalculator: snapshotData(state.costCalculator)
         },
         userClearedAllData: Boolean(userClearedAllData),
         hydratedFromSeed: Boolean(hydratedFromSeed),
@@ -1174,6 +1176,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
         state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
         applyBomCostingExtras(editor);
+        applyStoredCostCalculator(editor);
       }
       syncSequencesFromData();
       if (cloudCleared) {
@@ -1547,6 +1550,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             state.bomProfitPercent = storedBomPercent(editor.bomProfitPercent);
             state.bomOverheadPercent = storedBomPercent(editor.bomOverheadPercent);
             applyBomCostingExtras(editor);
+            applyStoredCostCalculator(editor);
           }
 
           syncSequencesFromData();
@@ -2111,7 +2115,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.serviceRateFilter = snap.serviceRateFilter;
       state.serviceRateSort = snap.serviceRateSort;
       state.bomListFilter = snap.bomListFilter;
-      state.costCalculator = { ...defaultCostCalculatorState(), ...(snap.costCalculator || {}) };
+      applyStoredCostCalculator(snap);
       sanitizeNumericMasters();
       applyStoredMigrations(snap.migrations);
       migrateQtyFormulaFromMaterialDimensions({ notify: false });
@@ -5131,6 +5135,68 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function persistCostCalculatorState() {
+      persistEditorState();
+    }
+
+    function storedCostCalculatorDimension(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n) || n <= 0) return "";
+      return roundTo(n, 2);
+    }
+
+    function applyStoredCostCalculator(source) {
+      const raw = source && source.costCalculator && typeof source.costCalculator === "object"
+        ? source.costCalculator
+        : (source && source.styleId !== undefined ? source : {});
+      const merged = { ...defaultCostCalculatorState(), ...(raw || {}) };
+      const styleId = Number(merged.styleId);
+      merged.styleId = styles.some((item) => item.id === styleId) ? styleId : "";
+      const ply = Number(merged.ply);
+      merged.ply = ply === 1 || ply === 2 || ply === 3 ? ply : "";
+      merged.L = storedCostCalculatorDimension(merged.L);
+      merged.W = storedCostCalculatorDimension(merged.W);
+      merged.H = storedCostCalculatorDimension(merged.H);
+      merged.layers = (Array.isArray(merged.layers) ? merged.layers : []).map((row) => {
+        const layer = row && row.layer ? String(row.layer) : "";
+        const id = Number(row && row.rawMaterialId);
+        return {
+          layer,
+          rawMaterialId: id && getRawMaterial(id) ? id : ""
+        };
+      }).filter((row) => row.layer);
+      merged.otherLayers = (Array.isArray(merged.otherLayers) ? merged.otherLayers : []).map((row) => {
+        const layer = row && row.layer ? String(row.layer) : "";
+        const id = Number(row && row.otherRawMaterialId);
+        return {
+          layer,
+          otherRawMaterialId: id && getOtherRawMaterial(id) ? id : ""
+        };
+      }).filter((row) => row.layer);
+      const serviceRows = [];
+      let maxKey = 0;
+      (Array.isArray(merged.services) ? merged.services : []).forEach((row) => {
+        const serviceId = Number(row && row.serviceId);
+        if (!serviceId || !getService(serviceId)) return;
+        const key = Number(row && row.key);
+        const nextKey = Number.isFinite(key) && key > 0 ? key : maxKey + 1;
+        if (nextKey > maxKey) maxKey = nextKey;
+        serviceRows.push({ key: nextKey, serviceId });
+      });
+      merged.services = serviceRows;
+      const storedNext = Number(merged.nextServiceKey);
+      merged.nextServiceKey = Math.max(1, maxKey + 1, Number.isFinite(storedNext) ? storedNext : 1);
+      merged.removedServices = (Array.isArray(merged.removedServices) ? merged.removedServices : [])
+        .map((id) => Number(id))
+        .filter((id) => id && getService(id));
+      merged.styleFormulasOpen = Boolean(merged.styleFormulasOpen);
+      merged.ccNumberOfColors = storedBomColorCount(merged.ccNumberOfColors);
+      merged.ccColorRate = storedBomOptionalNumber(merged.ccColorRate);
+      merged.ccOrderQuantity = storedBomOptionalNumber(merged.ccOrderQuantity, { places: 4 });
+      merged.ccOrderQuantityUOM = storedBomOrderQuantityUom(merged.ccOrderQuantityUOM);
+      state.costCalculator = merged;
+    }
+
     function parseCostCalculatorDimension(value) {
       const n = Number(value);
       if (!Number.isFinite(n) || n <= 0) return null;
@@ -5152,6 +5218,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.costCalculator[key] = next;
       if (!getCostCalculatorStepState().hasDims) state.costCalculator.styleFormulasOpen = false;
       updateCostCalculatorPreview();
+      persistCostCalculatorState();
       return true;
     }
 
@@ -5164,6 +5231,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (state.costCalculator[key] !== next) state.costCalculator[key] = next;
       if (!getCostCalculatorStepState().hasDims) state.costCalculator.styleFormulasOpen = false;
       updateCostCalculatorPreview();
+      persistCostCalculatorState();
       return true;
     }
 
@@ -5354,12 +5422,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function handleCostCalculatorStyleChange(styleId) {
-      state.costCalculator.styleId = styleId;
+      const id = Number(styleId);
+      state.costCalculator.styleId = styles.some((item) => item.id === id) ? id : "";
       state.costCalculator.removedServices = [];
+      state.costCalculator.services = [];
       const steps = getCostCalculatorStepState();
       if (!steps.hasDims) state.costCalculator.styleFormulasOpen = false;
-      if (steps.hasPly) loadCostCalculatorServices(steps.ply, { resetRemoved: true });
-      else state.costCalculator.services = [];
+      persistCostCalculatorState();
     }
 
     function removeServiceFromCalculator(key) {
@@ -5371,6 +5440,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!state.costCalculator.removedServices.some((id) => Number(id) === serviceId)) {
         state.costCalculator.removedServices.push(serviceId);
       }
+      persistCostCalculatorState();
     }
 
     function addServiceBackToCalculator(serviceId) {
@@ -5382,6 +5452,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!allowed) return false;
       state.costCalculator.services.push({ key: nextCostCalculatorServiceKey(), serviceId: id });
       state.costCalculator.removedServices = (state.costCalculator.removedServices || []).filter((item) => Number(item) !== id);
+      persistCostCalculatorState();
       return true;
     }
 
@@ -5791,6 +5862,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function refreshCostCalculatorFromCostingExtras(focusId, caret) {
       applyCostCalculatorCostingExtrasFromDom();
+      persistCostCalculatorState();
       updateCostCalculatorSummary();
       renderCostCalculator();
       refreshIcons();
@@ -5848,11 +5920,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const steps = getCostCalculatorStepState();
       if (steps.hasPly) {
         loadCostCalculatorOtherLayers();
-        loadCostCalculatorServices(steps.ply);
       }
       const summary = updateCostCalculatorSummary();
-      const styleOptions = styles.filter((item) => item.status !== "Inactive");
+      const styleOptions = styles.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
       const materials = steps.hasPly ? getCostCalculatorMaterials(steps.ply) : [];
+      const styleTableBody = styleOptions.length
+        ? styleOptions.map((item, index) => {
+            const selected = Number(cc.styleId) === item.id;
+            return `
+              <tr class="${selected ? "cc-style-selected" : ""}">
+                <td>${index + 1}</td>
+                <td>
+                  <div>${escapeHtml(item.name)}</div>
+                  ${selected ? `<div class="stat-hint">Selected</div>` : ""}
+                </td>
+                <td>${escapeHtml(item.description || "—")}</td>
+                <td>${getStyleVariables(item.id).length}</td>
+                <td>${getStyleFormulaLinks(item.id).length}</td>
+                <td>${statusBadge(item.status)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="btn btn-sm ${selected ? "btn-primary" : ""}" data-cc-select-style="${item.id}" ${selected ? "disabled" : ""} aria-label="${selected ? "Selected " : "Select "}${escapeHtml(item.name)}">
+                      ${selected ? "Selected" : "Select"}
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(7, "No designs found. Add styles in Style Master.");
 
       const layerRows = summary.layers.map((row, index) => {
         const material = getRawMaterial(row.rawMaterialId);
@@ -5917,12 +6013,31 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="cost-calc-main">
             <section class="card cc-card">
               <div class="card-body">
-                <div class="cc-step">Step 1: Select Style</div>
-                <label class="form-label" for="cc-style">Style</label>
-                <select id="cc-style" class="full-select" aria-label="Select style">
-                  <option value="">Select Style</option>
-                  ${styleOptions.map((item) => `<option value="${item.id}" ${Number(cc.styleId) === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
-                </select>
+                <div class="section-head" style="margin-top:0;">
+                  <div>
+                    <div class="cc-step">Step 1: Select Style</div>
+                    <div class="section-title">Designs</div>
+                  </div>
+                  <button type="button" class="btn btn-primary" id="btn-cc-add-style">
+                    <i data-lucide="plus"></i> Add Style
+                  </button>
+                </div>
+                <div class="table-wrap">
+                  <table class="data-table" style="min-width:860px;">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Style</th>
+                        <th>Description</th>
+                        <th>Variables</th>
+                        <th>Formulas</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>${styleTableBody}</tbody>
+                  </table>
+                </div>
               </div>
             </section>
 
@@ -6474,6 +6589,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       state.costCalculator.nextServiceKey += 1;
       closeModal();
+      persistCostCalculatorState();
       renderCostCalculator();
       refreshIcons();
       const service = getService(serviceId);
@@ -11900,6 +12016,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.modal.errors = {};
         renderModal();
         renderStyles();
+        renderCostCalculator();
         refreshIcons();
         afterDataChange("styles", "finishedGoods", "finishingServices");
         refreshOpenBomCalculations();
@@ -11947,6 +12064,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       closeModal();
       renderStyles();
+      renderCostCalculator();
       refreshIcons();
       showNotification(
         pending.length
@@ -15222,11 +15340,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "bom-order-quantity-uom") {
           updateBomOrderQuantityUom(event.target.value);
         }
-        if (event.target.id === "cc-style") {
-          handleCostCalculatorStyleChange(event.target.value);
-          renderCostCalculator();
-          refreshIcons();
-        }
         if (event.target.id === "cc-restore-service") {
           const serviceId = event.target.value;
           const restored = addServiceBackToCalculator(serviceId);
@@ -15243,6 +15356,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (layerSelect) {
           const row = (state.costCalculator.layers || []).find((item) => item.layer === layerSelect);
           if (row) row.rawMaterialId = event.target.value ? Number(event.target.value) : "";
+          persistCostCalculatorState();
           renderCostCalculator();
           refreshIcons();
           if (row && row.rawMaterialId) {
@@ -15256,6 +15370,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (otherLayerSelect) {
           const row = (state.costCalculator.otherLayers || []).find((item) => item.layer === otherLayerSelect);
           if (row) row.otherRawMaterialId = event.target.value ? Number(event.target.value) : "";
+          persistCostCalculatorState();
           renderCostCalculator();
           refreshIcons();
           if (row && row.otherRawMaterialId) {
@@ -15348,8 +15463,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           navigateTo("bom-costing");
           return;
         }
+        if (event.target.closest("#btn-cc-add-style")) {
+          openStyleModal(null);
+          return;
+        }
+        const ccSelectStyle = event.target.closest("[data-cc-select-style]");
+        if (ccSelectStyle) {
+          handleCostCalculatorStyleChange(ccSelectStyle.dataset.ccSelectStyle);
+          renderCostCalculator();
+          refreshIcons();
+          return;
+        }
         if (event.target.closest("[data-cc-toggle-style-formulas]")) {
           state.costCalculator.styleFormulasOpen = !state.costCalculator.styleFormulasOpen;
+          persistCostCalculatorState();
           refreshCostCalculatorStyleFormulas();
           return;
         }
@@ -15361,6 +15488,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           loadCostCalculatorLayers(ply, { notify: true });
           loadCostCalculatorOtherLayers();
           loadCostCalculatorServices(ply, { resetRemoved: true, notify: true });
+          persistCostCalculatorState();
           renderCostCalculator();
           refreshIcons();
           return;

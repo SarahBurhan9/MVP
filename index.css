@@ -691,6 +691,7 @@
     }
 
     table.data-table tbody tr:hover { background: #f8fafc; }
+    table.data-table tbody tr.cc-style-selected { background: #eff6ff; }
 
     .badge {
       display: inline-flex;
