@@ -531,6 +531,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       bomOrderQuantityUOM: "pieces",
       saleCost: 0,
       fgSelectorOpen: false,
+      ccStyleSelectorOpen: false,
+      ccStyleSearch: "",
       fsSelectorOpen: false,
       cleaningUserData: false,
       bomFlowSection: "fg-selector-root",
@@ -5426,9 +5428,54 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.costCalculator.styleId = styles.some((item) => item.id === id) ? id : "";
       state.costCalculator.removedServices = [];
       state.costCalculator.services = [];
+      state.ccStyleSelectorOpen = false;
+      state.ccStyleSearch = "";
       const steps = getCostCalculatorStepState();
       if (!steps.hasDims) state.costCalculator.styleFormulasOpen = false;
       persistCostCalculatorState();
+    }
+
+    function getCostCalculatorStyleOptions() {
+      const query = String(state.ccStyleSearch || "").trim().toLowerCase();
+      return styles
+        .slice()
+        .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))
+        .filter((item) => {
+          if (!query) return true;
+          return [item.name, item.description].some((value) => String(value || "").toLowerCase().includes(query));
+        });
+    }
+
+    function renderCostCalculatorStylePicker() {
+      const root = document.getElementById("cc-style-picker-root");
+      if (!root) return;
+      const selected = styles.find((item) => item.id === Number(state.costCalculator.styleId)) || null;
+      const options = getCostCalculatorStyleOptions();
+      const open = Boolean(state.ccStyleSelectorOpen);
+      const inputValue = open ? (state.ccStyleSearch || "") : (selected ? selected.name : (state.ccStyleSearch || ""));
+      const list = options.length
+        ? options.map((item) => `
+            <button type="button" class="fg-option ${selected && selected.id === item.id ? "selected" : ""}" data-cc-style-id="${item.id}">
+              <div class="cc-style-option-name">${escapeHtml(item.name)}</div>
+              <div class="cc-style-option-meta">${escapeHtml(item.description || "No description")}</div>
+            </button>
+          `).join("")
+        : `<div class="empty">No styles match this search.</div>`;
+      root.innerHTML = `
+        <div class="fg-combo cc-style-combo" id="cc-style-combo">
+          <label class="form-label" for="cc-style-search">Style</label>
+          <div class="fg-combo-control">
+            <div class="fg-combo-wrap">
+              <i data-lucide="search"></i>
+              <input id="cc-style-search" type="search" autocomplete="off" placeholder="Search styles..." value="${escapeHtml(inputValue)}" title="${escapeHtml(inputValue)}" aria-label="Search and select style" />
+            </div>
+            <button type="button" class="fg-combo-toggle ${open ? "open" : ""}" id="cc-style-toggle" aria-label="Toggle style list" aria-expanded="${open ? "true" : "false"}">
+              <i data-lucide="chevron-down"></i>
+            </button>
+          </div>
+          <div class="fg-combo-list ${open ? "open" : ""}" id="cc-style-list">${list}</div>
+        </div>
+      `;
     }
 
     function removeServiceFromCalculator(key) {
@@ -6010,11 +6057,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <i data-lucide="plus"></i> Add Style
                   </button>
                 </div>
-                <label class="form-label" for="cc-style">Style</label>
-                <select id="cc-style" class="full-select" aria-label="Select style">
-                  <option value="">Select Style</option>
-                  ${styleOptions.map((item) => `<option value="${item.id}" ${selectedStyle && selectedStyle.id === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
-                </select>
+                <div id="cc-style-picker-root"></div>
                 <div class="table-wrap" style="margin-top:14px;">
                   <table class="data-table">
                     <thead>
@@ -6154,6 +6197,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
       `;
       bindCostCalculatorCostingExtras();
+      renderCostCalculatorStylePicker();
     }
 
     function getBomMaterialSlotLayout(finishedGood, materials) {
@@ -15232,6 +15276,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           restoreFocus(id);
           persistPrefs();
+        } else if (id === "cc-style-search") {
+          state.ccStyleSearch = event.target.value;
+          state.ccStyleSelectorOpen = true;
+          renderCostCalculatorStylePicker();
+          refreshIcons();
+          restoreFocus(id);
         } else if (event.target.dataset.wastageLine) {
           const lineId = event.target.dataset.wastageLine;
           const caret = event.target.selectionStart;
@@ -15332,11 +15382,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "bom-order-quantity-uom") {
           updateBomOrderQuantityUom(event.target.value);
         }
-        if (event.target.id === "cc-style") {
-          handleCostCalculatorStyleChange(event.target.value);
-          renderCostCalculator();
-          refreshIcons();
-        }
         if (event.target.id === "cc-restore-service") {
           const serviceId = event.target.value;
           const restored = addServiceBackToCalculator(serviceId);
@@ -15412,7 +15457,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        if (event.target.closest("#fg-combo")) {
+        if (event.target.closest("#fg-combo") || event.target.closest("#cc-style-combo")) {
           event.stopPropagation();
         }
 
@@ -15458,6 +15503,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.closest("#btn-new-bom")) {
           resetBomEditor();
           navigateTo("bom-costing");
+          return;
+        }
+        if (event.target.closest("#cc-style-toggle")) {
+          state.ccStyleSelectorOpen = !state.ccStyleSelectorOpen;
+          if (!state.ccStyleSelectorOpen) state.ccStyleSearch = "";
+          renderCostCalculatorStylePicker();
+          refreshIcons();
+          return;
+        }
+        const ccStyleOption = event.target.closest("[data-cc-style-id]");
+        if (ccStyleOption) {
+          handleCostCalculatorStyleChange(ccStyleOption.dataset.ccStyleId);
+          renderCostCalculator();
+          refreshIcons();
           return;
         }
         if (event.target.closest("#btn-cc-add-style")) {
@@ -15819,6 +15878,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "fg-combo-search" && !state.fgSelectorOpen) {
           showFgComboList();
         }
+        if (event.target.id === "cc-style-search" && !state.ccStyleSelectorOpen) {
+          state.ccStyleSelectorOpen = true;
+          renderCostCalculatorStylePicker();
+          refreshIcons();
+          restoreFocus("cc-style-search");
+        }
         if (event.target.closest("[data-cc-ply]") && !event.target.disabled) {
           if (openCostCalculatorStyleFormulas()) refreshCostCalculatorStyleFormulas();
         }
@@ -15831,6 +15896,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             renderFinishedGoodSelector();
             refreshIcons();
           }
+        }
+        if (state.ccStyleSelectorOpen && !event.target.closest("#cc-style-combo")) {
+          state.ccStyleSelectorOpen = false;
+          state.ccStyleSearch = "";
+          renderCostCalculatorStylePicker();
+          refreshIcons();
         }
       });
 
