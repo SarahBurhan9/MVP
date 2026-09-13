@@ -6038,7 +6038,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       updateCostCalculatorSummary();
       renderCostCalculator();
       refreshIcons();
-      if (focusId === "cc-color-rate" || focusId === "cc-order-quantity") {
+      if (focusId === "cc-color-rate" || focusId === "cc-order-quantity" || focusId === "cc-number-of-colors") {
         restoreBomSummaryFieldFocus(focusId, caret);
       } else if (focusId) {
         const next = document.getElementById(focusId);
@@ -6052,7 +6052,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const qtyEl = document.getElementById("cc-order-quantity");
       const uomEl = document.getElementById("cc-order-quantity-uom");
       if (colorsEl) {
-        colorsEl.addEventListener("change", () => refreshCostCalculatorFromCostingExtras("cc-number-of-colors"));
+        colorsEl.addEventListener("input", (event) => {
+          refreshCostCalculatorFromCostingExtras("cc-number-of-colors", event.target.selectionStart);
+        });
       }
       if (rateEl) {
         rateEl.addEventListener("input", (event) => {
@@ -6286,9 +6288,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="form-grid two cost-optional-row">
                 <div class="cost-optional-field">
                   <label class="form-label" for="cc-number-of-colors">Number of Colors</label>
-                  <select id="cc-number-of-colors" class="full-select" aria-label="Number of colors">
-                    ${bomColorCountOptions(cc.ccNumberOfColors)}
-                  </select>
+                  <input class="wastage-input" type="text" inputmode="numeric" id="cc-number-of-colors" value="${escapeHtml(cc.ccNumberOfColors == null || cc.ccNumberOfColors === "" ? "" : String(cc.ccNumberOfColors))}" placeholder="Optional" aria-label="Number of colors" />
                 </div>
                 <div class="cost-optional-field">
                   <label class="form-label" for="cc-color-rate">Rate per Color (Rs.)</label>
@@ -8733,22 +8733,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const inputValue = state.fgSelectorOpen || !selected ? query : formatFinishedGoodOption(selected);
 
       const list = options.length
-        ? options.map((item) => `
+        ? options.map((item) => {
+            const name = item?.product || formatFinishedGoodDisplayName(item);
+            const dims = formatFinishedGoodSizeCode(item?.dimensions);
+            const meta = [item?.style, item?.variant, dims, item?.ply != null ? `${item.ply} Ply` : ""]
+              .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
+              .join(" · ") || "No details";
+            return `
             <button type="button" class="fg-option ${item.id === state.selectedFinishedGoodId ? "selected" : ""}" data-fg-id="${item.id}">
-              ${escapeHtml(formatFinishedGoodOption(item))}
+              <div class="cc-style-option-name">${escapeHtml(name)}</div>
+              <div class="cc-style-option-meta">${escapeHtml(meta)}</div>
             </button>
-          `).join("")
+          `;
+          }).join("")
         : `<div class="empty">No finished goods match this search.</div>`;
 
       root.innerHTML = `
-        <div class="fg-combo" id="fg-combo">
-          <label for="fg-combo-search">Select Finished Good</label>
+        <div class="fg-combo cc-style-combo" id="fg-combo">
+          <label class="form-label" for="fg-combo-search">Select Finished Good</label>
           <div class="fg-combo-control">
             <div class="fg-combo-wrap">
               <i data-lucide="search"></i>
-              <input id="fg-combo-search" type="search" autocomplete="off" placeholder="Search product, variant, style, ply, dimensions..." value="${escapeHtml(inputValue)}" title="${escapeHtml(inputValue)}" />
+              <input id="fg-combo-search" type="search" autocomplete="off" placeholder="Search product, variant, style, ply, dimensions..." value="${escapeHtml(inputValue)}" title="${escapeHtml(inputValue)}" aria-label="Search and select finished good" />
             </div>
-            <button type="button" class="fg-combo-toggle" id="fg-combo-toggle" aria-label="Toggle finished good list">
+            <button type="button" class="fg-combo-toggle ${state.fgSelectorOpen ? "open" : ""}" id="fg-combo-toggle" aria-label="Toggle finished good list" aria-expanded="${state.fgSelectorOpen ? "true" : "false"}">
               <i data-lucide="chevron-down"></i>
             </button>
           </div>
