@@ -8394,49 +8394,74 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderFinishedGoods() {
       const rows = filterFinishedGoods();
       const body = rows.length
-        ? rows.map((item) => `
+        ? rows.map((item, index) => `
             <tr>
-              <td>${escapeHtml(item?.product ?? "missing data")}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item?.product ?? "missing data")}</div>
+              </td>
               <td>${escapeHtml(item?.style ?? "—")}</td>
               <td>${escapeHtml(item?.variant ?? "—")}</td>
-              <td>${escapeHtml(formatDimensions(item) || "missing data")}</td>
-              <td>${escapeHtml(item?.ply ?? "—")}</td>
-              <td>${escapeHtml(item?.uom ?? "—")}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formatDimensions(item) || "missing data")}</code></td>
+              <td><span class="badge badge-info">${escapeHtml(item?.ply ?? "—")}</span></td>
+              <td><span class="badge badge-muted">${escapeHtml(item?.uom ?? "—")}</span></td>
               <td>${statusBadge(item?.status)}</td>
               ${masterRowActions("data-edit-fg", item?.id, "data-delete-fg", item?.id)}
             </tr>
           `).join("")
-        : emptyRow(8, "No finished goods match this search.");
+        : emptyRow(9, "No finished goods match this search.");
 
       document.getElementById("page-finished-goods").innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("fg-search", state.searches.finishedGoods, "Search product, variant, style...")}
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Finished Good Management</div>
+            <div class="fm-hero-sub">Product master</div>
           </div>
-          <div class="toolbar-right">
-            <button type="button" class="btn btn-primary" id="btn-add-product">
-              <i data-lucide="plus"></i> Add Product
-            </button>
-            <span class="badge badge-muted">${rows.length} of ${finishedGoods.length}</span>
+          <button type="button" class="btn btn-primary" id="btn-add-product">
+            <i data-lucide="plus"></i> Add Product
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("fg-search", state.searches.finishedGoods, "Search product, variant, style...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${finishedGoods.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th>Style</th>
-                  <th>Variant</th>
-                  <th>Dimensions</th>
-                  <th>Ply</th>
-                  <th>UOM</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-group is-style">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="box"></i></span>
+                <div>
+                  <div class="section-kicker">Product master</div>
+                  <div class="section-title">Products</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table" style="min-width:1100px;">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Product</th>
+                    <th>Style</th>
+                    <th>Variant</th>
+                    <th>Dimensions</th>
+                    <th>Ply</th>
+                    <th>UOM</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -8445,51 +8470,76 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderRawMaterials() {
       const rows = filterRawMaterials();
       const body = rows.length
-        ? rows.map((item) => `
+        ? rows.map((item, index) => `
             <tr>
-              <td class="mono">${escapeHtml(item.code)}</td>
-              <td>${escapeHtml(item.name)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.name)}</div>
+              </td>
+              <td class="mono fm-code">${escapeHtml(item.code)}</td>
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
-              <td>${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</td>
-              <td>${escapeHtml(item.uom)}</td>
-              <td class="mono">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</code></td>
+              <td><span class="badge badge-muted">${escapeHtml(item.uom)}</span></td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</code></td>
               <td>${escapeHtml(formatMaterialDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-rm", item.id, "data-delete-rm", item.id)}
             </tr>
           `).join("")
-        : emptyRow(9, "No raw materials match this search.");
+        : emptyRow(10, "No raw materials match this search.");
 
       document.getElementById("page-raw-materials").innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("rm-search", state.searches.rawMaterials, "Search code, material, category...")}
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Raw Material Management</div>
+            <div class="fm-hero-sub">Purchasing master</div>
           </div>
-          <div class="toolbar-right">
-            <button type="button" class="btn btn-primary" id="btn-add-material-master">
-              <i data-lucide="plus"></i> Add Material
-            </button>
-            <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+          <button type="button" class="btn btn-primary" id="btn-add-material-master">
+            <i data-lucide="plus"></i> Add Material
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("rm-search", state.searches.rawMaterials, "Search code, material, category...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Material</th>
-                  <th>Category</th>
-                  <th>GSM</th>
-                  <th>UOM</th>
-                  <th>Qty Formula</th>
-                  <th>Dimensions</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-group is-material">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="package"></i></span>
+                <div>
+                  <div class="section-kicker">Purchasing master</div>
+                  <div class="section-title">Materials</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table" style="min-width:1100px;">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Material</th>
+                    <th>Code</th>
+                    <th>Category</th>
+                    <th>GSM</th>
+                    <th>UOM</th>
+                    <th>Qty Formula</th>
+                    <th>Dimensions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -8500,16 +8550,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!page) return;
       const rows = materialRateTableRows();
       const body = rows.length
-        ? rows.map(({ material, rateRow }) => {
+        ? rows.map(({ material, rateRow }, index) => {
             const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
               ? formatNumber(rateRow.rate, 2)
               : "—";
             return `
             <tr>
-              <td class="mono">${escapeHtml(material.code)}</td>
-              <td>${escapeHtml(material.name)}</td>
-              <td>${rateText}</td>
-              <td>${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(material.name)}</div>
+              </td>
+              <td class="mono fm-code">${escapeHtml(material.code)}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${rateText}</code></td>
+              <td><span class="badge badge-muted">${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</span></td>
               <td>${escapeHtml(formatMaterialDimensionSummary(material))}</td>
               <td>${rateRow ? statusBadge(rateRow.status) : '<span class="badge badge-muted">Unset</span>'}</td>
               <td>
@@ -8518,42 +8571,64 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `;
           }).join("")
-        : emptyRow(7, "No material rates match this search.");
+        : emptyRow(8, "No material rates match this search.");
 
       page.innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("mrate-search", state.searches.materialRates, "Search material name, code...")}
-            <select class="filter-select" id="mrate-status-filter">
-              <option value="all" ${state.materialRateFilter === "all" ? "selected" : ""}>All statuses</option>
-              <option value="active" ${state.materialRateFilter === "active" ? "selected" : ""}>Active</option>
-              <option value="inactive" ${state.materialRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
-            </select>
-            <select class="filter-select" id="mrate-sort">
-              <option value="name" ${state.materialRateSort === "name" ? "selected" : ""}>Sort by material name</option>
-              <option value="rate" ${state.materialRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
-            </select>
-          </div>
-          <div class="toolbar-right">
-            <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Raw Material Rates</div>
+            <div class="fm-hero-sub">Purchasing rates for raw materials</div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Rate (PKR)</th>
-                  <th>Rate UOM</th>
-                  <th>Dimensions</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("mrate-search", state.searches.materialRates, "Search material name, code...")}
+              <select class="filter-select" id="mrate-status-filter">
+                <option value="all" ${state.materialRateFilter === "all" ? "selected" : ""}>All statuses</option>
+                <option value="active" ${state.materialRateFilter === "active" ? "selected" : ""}>Active</option>
+                <option value="inactive" ${state.materialRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
+              </select>
+              <select class="filter-select" id="mrate-sort">
+                <option value="name" ${state.materialRateSort === "name" ? "selected" : ""}>Sort by material name</option>
+                <option value="rate" ${state.materialRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card fm-group is-costing">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="banknote"></i></span>
+                <div>
+                  <div class="section-kicker">Purchasing rates</div>
+                  <div class="section-title">Rates</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table" style="min-width:1100px;">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Rate (PKR)</th>
+                    <th>Rate UOM</th>
+                    <th>Dimensions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -8681,45 +8756,70 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderServices() {
       const rows = filterServices();
       const body = rows.length
-        ? rows.map((item) => `
+        ? rows.map((item, index) => `
             <tr>
-              <td class="mono">${escapeHtml(item.code)}</td>
-              <td>${escapeHtml(item.name)}</td>
-              <td>${escapeHtml(item.uom)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.name)}</div>
+              </td>
+              <td class="mono fm-code">${escapeHtml(item.code)}</td>
+              <td><span class="badge badge-muted">${escapeHtml(item.uom)}</span></td>
               <td>${formatServiceCategoryBadges(item.categories)}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
           `).join("")
-        : emptyRow(6, "No services match this search.");
+        : emptyRow(7, "No services match this search.");
 
       document.getElementById("page-services").innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("srv-search", state.searches.services, "Search code, service, UOM, category...")}
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Service Management</div>
+            <div class="fm-hero-sub">Conversion process master</div>
           </div>
-          <div class="toolbar-right">
-            <button type="button" class="btn btn-primary" id="btn-add-service-master">
-              <i data-lucide="plus"></i> Add Service
-            </button>
-            <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+          <button type="button" class="btn btn-primary" id="btn-add-service-master">
+            <i data-lucide="plus"></i> Add Service
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("srv-search", state.searches.services, "Search code, service, UOM, category...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Service</th>
-                  <th>UOM</th>
-                  <th>Category</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-group is-service">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="wrench"></i></span>
+                <div>
+                  <div class="section-kicker">Process master</div>
+                  <div class="section-title">Services</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Service</th>
+                    <th>Code</th>
+                    <th>UOM</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -8730,18 +8830,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!page) return;
       const rows = serviceRateTableRows();
       const body = rows.length
-        ? rows.map(({ service, rateRow }) => {
+        ? rows.map(({ service, rateRow }, index) => {
             const formula = getFormula(rateRow && rateRow.formulaId);
             const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
               ? formatNumber(rateRow.rate, 2)
               : "—";
             return `
             <tr>
-              <td class="mono">${escapeHtml(service.code)}</td>
-              <td>${escapeHtml(service.name)}</td>
-              <td>${rateText}</td>
-              <td>${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</td>
-              <td class="mono">${escapeHtml(formula ? formula.code : "—")}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(service.name)}</div>
+              </td>
+              <td class="mono fm-code">${escapeHtml(service.code)}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${rateText}</code></td>
+              <td><span class="badge badge-muted">${escapeHtml((rateRow && rateRow.rateUOM) || "—")}</span></td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formula ? formula.code : "—")}</code></td>
               <td>${rateRow ? statusBadge(rateRow.status) : '<span class="badge badge-muted">Unset</span>'}</td>
               <td>
                 <button type="button" class="btn btn-sm" data-edit-service-rate="${service.id}">Update</button>
@@ -8749,42 +8852,64 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `;
           }).join("")
-        : emptyRow(7, "No service rates match this search.");
+        : emptyRow(8, "No service rates match this search.");
 
       page.innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("srate-search", state.searches.serviceRates, "Search service name, code...")}
-            <select class="filter-select" id="srate-status-filter">
-              <option value="all" ${state.serviceRateFilter === "all" ? "selected" : ""}>All statuses</option>
-              <option value="active" ${state.serviceRateFilter === "active" ? "selected" : ""}>Active</option>
-              <option value="inactive" ${state.serviceRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
-            </select>
-            <select class="filter-select" id="srate-sort">
-              <option value="name" ${state.serviceRateSort === "name" ? "selected" : ""}>Sort by service name</option>
-              <option value="rate" ${state.serviceRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
-            </select>
-          </div>
-          <div class="toolbar-right">
-            <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Service Rates</div>
+            <div class="fm-hero-sub">Pricing and formulas for services</div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Service Code</th>
-                  <th>Service Name</th>
-                  <th>Rate (PKR)</th>
-                  <th>Rate UOM</th>
-                  <th>Formula</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("srate-search", state.searches.serviceRates, "Search service name, code...")}
+              <select class="filter-select" id="srate-status-filter">
+                <option value="all" ${state.serviceRateFilter === "all" ? "selected" : ""}>All statuses</option>
+                <option value="active" ${state.serviceRateFilter === "active" ? "selected" : ""}>Active</option>
+                <option value="inactive" ${state.serviceRateFilter === "inactive" ? "selected" : ""}>Inactive</option>
+              </select>
+              <select class="filter-select" id="srate-sort">
+                <option value="name" ${state.serviceRateSort === "name" ? "selected" : ""}>Sort by service name</option>
+                <option value="rate" ${state.serviceRateSort === "rate" ? "selected" : ""}>Sort by rate</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+            </div>
+          </div>
+        </div>
+        <div class="card fm-group is-costing">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="banknote"></i></span>
+                <div>
+                  <div class="section-kicker">Service pricing</div>
+                  <div class="section-title">Rates</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table" style="min-width:1100px;">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Service Name</th>
+                    <th>Service Code</th>
+                    <th>Rate (PKR)</th>
+                    <th>Rate UOM</th>
+                    <th>Formula</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -9587,15 +9712,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderBomList() {
       const rows = filterBoms();
       const body = rows.length
-        ? rows.map((item) => `
+        ? rows.map((item, index) => `
             <tr>
-              <td class="mono">${escapeHtml(item.bomNo)}</td>
-              <td>${escapeHtml(item.finishedGoodName)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td class="mono fm-code">${escapeHtml(item.bomNo)}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.finishedGoodName)}</div>
+              </td>
               <td>${escapeHtml(item.variant)}</td>
-              <td>${escapeHtml(item.version)}</td>
+              <td><span class="badge badge-info">${escapeHtml(item.version)}</span></td>
               <td>${statusBadge(item.status, item.status === "Active")}</td>
-              <td>${formatRupees(item.finalCostPerPiece)}</td>
-              <td>${escapeHtml(formatDateTime(item.updatedAt))}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${formatRupees(item.finalCostPerPiece)}</code></td>
+              <td class="fm-code">${escapeHtml(formatDateTime(item.updatedAt))}</td>
               <td>
                 <div class="row-actions">
                   <button type="button" class="btn btn-sm" data-load-bom="${item.id}">View / Edit</button>
@@ -9604,46 +9732,62 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </td>
             </tr>
           `).join("")
-        : emptyRow(8, "No saved BOMs match this search.");
+        : emptyRow(9, "No saved BOMs match this search.");
 
       document.getElementById("page-bom-list").innerHTML = `
-        <div class="toolbar">
+        <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Repository</div>
             <div class="section-title">BOM List</div>
+            <div class="fm-hero-sub">Saved drafts and active versions</div>
           </div>
           <button type="button" class="btn btn-primary" id="btn-new-bom">New BOM</button>
         </div>
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("bom-list-search", state.searches.boms, "Search BOM number, product, variant, status...")}
-            <select class="filter-select" id="bom-list-filter">
-              <option value="all" ${state.bomListFilter === "all" ? "selected" : ""}>All</option>
-              <option value="draft" ${state.bomListFilter === "draft" ? "selected" : ""}>Draft</option>
-              <option value="active" ${state.bomListFilter === "active" ? "selected" : ""}>Active</option>
-            </select>
-          </div>
-          <div class="toolbar-right">
-            <span class="badge badge-muted">${rows.length} of ${boms.length}</span>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("bom-list-search", state.searches.boms, "Search BOM number, product, variant, status...")}
+              <select class="filter-select" id="bom-list-filter">
+                <option value="all" ${state.bomListFilter === "all" ? "selected" : ""}>All</option>
+                <option value="draft" ${state.bomListFilter === "draft" ? "selected" : ""}>Draft</option>
+                <option value="active" ${state.bomListFilter === "active" ? "selected" : ""}>Active</option>
+              </select>
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${boms.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table" style="min-width:980px;">
-              <thead>
-                <tr>
-                  <th>BOM Number</th>
-                  <th>Finished Good</th>
-                  <th>Variant</th>
-                  <th>Version</th>
-                  <th>Status</th>
-                  <th>Final Cost / Piece</th>
-                  <th>Updated Date</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-group is-sheet">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="clipboard-list"></i></span>
+                <div>
+                  <div class="section-kicker">Saved BOMs</div>
+                  <div class="section-title">Records</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table" style="min-width:1100px;">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>BOM Number</th>
+                    <th>Finished Good</th>
+                    <th>Variant</th>
+                    <th>Version</th>
+                    <th>Status</th>
+                    <th>Final Cost / Piece</th>
+                    <th>Updated Date</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
