@@ -396,15 +396,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       },
       finalCost: {
         formula: "Materials + Services + Finishing Services",
-        description: "Fixed. Sum of material, service, and finishing service costs. Other materials are additional cost and are not included. Color printing is added when entered."
+        description: "Fixed. Sum of non-consumable material, service, and finishing service costs. Consumable materials are Additional Cost and are not included. Color printing is added when entered."
       },
       finalCostCalculator: {
         formula: "Materials + Services + Finishing Services + Color Printing",
-        description: "Fixed. Sum of material, service, and finishing service costs. Other materials are additional cost and are not included. Color printing is added when entered."
+        description: "Fixed. Sum of non-consumable material, service, and finishing service costs. Consumable materials are Additional Cost and are not included. Color printing is added when entered."
       },
       additionalCost: {
-        formula: "Other Materials",
-        description: "Fixed. Other materials are additional cost and are not included in Final Cost/Piece."
+        formula: "Sum of Consumable materials",
+        description: "Fixed. Additional Cost is the sum of Consumable raw materials. It is not included in Final Cost/Piece."
       },
       finishingCost: {
         formula: "Sum of Finishing Service line costs",
@@ -3780,6 +3780,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return rawMaterials.find((item) => item.id === Number(id)) || null;
     }
 
+    function isConsumableRawMaterial(rawMaterialId) {
+      const material = getRawMaterial(rawMaterialId);
+      return Boolean(material && material.category === "Consumable");
+    }
+
     function getOtherRawMaterial(id) {
       return otherRawMaterials.find((item) => item.id === Number(id)) || null;
     }
@@ -4879,7 +4884,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function calculateTotalMaterialCost() {
-      return state.bomMaterials.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+      return (state.bomMaterials || []).reduce((sum, line) => {
+        if (isConsumableRawMaterial(line.rawMaterialId)) return sum;
+        return sum + Number(line.costPerPiece || 0);
+      }, 0);
+    }
+
+    function calculateTotalConsumableMaterialCost() {
+      return (state.bomMaterials || []).reduce((sum, line) => {
+        if (!isConsumableRawMaterial(line.rawMaterialId)) return sum;
+        return sum + Number(line.costPerPiece || 0);
+      }, 0);
     }
 
     function calculateOtherMaterialCost(materialLine, context) {
@@ -6371,17 +6386,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const calc = calculateCostCalculatorService(row);
         return { ...row, calc };
       });
-      const plyMaterialCost = roundTo(layers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
-      const additionalMaterialCost = roundTo(additionalMaterials.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
-      const additionalServiceCost = roundTo(additionalServices.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
-      const materialCost = roundTo(plyMaterialCost + additionalMaterialCost, 2);
-      const otherMaterialCost = roundTo(
-        otherLayers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0) + additionalServiceCost,
-        2
-      );
-      const additionalSectionCost = roundTo(additionalMaterialCost + additionalServiceCost, 2);
-      const serviceCost = roundTo(services.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
-      const finishingCost = roundTo(finishingServices.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
+      const lineCost = (row) => Number(row && row.calc && row.calc.cost || 0);
+      const plyNonConsumableCost = roundTo(layers.reduce((sum, row) => {
+        if (!row.rawMaterialId || isConsumableRawMaterial(row.rawMaterialId)) return sum;
+        return sum + lineCost(row);
+      }, 0), 2);
+      const plyConsumableCost = roundTo(layers.reduce((sum, row) => {
+        if (!row.rawMaterialId || !isConsumableRawMaterial(row.rawMaterialId)) return sum;
+        return sum + lineCost(row);
+      }, 0), 2);
+      const additionalConsumableCost = roundTo(additionalMaterials.reduce((sum, row) => {
+        if (!row.rawMaterialId || !isConsumableRawMaterial(row.rawMaterialId)) return sum;
+        return sum + lineCost(row);
+      }, 0), 2);
+      const additionalNonConsumableCost = roundTo(additionalMaterials.reduce((sum, row) => {
+        if (!row.rawMaterialId || isConsumableRawMaterial(row.rawMaterialId)) return sum;
+        return sum + lineCost(row);
+      }, 0), 2);
+      const additionalServiceCost = roundTo(additionalServices.reduce((sum, row) => sum + lineCost(row), 0), 2);
+      const materialCost = roundTo(plyNonConsumableCost + additionalNonConsumableCost, 2);
+      const additionalMaterialCost = roundTo(plyConsumableCost + additionalConsumableCost, 2);
+      const otherMaterialCost = additionalMaterialCost;
+      const additionalSectionCost = roundTo(additionalMaterials.reduce((sum, row) => sum + lineCost(row), 0) + additionalServiceCost, 2);
+      const serviceCost = roundTo(services.reduce((sum, row) => sum + lineCost(row), 0), 2);
+      const finishingCost = roundTo(finishingServices.reduce((sum, row) => sum + lineCost(row), 0), 2);
       const colorCost = hasCostCalculatorColorCost()
         ? roundTo(Number(state.costCalculator.ccNumberOfColors) * Number(state.costCalculator.ccColorRate), 2)
         : 0;
@@ -6404,6 +6432,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         additionalMaterials,
         additionalServices,
         materialCost,
+        additionalMaterialCost,
         otherMaterialCost,
         additionalSectionCost,
         additionalSectionHasErrors: Boolean(additionalMaterialError || additionalServiceError),
@@ -10252,7 +10281,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ` : ""}
             <div class="cost-row">
               ${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(roundTo(Number(state.totalOtherMaterialCost) + calculateTotalAdditionalServiceCost(), 2))}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(calculateTotalConsumableMaterialCost())}</strong>
             </div>
             <div class="cost-row">
               <span>Profit %</span>
@@ -10282,7 +10311,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             </div>
             `}
-            <p class="stat-hint">Final Cost/Piece is Material + Services + Finishing Services in Pakistani Rupees (Rs.). Other materials are Additional Cost and are not included. Rates come from master data after unit conversion.</p>
+            <p class="stat-hint">Final Cost/Piece is Material + Services + Finishing Services in Pakistani Rupees (Rs.). Consumable materials are Additional Cost and are not included. Rates come from master data after unit conversion.</p>
           </div>
         </div>
       `;
