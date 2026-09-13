@@ -5923,32 +5923,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const summary = updateCostCalculatorSummary();
       const styleOptions = styles.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+      const selectedStyle = styleOptions.find((item) => item.id === Number(cc.styleId)) || null;
       const materials = steps.hasPly ? getCostCalculatorMaterials(steps.ply) : [];
-      const styleTableBody = styleOptions.length
-        ? styleOptions.map((item, index) => {
-            const selected = Number(cc.styleId) === item.id;
-            return `
-              <tr class="${selected ? "cc-style-selected" : ""}">
-                <td>${index + 1}</td>
-                <td>
-                  <div>${escapeHtml(item.name)}</div>
-                  ${selected ? `<div class="stat-hint">Selected</div>` : ""}
-                </td>
-                <td>${escapeHtml(item.description || "—")}</td>
-                <td>${getStyleVariables(item.id).length}</td>
-                <td>${getStyleFormulaLinks(item.id).length}</td>
-                <td>${statusBadge(item.status)}</td>
-                <td>
-                  <div class="row-actions">
-                    <button type="button" class="btn btn-sm ${selected ? "btn-primary" : ""}" data-cc-select-style="${item.id}" ${selected ? "disabled" : ""} aria-label="${selected ? "Selected " : "Select "}${escapeHtml(item.name)}">
-                      ${selected ? "Selected" : "Select"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            `;
-          }).join("")
-        : emptyRow(7, "No designs found. Add styles in Style Master.");
+      const styleTableBody = selectedStyle
+        ? `
+          <tr class="cc-style-selected">
+            <td>1</td>
+            <td>${escapeHtml(selectedStyle.name)}</td>
+            <td class="cc-style-desc">${escapeHtml(selectedStyle.description || "—")}</td>
+            <td>${getStyleVariables(selectedStyle.id).length}</td>
+            <td>${getStyleFormulaLinks(selectedStyle.id).length}</td>
+            <td>${statusBadge(selectedStyle.status)}</td>
+          </tr>
+        `
+        : emptyRow(6, "Select a style from the list to continue.");
 
       const layerRows = summary.layers.map((row, index) => {
         const material = getRawMaterial(row.rawMaterialId);
@@ -6022,8 +6010,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <i data-lucide="plus"></i> Add Style
                   </button>
                 </div>
-                <div class="table-wrap">
-                  <table class="data-table" style="min-width:860px;">
+                <label class="form-label" for="cc-style">Style</label>
+                <select id="cc-style" class="full-select" aria-label="Select style">
+                  <option value="">Select Style</option>
+                  ${styleOptions.map((item) => `<option value="${item.id}" ${selectedStyle && selectedStyle.id === item.id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
+                </select>
+                <div class="table-wrap" style="margin-top:14px;">
+                  <table class="data-table">
                     <thead>
                       <tr>
                         <th>#</th>
@@ -6032,7 +6025,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         <th>Variables</th>
                         <th>Formulas</th>
                         <th>Status</th>
-                        <th>Action</th>
                       </tr>
                     </thead>
                     <tbody>${styleTableBody}</tbody>
@@ -15340,6 +15332,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "bom-order-quantity-uom") {
           updateBomOrderQuantityUom(event.target.value);
         }
+        if (event.target.id === "cc-style") {
+          handleCostCalculatorStyleChange(event.target.value);
+          renderCostCalculator();
+          refreshIcons();
+        }
         if (event.target.id === "cc-restore-service") {
           const serviceId = event.target.value;
           const restored = addServiceBackToCalculator(serviceId);
@@ -15465,13 +15462,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-cc-add-style")) {
           openStyleModal(null);
-          return;
-        }
-        const ccSelectStyle = event.target.closest("[data-cc-select-style]");
-        if (ccSelectStyle) {
-          handleCostCalculatorStyleChange(ccSelectStyle.dataset.ccSelectStyle);
-          renderCostCalculator();
-          refreshIcons();
           return;
         }
         if (event.target.closest("[data-cc-toggle-style-formulas]")) {

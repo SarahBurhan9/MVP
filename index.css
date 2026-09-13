@@ -692,6 +692,10 @@
 
     table.data-table tbody tr:hover { background: #f8fafc; }
     table.data-table tbody tr.cc-style-selected { background: #eff6ff; }
+    table.data-table td.cc-style-desc {
+      white-space: normal;
+      max-width: 420px;
+    }
 
     .badge {
       display: inline-flex;
