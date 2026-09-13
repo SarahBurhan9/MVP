@@ -5383,11 +5383,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
     }
 
-    function loadCostCalculatorOtherLayers(ply) {
-      const names = getStructuralLayers(ply);
+    function loadCostCalculatorOtherLayers() {
+      const names = getStructuralLayers(1);
       const prev = Array.isArray(state.costCalculator.otherLayers) ? state.costCalculator.otherLayers : [];
+      const kept = prev.find((row) => row.otherRawMaterialId) || prev[0];
       state.costCalculator.otherLayers = names.map((layer) => {
-        const existing = prev.find((row) => row.layer === layer);
+        const existing = prev.find((row) => row.layer === layer) || kept;
         return { layer, otherRawMaterialId: existing && existing.otherRawMaterialId ? existing.otherRawMaterialId : "" };
       });
     }
@@ -5755,7 +5756,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const cc = state.costCalculator;
       const steps = getCostCalculatorStepState();
       if (steps.hasPly) {
-        loadCostCalculatorOtherLayers(steps.ply);
+        loadCostCalculatorOtherLayers();
         loadCostCalculatorServices(steps.ply);
       }
       const summary = updateCostCalculatorSummary();
@@ -5974,6 +5975,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       const extras = rows.filter((item) => item && !claimed.has(item.id));
       return { ply, layers, slots, extras };
+    }
+
+    function getBomOtherMaterialSlotLayout(materials) {
+      return getBomMaterialSlotLayout({ ply: 1 }, materials);
     }
 
     function warnBomMaterialSlotLayout(finishedGood, layout, source) {
@@ -6250,7 +6255,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function assignBomOtherSlotMaterial(layer, otherRawMaterialId) {
       const fg = getSelectedFinishedGood();
       if (!fg) return;
-      const layout = getBomMaterialSlotLayout(fg, state.bomOtherMaterials);
+      const layout = getBomOtherMaterialSlotLayout(state.bomOtherMaterials);
       const slot = layout.slots.find((item) => item.layer === layer);
       if (!slot) return;
       const value = otherRawMaterialId ? Number(otherRawMaterialId) : null;
@@ -6267,7 +6272,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (slot.line) {
         state.bomOtherMaterials = state.bomOtherMaterials.map((line) => line.id === next.id ? next : line);
       } else {
-        state.bomOtherMaterials = orderBomMaterialsBySlots(fg, state.bomOtherMaterials.concat([next]));
+        state.bomOtherMaterials = orderBomMaterialsBySlots({ ply: 1 }, state.bomOtherMaterials.concat([next]));
       }
       recalculateBOMCosts();
       refreshBomViews();
@@ -6824,7 +6829,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.workflowError = "";
       recalculateBOMCosts();
       warnBomMaterialSlotLayout(getSelectedFinishedGood(), getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomMaterials), "saved-bom");
-      warnBomMaterialSlotLayout(getSelectedFinishedGood(), getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials), "saved-bom-other");
+      warnBomMaterialSlotLayout(getSelectedFinishedGood(), getBomOtherMaterialSlotLayout(state.bomOtherMaterials), "saved-bom-other");
       warnBomOtherMaterialPlyCatalog(getFinishedGoodPly(getSelectedFinishedGood()));
       persistEditorState();
     }
@@ -8915,7 +8920,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         root.innerHTML = "";
         return;
       }
-      const layout = getBomMaterialSlotLayout(fg, state.bomOtherMaterials);
+      const layout = getBomOtherMaterialSlotLayout(state.bomOtherMaterials);
       const slotCards = layout.slots.map((slot, index) => renderBomOtherMaterialCard({
         layer: slot.layer,
         line: slot.line,
@@ -14164,7 +14169,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         wastagePercent: line.wastagePercent
       };
       if (draft.otherRawMaterialId) applyOtherMaterialFormulaBindings(draft);
-      const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomOtherMaterials);
+      const layout = getBomOtherMaterialSlotLayout(state.bomOtherMaterials);
       const slotLocked = layout.slots.some((slot) => slot.line && slot.line.id === line.id);
       state.modal = {
         type: "other-material",
@@ -15295,7 +15300,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           state.costCalculator.ply = ply;
           openCostCalculatorStyleFormulas();
           loadCostCalculatorLayers(ply, { notify: true });
-          loadCostCalculatorOtherLayers(ply);
+          loadCostCalculatorOtherLayers();
           loadCostCalculatorServices(ply, { resetRemoved: true, notify: true });
           renderCostCalculator();
           refreshIcons();
