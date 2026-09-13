@@ -6202,7 +6202,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="card-body">
                 <div class="section-head" style="margin-top:0;">
                   <div>
-                    <div class="cc-step">Step 6: Services</div>
+                    <div class="cc-step">Step 6: Select Packaging Services</div>
                     <div class="section-title">Conversion steps</div>
                   </div>
                   <button type="button" class="btn btn-primary" id="btn-cc-add-service" ${steps.hasPly ? "" : "disabled"}>
@@ -8564,7 +8564,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
       { id: "bom-other-materials-root", label: "Additional materials" },
-      { id: "bom-services-root", label: "Services" },
+      { id: "bom-services-root", label: "Select Packaging Services" },
       { id: "bom-finishing-root", label: "Finishing Services" }
     ];
 
@@ -9393,7 +9393,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card-body">
             <div class="section-head">
               <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().services}: Services</div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().services}: Select Packaging Services</div>
                 <div class="section-title">Conversion steps</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-service" ${hasFg ? "" : "disabled"}>
