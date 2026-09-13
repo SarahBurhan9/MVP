@@ -6392,6 +6392,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return options;
     }
 
+    function getBomAdditionalMaterialOptions(selectedId) {
+      const options = rawMaterials.filter((item) => item.status !== "Inactive" && item.category === "Consumable");
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
     function orderBomMaterialsBySlots(finishedGood, materials) {
       const layout = getBomMaterialSlotLayout(finishedGood, materials);
       return layout.slots.map((slot) => slot.line).filter(Boolean).concat(layout.extras);
@@ -14006,7 +14016,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
       const materialOptions = slotLocked
         ? getBomSlotMaterialOptions(ply, draft.rawMaterialId)
-        : getBomExtraMaterialOptions(draft.rawMaterialId);
+        : (fromAdditional
+          ? getBomAdditionalMaterialOptions(draft.rawMaterialId)
+          : getBomExtraMaterialOptions(draft.rawMaterialId));
       return `
         <section aria-label="Material selection and inputs">
           <div class="form-grid">
@@ -14031,7 +14043,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     </option>
                   `).join("")}
                 </select>
-                ${errors.rawMaterialId ? `<div class="field-error">${escapeHtml(errors.rawMaterialId)}</div>` : (fromAdditional ? `<p class="stat-hint" style="margin-top:6px;">Showing raw materials from Raw Material Master.</p>` : "")}
+                ${errors.rawMaterialId ? `<div class="field-error">${escapeHtml(errors.rawMaterialId)}</div>` : (fromAdditional ? `<p class="stat-hint" style="margin-top:6px;">Showing Consumable materials from Raw Material Master.</p>` : "")}
               </div>
               ${fromAdditional ? "" : `
               <div>
@@ -14487,8 +14499,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openAddAdditionalMaterialModal() {
       if (!getSelectedFinishedGood()) return;
-      if (!getBomExtraMaterialOptions().length) {
-        showNotification("No raw materials found. Add an active material in Raw Material Master first.", "error");
+      if (!getBomAdditionalMaterialOptions().length) {
+        showNotification("No Consumable raw materials found. Mark a material as Consumable in Raw Material Master first.", "error");
         refreshBomViews();
         return;
       }
