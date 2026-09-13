@@ -4975,8 +4975,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function calculateTotalServiceCost() {
-      return state.bomServices.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0)
-        + calculateTotalAdditionalServiceCost();
+      return state.bomServices.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
     }
 
     function calculateTotalFinishingServiceCost() {
@@ -9336,7 +9335,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ` : ""}
             <div class="cost-row">
               ${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalOtherMaterialCost)}</strong>
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(roundTo(Number(state.totalOtherMaterialCost) + calculateTotalAdditionalServiceCost(), 2))}</strong>
             </div>
             <div class="cost-row">
               <span>Profit %</span>
