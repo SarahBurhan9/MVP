@@ -5201,22 +5201,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function getCostCalculatorMaterials(ply) {
-      const ids = new Set(
-        materialDimensions
-          .filter((row) => Number(row.ply) === Number(ply))
-          .map((row) => Number(row.rawMaterialId))
-      );
-      return rawMaterials.filter((item) => item.status !== "Inactive" && ids.has(item.id));
+    function getCostCalculatorMaterials() {
+      return rawMaterials.filter((item) => item.status !== "Inactive");
     }
 
-    function getBomOtherMaterialsForPly(ply) {
-      const ids = new Set(
-        otherMaterialDimensions
-          .filter((row) => Number(row.ply) === Number(ply))
-          .map((row) => Number(row.otherRawMaterialId))
-      );
-      return otherRawMaterials.filter((item) => item.status !== "Inactive" && ids.has(item.id));
+    function getBomOtherMaterialsForPly() {
+      return otherRawMaterials.filter((item) => item.status !== "Inactive");
     }
 
     function getCostCalculatorOtherMaterials(ply) {
@@ -5388,8 +5378,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const existing = prev.find((row) => row.layer === layer);
         return { layer, rawMaterialId: existing && existing.rawMaterialId ? existing.rawMaterialId : "" };
       });
-      if (options && options.notify && !getCostCalculatorMaterials(ply).length) {
-        showNotification("No material configured for " + ply + "-ply " + names[0], "error");
+      if (options && options.notify && !getCostCalculatorMaterials().length) {
+        showNotification("No active raw materials found.", "error");
       }
     }
 
@@ -5507,13 +5497,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!material) {
         return { ...empty, error: "This material does not exist in the Raw Material Master." };
       }
-      if (!getCostCalculatorMaterials(ply).length) {
-        return { ...empty, error: "No material configured for " + ply + "-ply " + layerRow.layer };
-      }
       const link = findCostCalculatorMaterialLink(material.id, ply, fg);
-      if (!link) {
-        return { ...empty, error: "No material configured for " + ply + "-ply " + layerRow.layer };
-      }
       const formula = getMaterialQtyFormula(material);
       if (!formula || !formula.isActive) {
         return { ...empty, error: "Formula not configured for " + material.name + ". Set Default Quantity Formula on the Raw Material master." };
@@ -5535,7 +5519,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         layer: layerRow.layer,
         calculationMethod: "formula",
         formulaId: formula.id,
-        dimensionId: link.dimensionId,
+        dimensionId: link ? link.dimensionId : null,
         manualQty: null,
         wastagePercent: wastage,
         netQty: 0,
@@ -5548,7 +5532,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ...empty,
           error: formatCostCalculatorFormulaError(line.error),
           formulaId: formula.id,
-          dimensionId: link.dimensionId,
+          dimensionId: link ? link.dimensionId : null,
           wastagePercent: wastage,
           dimWarnings: styleUsage.warnings
         };
@@ -5564,7 +5548,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         coveredArea: areaEval.success ? roundTo(areaEval.result, 2) : 0,
         error: null,
         formulaId: formula.id,
-        dimensionId: link.dimensionId,
+        dimensionId: link ? link.dimensionId : null,
         wastagePercent: wastage,
         rateUOM: rateRow?.rateUOM || "",
         uom: material.uom,
@@ -5807,7 +5791,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const material = getOtherRawMaterial(row.otherRawMaterialId);
         const calc = row.calc;
         const otherMaterials = steps.hasPly ? getCostCalculatorOtherMaterialOptions(steps.ply, row.otherRawMaterialId) : [];
-        const keptUnlinked = Number(row.otherRawMaterialId) && !getCostCalculatorOtherMaterials(steps.ply).some((item) => item.id === Number(row.otherRawMaterialId));
         return `
           <div class="cc-layer">
             <div class="cc-layer-title">${escapeHtml(row.layer)}</div>
@@ -5818,7 +5801,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <option value="${item.id}" ${Number(row.otherRawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
               `).join("")}
             </select>
-            ${keptUnlinked ? `<p class="stat-hint">This material is not linked to ${escapeHtml(String(steps.ply))}-ply. It stays selected so the estimate is not cleared.</p>` : ""}
             ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
             <div class="cc-metrics">
               <div><span>Qty</span><strong>${row.otherRawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}</strong></div>
@@ -6208,15 +6190,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         || null;
     }
 
-    function warnBomOtherMaterialPlyCatalog(ply) {
-      const catalog = getBomOtherMaterialsForPly(ply);
+    function warnBomOtherMaterialPlyCatalog() {
+      const catalog = getBomOtherMaterialsForPly();
       if (catalog.length) return;
-      const linkedPlys = Array.from(new Set(otherMaterialDimensions.map((row) => Number(row.ply)).filter((n) => Number.isFinite(n))));
-      console.warn("No otherMaterialDimensions links for ply " + ply + ". Catalog is empty.", {
-        ply,
-        linkedPlys,
-        note: "New Other Raw Material dimension links are saved with ply: 1."
-      });
+      console.warn("No active other raw materials found. Catalog is empty.");
     }
 
     function isBomPlyLinkedOtherMaterial(otherRawMaterialId, ply) {
@@ -8718,7 +8695,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const materials = extra
         ? getBomExtraMaterialOptions(line && line.rawMaterialId)
         : getBomSlotMaterialOptions(ply, line && line.rawMaterialId);
-      const unlinked = !extra && line && line.rawMaterialId && !isBomPlyLinkedMaterial(line.rawMaterialId, ply);
       const selectId = extra ? "bom-extra-mat-" + line.id : "bom-layer-mat-" + index;
       const selectAttr = extra
         ? `data-bom-extra-material="${line.id}"`
@@ -8753,7 +8729,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             `).join("")}
           </select>
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
-          ${unlinked ? `<p class="stat-hint">This material is not linked in Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
             <div class="cc-metrics">
@@ -8876,7 +8851,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const materials = extra
         ? getBomOtherExtraMaterialOptions(line && line.otherRawMaterialId)
         : getBomOtherSlotMaterialOptions(ply, line && line.otherRawMaterialId);
-      const unlinked = !extra && line && line.otherRawMaterialId && !isBomPlyLinkedOtherMaterial(line.otherRawMaterialId, ply);
       const selectId = extra ? "bom-other-extra-mat-" + line.id : "bom-other-layer-mat-" + index;
       const selectAttr = extra
         ? `data-bom-other-extra-material="${line.id}"`
@@ -8909,7 +8883,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="${item.id}" ${line && Number(line.otherRawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
-          ${unlinked ? `<p class="stat-hint">This material is not linked in Other Material Dimensions for ${escapeHtml(String(ply))}-ply. It is kept so the saved BOM line is not dropped.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
             <div class="cc-metrics">
@@ -10119,7 +10092,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="section-head">
           <div>
             <div class="section-kicker">Material dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension (and ply) to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-material-dimension">
             <i data-lucide="plus"></i> Add Dimension to Material
@@ -10662,7 +10635,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="section-head">
           <div>
             <div class="section-kicker">Material dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension (and ply) to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-other-material-dimension">
             <i data-lucide="plus"></i> Add Dimension to Material
