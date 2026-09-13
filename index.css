@@ -537,16 +537,6 @@
       margin-bottom: 12px;
     }
 
-    .cc-step-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 12px;
-    }
-
-    .cc-step-row .cc-step { margin-bottom: 0; }
-
     .cc-dim-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -602,59 +592,6 @@
     .cc-layer-title {
       font-weight: 700;
       margin-bottom: 8px;
-    }
-
-    .cc-add-service {
-      max-width: 220px;
-      min-width: 140px;
-    }
-
-    .cc-service-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-    }
-
-    .cc-service-head,
-    .cc-service-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1.6fr) 0.6fr 0.9fr 0.9fr auto;
-      gap: 8px;
-      align-items: center;
-      padding: 10px 12px;
-    }
-
-    .cc-service-head {
-      background: var(--bg);
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.02em;
-    }
-
-    .cc-service-row {
-      border-top: 1px solid var(--border);
-      background: #fff;
-    }
-
-    .cc-service-row .cc-layer-title { margin-bottom: 0; }
-
-    .cc-service-error {
-      grid-column: 1 / -1;
-    }
-
-    @media (max-width: 719px) {
-      .cc-service-head { display: none; }
-      .cc-service-row {
-        grid-template-columns: 1fr 1fr;
-        align-items: start;
-      }
-      .cc-service-row .cc-layer-title { grid-column: 1 / -1; }
-      .cc-service-row > div:last-child { grid-column: 1 / -1; justify-self: start; }
     }
 
     .cc-layer-head {
@@ -1515,7 +1452,6 @@
       justify-content: flex-start;
     }
 
-    .cc-service-row .formula-cell,
     .style-formula-value .formula-cell {
       justify-content: flex-end;
     }
