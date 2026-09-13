@@ -8793,45 +8793,70 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderStyles() {
       const rows = filterStyles();
       const body = rows.length
-        ? rows.map((item) => `
+        ? rows.map((item, index) => `
             <tr>
-              <td>${escapeHtml(item.name)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.name)}</div>
+              </td>
               <td>${escapeHtml(item.description || "—")}</td>
-              <td>${getStyleVariables(item.id).length} variables</td>
-              <td>${getStyleFormulaLinks(item.id).length} formulas</td>
+              <td><span class="badge badge-info">${getStyleVariables(item.id).length} variables</span></td>
+              <td><span class="badge badge-muted">${getStyleFormulaLinks(item.id).length} formulas</span></td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-style", item.id, "data-delete-style", item.id)}
             </tr>
           `).join("")
-        : emptyRow(6, "No styles match this search.");
+        : emptyRow(7, "No styles match this search.");
 
       document.getElementById("page-style").innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("style-search", state.searches.style, "Search style name, description...")}
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Style Management</div>
+            <div class="fm-hero-sub">Style master and style variables</div>
           </div>
-          <div class="toolbar-right">
-            <button type="button" class="btn btn-primary" id="btn-add-style">
-              <i data-lucide="plus"></i> Add Style
-            </button>
-            <span class="badge badge-muted">${rows.length} of ${styles.length}</span>
+          <button type="button" class="btn btn-primary" id="btn-add-style">
+            <i data-lucide="plus"></i> Add Style
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("style-search", state.searches.style, "Search style name, description...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${styles.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Style Name</th>
-                  <th>Description</th>
-                  <th>Variables</th>
-                  <th>Formulas</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-group is-style">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="palette"></i></span>
+                <div>
+                  <div class="section-kicker">Style master</div>
+                  <div class="section-title">Styles</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Style Name</th>
+                    <th>Description</th>
+                    <th>Variables</th>
+                    <th>Formulas</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
@@ -8840,47 +8865,72 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderDimensions() {
       const rows = filterDimensions();
       const body = rows.length
-        ? rows.map((item) => `
+        ? rows.map((item, index) => `
             <tr>
-              <td>${escapeHtml(item.name || item.code)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.name || item.code)}</div>
+              </td>
               <td>${escapeHtml(item.description || "—")}</td>
-              <td>${escapeHtml(formatDecimal(item.L, 2, false))}</td>
-              <td>${escapeHtml(formatDecimal(item.W, 2, false))}</td>
-              <td>${escapeHtml(item.unit || item.uom)}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formatDecimal(item.L, 2, false))}</code></td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formatDecimal(item.W, 2, false))}</code></td>
+              <td><span class="badge badge-info">${escapeHtml(item.unit || item.uom)}</span></td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-dim", item.id, "data-delete-dim", item.id)}
             </tr>
           `).join("")
-        : emptyRow(7, "No dimensions match this search.");
+        : emptyRow(8, "No dimensions match this search.");
 
       document.getElementById("page-dimensions").innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("dim-search", state.searches.dimensions, "Search L x W, UOM...")}
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Dimension Management</div>
+            <div class="fm-hero-sub">Size presets used across costing</div>
           </div>
-          <div class="toolbar-right">
-            <button type="button" class="btn btn-primary" id="btn-add-dimension">
-              <i data-lucide="plus"></i> Add Dimension
-            </button>
-            <span class="badge badge-muted">${rows.length} of ${dimensions.length}</span>
+          <button type="button" class="btn btn-primary" id="btn-add-dimension">
+            <i data-lucide="plus"></i> Add Dimension
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("dim-search", state.searches.dimensions, "Search L x W, UOM...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${dimensions.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Description</th>
-                  <th>Length</th>
-                  <th>Width</th>
-                  <th>Unit</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
+        <div class="card fm-group is-dimension">
+          <div class="card-body">
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="ruler"></i></span>
+                <div>
+                  <div class="section-kicker">Dimension master</div>
+                  <div class="section-title">Sizes</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${rows.length}</span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table fm-table">
+                <thead>
+                  <tr>
+                    <th class="fm-num">#</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Length</th>
+                    <th>Width</th>
+                    <th>Unit</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>${body}</tbody>
+              </table>
+            </div>
           </div>
         </div>
       `;
