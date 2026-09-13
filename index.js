@@ -8886,10 +8886,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderFormulaVariables() {
-      const rows = filterFormulaVariables();
-      const body = rows.length
-        ? rows.map((item) => {
+    function variableCategoryMeta(category) {
+      const map = {
+        Dimension: { icon: "ruler", cls: "is-dimension" },
+        Material: { icon: "package", cls: "is-material" },
+        Sheet: { icon: "layers", cls: "is-sheet" },
+        Area: { icon: "square", cls: "is-area" },
+        Costing: { icon: "calculator", cls: "is-costing" },
+        Service: { icon: "wrench", cls: "is-service" }
+      };
+      return map[category] || { icon: "variable", cls: "is-other" };
+    }
+
+    function renderVariableTable(items, emptyMessage) {
+      const body = items.length
+        ? items.map((item, index) => {
             const sheetArea = isFixedSheetAreaCode(item.code);
             const description = sheetArea ? FIXED_SHEET_AREA.description : (item.description || "—");
             const defaultValue = sheetArea
@@ -8897,13 +8908,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               : (item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === "" ? "—" : (item.dataType === "numeric" ? formatDecimal(item.defaultValue, 8, false) : item.defaultValue));
             return `
             <tr>
-              <td class="mono">${escapeHtml(item.code)}${sheetArea ? ` <span class="badge badge-muted">Fixed Calculation</span>` : ""}</td>
-              <td>${escapeHtml(item.name)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.name)}</div>
+              </td>
+              <td class="mono fm-code">${escapeHtml(item.code)}${sheetArea ? ` <span class="badge badge-muted">Fixed Calculation</span>` : ""}</td>
               <td>${escapeHtml(description)}</td>
               <td><span class="badge badge-info">${escapeHtml(item.category)}</span></td>
               <td>${escapeHtml(item.unit || "—")}</td>
               <td>${escapeHtml(item.dataType)}</td>
-              <td>${escapeHtml(defaultValue)}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(defaultValue)}</code></td>
               <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
               ${sheetArea
                 ? `<td><span class="formula-src" title="${escapeHtml(FIXED_SHEET_AREA.description)}">Read only</span></td>`
@@ -8911,44 +8925,115 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `;
           }).join("")
-        : emptyRow(9, "No formula variables match this search.");
+        : emptyRow(10, emptyMessage || "No formula variables match this search.");
+      return `
+        <div class="table-wrap">
+          <table class="data-table fm-table" style="min-width:1100px;">
+            <thead>
+              <tr>
+                <th class="fm-num">#</th>
+                <th>Name</th>
+                <th>Code</th>
+                <th>Description</th>
+                <th>Category</th>
+                <th>Unit</th>
+                <th>Data Type</th>
+                <th>Default Value</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      `;
+    }
 
-      const fixedRows = FIXED_IMPLEMENTATION_VARIABLES.map((item) => `
+    function renderFormulaVariables() {
+      const rows = filterFormulaVariables();
+      const categoryOrder = ["Dimension", "Material", "Sheet", "Area", "Costing", "Service"];
+      const extras = [];
+      rows.forEach((item) => {
+        if (!categoryOrder.includes(item.category) && !extras.includes(item.category)) extras.push(item.category);
+      });
+      const groups = categoryOrder.concat(extras);
+      const tables = groups.map((category) => {
+        const items = rows.filter((item) => item.category === category);
+        const meta = variableCategoryMeta(category);
+        return `
+          <div class="card fm-group ${meta.cls}" style="margin-bottom:16px;">
+            <div class="card-body">
+              <div class="section-head">
+                <div class="fm-group-title">
+                  <span class="fm-group-icon"><i data-lucide="${meta.icon}"></i></span>
+                  <div>
+                    <div class="section-kicker">${escapeHtml(category)} variables</div>
+                    <div class="section-title">${escapeHtml(category)}</div>
+                  </div>
+                </div>
+                <span class="badge badge-muted">${items.length}</span>
+              </div>
+              ${renderVariableTable(items, `No ${String(category).toLowerCase()} variables.`)}
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      const fixedRows = FIXED_IMPLEMENTATION_VARIABLES.map((item, index) => `
         <tr>
-          <td class="mono">${escapeHtml(item.code)} <span class="badge badge-muted">Fixed</span></td>
-          <td>${escapeHtml(item.formula)}</td>
+          <td class="fm-num">${index + 1}</td>
+          <td class="mono fm-code">${escapeHtml(item.code)} <span class="badge badge-muted">Fixed</span></td>
+          <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(item.formula)}</code></td>
           <td>${escapeHtml(item.description)}</td>
-          <td>${escapeHtml(item.code === "CONVERSION_FACTOR" ? formatDecimal(item.value, 8, false) : String(item.value))}</td>
+          <td class="fm-name">${escapeHtml(item.code === "CONVERSION_FACTOR" ? formatDecimal(item.value, 8, false) : String(item.value))}</td>
           <td><span class="formula-src">Read only</span></td>
         </tr>
       `).join("");
 
       document.getElementById("page-formula-variables").innerHTML = `
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("fvar-search", state.searches.formulaVariables, "Search code, name, category...")}
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Variable Management</div>
+            <div class="fm-hero-sub">Shared inputs used by formulas</div>
           </div>
-          <div class="toolbar-right">
-            <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
-              <i data-lucide="plus"></i> Add Variable
-            </button>
-            <span class="badge badge-muted">${rows.length} of ${formulaVariables.length}</span>
+          <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
+            <i data-lucide="plus"></i> Add Variable
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("fvar-search", state.searches.formulaVariables, "Search code, name, category...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${formulaVariables.length}</span>
+            </div>
           </div>
         </div>
-        <div class="card" style="margin-bottom:16px;">
+        <div class="card fm-group is-fixed" style="margin-bottom:16px;">
           <div class="card-body">
-            <div class="section-kicker">Fixed Variables</div>
-            <div class="section-title" style="margin-bottom:8px;">System implementation constants</div>
-            <p class="stat-hint" style="margin:0 0 12px;">These values are part of the calculation engine. They cannot be edited or deleted.</p>
+            <div class="section-head">
+              <div class="fm-group-title">
+                <span class="fm-group-icon"><i data-lucide="lock"></i></span>
+                <div>
+                  <div class="section-kicker">Fixed variables</div>
+                  <div class="section-title">System</div>
+                </div>
+              </div>
+              <span class="badge badge-muted">${FIXED_IMPLEMENTATION_VARIABLES.length}</span>
+            </div>
+            <p class="fm-group-hint">These values are part of the calculation engine. They cannot be edited or deleted.</p>
             <div class="table-wrap">
-              <table class="data-table">
+              <table class="data-table fm-table">
                 <thead>
                   <tr>
+                    <th class="fm-num">#</th>
                     <th>Code</th>
                     <th>Value / Formula</th>
                     <th>Description</th>
                     <th>Current Value</th>
-                    <th></th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>${fixedRows}</tbody>
@@ -8956,26 +9041,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
           </div>
         </div>
-        <div class="card">
-          <div class="table-wrap">
-            <table class="data-table" style="min-width:1100px;">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Description</th>
-                  <th>Category</th>
-                  <th>Unit</th>
-                  <th>Data Type</th>
-                  <th>Default Value</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
-          </div>
-        </div>
+        ${tables}
       `;
     }
 
