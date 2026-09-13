@@ -9307,64 +9307,103 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const materialLayout = getBomMaterialSlotLayout(fg, state.bomMaterials);
-      const leftoverMaterialCards = materialLayout.extras.map((line, index) => renderBomMaterialCard({
-        layer: line.layer || "Additional",
-        line,
-        ply: materialLayout.ply,
-        extra: true,
-        index
-      })).join("");
+      const extraRows = materialLayout.extras || [];
       const additionalRows = state.bomAdditionalServices || [];
-      const extraMaterialCost = materialLayout.extras.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
+      const extraMaterialCost = extraRows.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
       const additionalSectionCost = extraMaterialCost + calculateTotalAdditionalServiceCost();
-      const additionalHasErrors = materialLayout.extras.some((line) => line.error)
+      const additionalHasErrors = extraRows.some((line) => line.error)
         || additionalRows.some((line) => line.error);
-      const additionalBody = additionalRows.length
-        ? additionalRows.map((line, index) => {
-            const service = getService(line.serviceId);
-            const formula = line.calculationMethod === "formula"
-              ? getFormula(getServiceDefaultFormulaId(service && service.id))
-              : getFormula(line.formulaId);
-            const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
-            const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
-            return `
-              <tr>
-                <td>${index + 1}</td>
-                <td>
-                  <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
-                  ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
-                  <div class="stat-hint">${escapeHtml(service ? service.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
-                </td>
-                <td>${escapeHtml(methodLabel)}</td>
-                <td>
-                  <span class="formula-cell">
-                    ${escapeHtml(formulaLabel)}
-                    ${formulaHelpButton("service", line.id, "Explain quantity")}
-                  </span>
-                </td>
-                <td>${formatQty(line.quantity)}</td>
-                <td>
-                  ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
-                  <div class="stat-hint">Service Rates</div>
-                </td>
-                <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
-                <td>
-                  <div class="row-actions">
-                    <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
-                      <i data-lucide="calculator"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-icon" data-edit-additional-service="${line.id}" title="Edit">
-                      <i data-lucide="pencil"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-additional-service="${line.id}" title="Delete">
-                      <i data-lucide="trash-2"></i>
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            `;
-          }).join("")
-        : emptyRow(8, "No services added yet.");
+      const extraBody = extraRows.map((line, index) => {
+        const material = getRawMaterial(line.rawMaterialId);
+        const formula = line.calculationMethod === "formula"
+          ? getMaterialQtyFormula(material)
+          : getFormula(line.formulaId);
+        const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
+        const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td>
+              <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
+              ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
+              <div class="stat-hint">${escapeHtml(material ? material.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
+            </td>
+            <td>${escapeHtml(methodLabel)}</td>
+            <td>
+              <span class="formula-cell">
+                ${escapeHtml(formulaLabel)}
+                ${formulaHelpButton("material", line.id, "Explain quantity")}
+              </span>
+            </td>
+            <td>${formatQty(line.netQty)}</td>
+            <td>
+              ${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}
+              <div class="stat-hint">Material Rates</div>
+            </td>
+            <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td>
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit">
+                  <i data-lucide="pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+      const serviceBody = additionalRows.map((line, index) => {
+        const service = getService(line.serviceId);
+        const formula = line.calculationMethod === "formula"
+          ? getFormula(getServiceDefaultFormulaId(service && service.id))
+          : getFormula(line.formulaId);
+        const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
+        const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
+        return `
+          <tr>
+            <td>${extraRows.length + index + 1}</td>
+            <td>
+              <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
+              ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
+              <div class="stat-hint">${escapeHtml(service ? service.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
+            </td>
+            <td>${escapeHtml(methodLabel)}</td>
+            <td>
+              <span class="formula-cell">
+                ${escapeHtml(formulaLabel)}
+                ${formulaHelpButton("service", line.id, "Explain quantity")}
+              </span>
+            </td>
+            <td>${formatQty(line.quantity)}</td>
+            <td>
+              ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
+              <div class="stat-hint">Material Rates</div>
+            </td>
+            <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td>
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon" data-edit-additional-service="${line.id}" title="Edit">
+                  <i data-lucide="pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-additional-service="${line.id}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+      const additionalBody = (extraRows.length || additionalRows.length)
+        ? extraBody + serviceBody
+        : emptyRow(8, "No materials added yet.");
       root.innerHTML = `
         <section class="card cc-card">
           <div class="card-body">
@@ -9372,19 +9411,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="section-head" style="margin-top:0;">
               <div>
                 <div class="section-title">Additional materials</div>
-                <p class="stat-hint" style="margin:0;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
+                <p class="stat-hint" style="margin:0;">Add Block, Film, Plate, and similar items here. New lines load from Raw Material Master. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-additional-service">
                 <i data-lucide="plus"></i> Add Material
               </button>
             </div>
-            ${leftoverMaterialCards}
             <div class="table-wrap">
               <table class="data-table" style="min-width:980px;">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Service</th>
+                    <th>Material</th>
                     <th>Calculation</th>
                     <th>Formula</th>
                     <th>Qty / Piece</th>
@@ -13963,6 +14001,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       const ply = getFinishedGoodPly(fg);
       const slotLocked = Boolean(state.modal.slotLocked);
+      const fromAdditional = Boolean(state.modal.fromAdditional);
       const material = getRawMaterial(draft.rawMaterialId);
       const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
       const materialOptions = slotLocked
@@ -13983,17 +14022,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             ` : `
               <div>
-                <label class="form-label" for="modal-material-select">Raw Material</label>
+                <label class="form-label" for="modal-material-select">${fromAdditional ? "Material" : "Raw Material"}</label>
                 <select id="modal-material-select" class="full-select ${errors.rawMaterialId ? "input-invalid" : ""}" aria-invalid="${errors.rawMaterialId ? "true" : "false"}">
-                  <option value="">Select a raw material...</option>
+                  <option value="">${fromAdditional ? "Select a material..." : "Select a raw material..."}</option>
                   ${materialOptions.map((item) => `
                     <option value="${item.id}" ${Number(draft.rawMaterialId) === item.id ? "selected" : ""}>
                       ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
                     </option>
                   `).join("")}
                 </select>
-                ${errors.rawMaterialId ? `<div class="field-error">${escapeHtml(errors.rawMaterialId)}</div>` : ""}
+                ${errors.rawMaterialId ? `<div class="field-error">${escapeHtml(errors.rawMaterialId)}</div>` : (fromAdditional ? `<p class="stat-hint" style="margin-top:6px;">Showing raw materials from Raw Material Master.</p>` : "")}
               </div>
+              ${fromAdditional ? "" : `
               <div>
                 <label class="form-label" for="modal-layer-select">Layer</label>
                 <select id="modal-layer-select" class="full-select ${errors.layer ? "input-invalid" : ""}" aria-invalid="${errors.layer ? "true" : "false"}">
@@ -14001,6 +14041,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </select>
                 ${errors.layer ? `<div class="field-error">${escapeHtml(errors.layer)}</div>` : ""}
               </div>
+              `}
             `}
             <div>
               <label class="form-label" for="modal-method-select">Calculation Method</label>
@@ -14049,7 +14090,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialModalRight() {
       const data = formatPreviewData("material", state.modal.draft);
       if (!data.ready) {
-        return `<p class="preview-empty">Select a raw material to see live quantity, formula variables, and cost.</p>`;
+        return `<p class="preview-empty">${state.modal.fromAdditional ? "Select a material to see live quantity, formula variables, and cost." : "Select a raw material to see live quantity, formula variables, and cost."}</p>`;
       }
       const material = data.item;
       const preview = data.preview;
@@ -14119,8 +14160,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderMaterialFormModal() {
+      const fromAdditional = Boolean(state.modal.fromAdditional);
+      const title = fromAdditional
+        ? (state.modal.mode === "edit" ? "Edit Material" : "Add Material")
+        : (state.modal.mode === "edit" ? "Edit Raw Material" : "Add Raw Material");
       return renderBomLineModalShell(
-        state.modal.mode === "edit" ? "Edit Raw Material" : "Add Raw Material",
+        title,
         renderMaterialModalLeft(),
         renderMaterialModalRight()
       );
@@ -14440,6 +14485,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       backdrop.classList.add("show");
     }
 
+    function openAddAdditionalMaterialModal() {
+      if (!getSelectedFinishedGood()) return;
+      if (!getBomExtraMaterialOptions().length) {
+        showNotification("No raw materials found. Add an active material in Raw Material Master first.", "error");
+        refreshBomViews();
+        return;
+      }
+      const draft = defaultMaterialDraft(null);
+      draft.layer = "Additional";
+      state.modal = {
+        type: "material",
+        selectedId: null,
+        mode: "add",
+        lineId: null,
+        slotLocked: false,
+        fromAdditional: true,
+        draft,
+        errors: {}
+      };
+      renderModal();
+    }
+
     function openMaterialModal(lineId) {
       if (!getSelectedFinishedGood() || !lineId) return;
       const line = state.bomMaterials.find((item) => item.id === Number(lineId));
@@ -14448,12 +14515,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.rawMaterialId) applyMaterialFormulaBindings(draft);
       const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomMaterials);
       const slotLocked = layout.slots.some((slot) => slot.line && slot.line.id === line.id);
+      const fromAdditional = !slotLocked;
       state.modal = {
         type: "material",
         selectedId: line.rawMaterialId,
         mode: "edit",
         lineId: line.id,
         slotLocked,
+        fromAdditional,
         draft,
         errors: {}
       };
@@ -16007,7 +16076,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
 
         if (event.target.closest("#btn-add-additional-service")) {
-          openServiceModal(null, "additional");
+          openAddAdditionalMaterialModal();
           return;
         }
 
