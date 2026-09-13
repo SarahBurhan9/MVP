@@ -278,7 +278,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const GRAM_TO_KG = 0.001;
     const DEFAULT_GLUE_FLAP = 1;
     const DEFAULT_WASTAGE_PERCENT = 5;
-    const SERVICE_CUSTOM_DIM_ERROR = "⚠️ Area Length/Width required by formula but not provided. Check formula settings.";
+    const SERVICE_CUSTOM_DIM_ERROR = "Enter custom Length and Width.";
     const STRUCTURAL_PLY_LAYERS = {
       1: ["Single Layer"],
       2: ["Top Liner", "Bottom Liner"],
@@ -3244,6 +3244,53 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return resolveQuantityFormulaLW(finishedGood, null, getFormulaVariableDefaults());
     }
 
+    function isUseCustomDimensions(source) {
+      return Boolean(source && source.useCustomDimensions === true);
+    }
+
+    function getAutoQuantityLW(finishedGood, dimensionId) {
+      const defaults = getFormulaVariableDefaults();
+      const dim = getDimension(dimensionId);
+      const resolved = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      return { L: roundTo(resolved.L, 2), W: roundTo(resolved.W, 2) };
+    }
+
+    function getCustomDimensionOverride(line) {
+      const out = { L: null, W: null, error: null };
+      if (!isUseCustomDimensions(line)) return out;
+      const L = numericOrNull(line.customLength);
+      const W = numericOrNull(line.customWidth);
+      if (L === null || W === null || L <= 0 || W <= 0) {
+        out.error = SERVICE_CUSTOM_DIM_ERROR;
+        return out;
+      }
+      out.L = L;
+      out.W = W;
+      return out;
+    }
+
+    function customDimensionFields(draft) {
+      return {
+        useCustomDimensions: isUseCustomDimensions(draft),
+        customLength: numericOrNull(draft.customLength),
+        customWidth: numericOrNull(draft.customWidth)
+      };
+    }
+
+    function fillCustomDimensionsFromAuto(draft) {
+      const auto = getAutoQuantityLW(getSelectedFinishedGood(), draft && draft.dimensionId);
+      if (draft.customLength === "" || draft.customLength == null) draft.customLength = auto.L;
+      if (draft.customWidth === "" || draft.customWidth == null) draft.customWidth = auto.W;
+    }
+
+    function validateCustomDimensionDraft(draft, errors) {
+      if (!draft || draft.calculationMethod !== "formula" || !isUseCustomDimensions(draft)) return;
+      const L = numericOrNull(draft.customLength);
+      const W = numericOrNull(draft.customWidth);
+      if (L === null || L <= 0) errors.customLength = "Length must be greater than 0.";
+      if (W === null || W <= 0) errors.customWidth = "Width must be greater than 0.";
+    }
+
     function getStyleVariableValue(styleId, variableCode, ply) {
       const row = findStyleVariable(styleId, variableCode, ply);
       return row ? numericOrNull(row.value) : null;
@@ -4101,6 +4148,57 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderUseCustomDimensionBlock(draft, errors, ids) {
+      if (!draft || draft.calculationMethod !== "formula") return "";
+      const checked = isUseCustomDimensions(draft);
+      const lengthValue = draft.customLength == null || draft.customLength === "" ? "" : String(draft.customLength);
+      const widthValue = draft.customWidth == null || draft.customWidth === "" ? "" : String(draft.customWidth);
+      return `
+        <div>
+          <label class="form-label">Dimension</label>
+          <label class="custom-dim-flag">
+            <input id="${ids.checkId}" type="checkbox" ${checked ? "checked" : ""} />
+            <span>Use Custom Dimensions</span>
+          </label>
+          ${checked ? `
+            <div class="dim-input-row two" style="margin-top:10px;">
+              <div>
+                <label class="form-label" for="${ids.lengthId}">Length (L) in.</label>
+                <input id="${ids.lengthId}" class="full-search ${errors.customLength ? "input-invalid" : ""}" type="number" step="any" min="0.0001" value="${escapeHtml(lengthValue)}" aria-invalid="${errors.customLength ? "true" : "false"}" />
+                ${errors.customLength ? `<div class="field-error">${escapeHtml(errors.customLength)}</div>` : ""}
+              </div>
+              <div>
+                <label class="form-label" for="${ids.widthId}">Width (W) in.</label>
+                <input id="${ids.widthId}" class="full-search ${errors.customWidth ? "input-invalid" : ""}" type="number" step="any" min="0.0001" value="${escapeHtml(widthValue)}" aria-invalid="${errors.customWidth ? "true" : "false"}" />
+                ${errors.customWidth ? `<div class="field-error">${escapeHtml(errors.customWidth)}</div>` : ""}
+              </div>
+            </div>
+          ` : ""}
+        </div>
+      `;
+    }
+
+    function renderPreviewCustomDimSection(draft) {
+      if (isUseCustomDimensions(draft)) {
+        const L = numericOrNull(draft.customLength);
+        const W = numericOrNull(draft.customWidth);
+        return `
+          <section class="preview-section" aria-label="Selected dimension">
+            <h3 class="preview-heading">Selected dimension</h3>
+            ${renderPreviewField("Dimension", "Custom")}
+            ${renderPreviewField("Length (L)", L === null ? "—" : escapeHtml(formatDecimal(L, 2, false) + " inch"))}
+            ${renderPreviewField("Width (W)", W === null ? "—" : escapeHtml(formatDecimal(W, 2, false) + " inch"))}
+          </section>
+        `;
+      }
+      return `
+        <section class="preview-section" aria-label="Selected dimension">
+          <h3 class="preview-heading">Selected dimension</h3>
+          <p class="stat-hint">Not selected — using formula variable defaults.</p>
+        </section>
+      `;
+    }
+
     function applyMaterialFormulaBindings(draft) {
       const material = getRawMaterial(draft.rawMaterialId);
       if (!material) {
@@ -4442,7 +4540,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { valid: true, error: null, result: evaluated.result };
     }
 
-    function buildFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula) {
+    function buildFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula, line) {
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
       const styleVals = {};
@@ -4458,8 +4556,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       const fgDims = finishedGood?.dimensions ?? {};
       const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults);
-      const L = roundTo(resolvedDims.L, 2);
-      const W = roundTo(resolvedDims.W, 2);
+      const override = getCustomDimensionOverride(line);
+      const L = roundTo(override.L !== null ? override.L : resolvedDims.L, 2);
+      const W = roundTo(override.W !== null ? override.W : resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       return {
         ...defaults,
@@ -4602,7 +4701,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           line.costPerPiece = 0;
           return line;
         }
-        const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, formula);
+        const dimOverride = getCustomDimensionOverride(line);
+        if (dimOverride.error) {
+          line.error = dimOverride.error;
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, formula, line);
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
         if (!calculated.success) {
           line.error = calculated.error;
@@ -4615,7 +4722,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       const qtyFormula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : null;
-      const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula);
+      const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
       if (grossFormula && grossFormula.isActive) {
@@ -4801,23 +4908,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getServiceFormulaDimOverride(formula, service, line) {
-      const out = { L: null, W: null, error: null };
-      if (!formula) return out;
-      if (formula.serviceLength) {
-        const n = numericOrNull(line && line.customLength);
-        const fallback = numericOrNull(service && service.customLength);
-        const value = n !== null ? n : fallback;
-        if (value === null) out.error = SERVICE_CUSTOM_DIM_ERROR;
-        else out.L = value;
-      }
-      if (formula.serviceWidth) {
-        const n = numericOrNull(line && line.customWidth);
-        const fallback = numericOrNull(service && service.customWidth);
-        const value = n !== null ? n : fallback;
-        if (value === null) out.error = SERVICE_CUSTOM_DIM_ERROR;
-        else out.W = value;
-      }
-      return out;
+      return getCustomDimensionOverride(line);
     }
 
     function buildServiceFormulaVariables(finishedGood, service, dimensionId, line, formula) {
@@ -6036,7 +6127,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: patch.formulaId != null ? patch.formulaId : (prev ? prev.formulaId : null),
         dimensionId: Object.prototype.hasOwnProperty.call(patch, "dimensionId") ? patch.dimensionId : (prev ? prev.dimensionId : null),
         manualQty: Object.prototype.hasOwnProperty.call(patch, "manualQty") ? patch.manualQty : (prev ? prev.manualQty : null),
-        wastagePercent: patch.wastagePercent != null ? patch.wastagePercent : ((prev && prev.wastagePercent) ?? DEFAULT_WASTAGE_PERCENT)
+        wastagePercent: patch.wastagePercent != null ? patch.wastagePercent : ((prev && prev.wastagePercent) ?? DEFAULT_WASTAGE_PERCENT),
+        useCustomDimensions: Object.prototype.hasOwnProperty.call(patch, "useCustomDimensions")
+          ? patch.useCustomDimensions
+          : Boolean(prev && prev.useCustomDimensions),
+        customLength: Object.prototype.hasOwnProperty.call(patch, "customLength")
+          ? patch.customLength
+          : (prev ? prev.customLength : ""),
+        customWidth: Object.prototype.hasOwnProperty.call(patch, "customWidth")
+          ? patch.customWidth
+          : (prev ? prev.customWidth : "")
       };
       applyMaterialFormulaBindings(draft);
       return calculateMaterialCost({
@@ -6048,6 +6148,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
         manualQty: draft.calculationMethod === "manual" ? draft.manualQty : null,
         wastagePercent: draft.wastagePercent,
+        ...customDimensionFields(draft),
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -6128,6 +6229,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: hasFormula ? formulaId : null,
         dimensionId: dimensionId ? Number(dimensionId) : null,
         manualQty: hasFormula ? null : ((prev && prev.manualQty) || 1),
+        useCustomDimensions: Boolean(prev && prev.useCustomDimensions),
+        customLength: prev ? prev.customLength : null,
+        customWidth: prev ? prev.customWidth : null,
         quantity: 0,
         rate: 0,
         costPerPiece: 0
@@ -12705,7 +12809,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           formulaId: line.formulaId || (sheetWeight ? sheetWeight.id : null),
           dimensionId: line.dimensionId != null ? Number(line.dimensionId) : null,
           manualQty: line.manualQty,
-          wastagePercent: line.wastagePercent
+          wastagePercent: line.wastagePercent,
+          useCustomDimensions: Boolean(line.useCustomDimensions),
+          customLength: line.customLength != null ? line.customLength : "",
+          customWidth: line.customWidth != null ? line.customWidth : ""
         };
       }
       const fg = getSelectedFinishedGood();
@@ -12717,7 +12824,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: null,
         dimensionId: null,
         manualQty: 1,
-        wastagePercent: DEFAULT_WASTAGE_PERCENT
+        wastagePercent: DEFAULT_WASTAGE_PERCENT,
+        useCustomDimensions: false,
+        customLength: "",
+        customWidth: ""
       };
     }
 
@@ -12762,7 +12872,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (draft.rawMaterialId && draft.layer && findDuplicateMaterial(draft.rawMaterialId, draft.layer, lineId)) {
         errors.duplicate = "This material is already added to the selected layer.";
       }
-      if (!errors.formulaId && !errors.rawMaterialId && !errors.manualQty && !errors.wastagePercent && !errors.finishedGood && !errors.dimensionId) {
+      validateCustomDimensionDraft(draft, errors);
+      if (!errors.formulaId && !errors.rawMaterialId && !errors.manualQty && !errors.wastagePercent && !errors.finishedGood && !errors.dimensionId && !errors.customLength && !errors.customWidth) {
         const preview = calculateMaterialCost({
           id: lineId || 0,
           rawMaterialId: draft.rawMaterialId,
@@ -12772,6 +12883,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           dimensionId: draft.dimensionId,
           manualQty: draft.manualQty,
           wastagePercent: draft.wastagePercent,
+          ...customDimensionFields(draft),
           netQty: 0,
           grossQty: 0,
           rate: 0,
@@ -13149,7 +13261,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ? buildServiceFormulaVariables(fg, item, line.dimensionId, line, formula)
           : isOther
             ? buildOtherMaterialFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula)
-            : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula))
+            : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula, line))
         : {};
       const isManual = line.calculationMethod === "manual";
       if (!isManual && !formula) {
@@ -13434,6 +13546,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           dimensionId: draft.dimensionId,
           manualQty: draft.manualQty,
           wastagePercent: draft.wastagePercent,
+          ...customDimensionFields(draft),
           netQty: 0,
           grossQty: 0,
           rate: 0,
@@ -13469,8 +13582,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: draft.formulaId,
         dimensionId: draft.dimensionId,
         manualQty: draft.manualQty,
-        customLength: numericOrNull(draft.customLength),
-        customWidth: numericOrNull(draft.customWidth),
+        ...customDimensionFields(draft),
         quantity: 0,
         rate: 0,
         costPerPiece: 0
@@ -13486,7 +13598,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const dimensionText = formatPreviewDimension(dimension);
       let variables = {};
       if (kind === "material" && cost.item && finishedGood) {
-        variables = buildFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId, formula);
+        variables = buildFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId, formula, draft);
       } else if (kind === "other-material" && cost.item && finishedGood) {
         variables = buildOtherMaterialFormulaVariables(finishedGood, cost.item, Number(draft.wastagePercent) || 0, draft.dimensionId, formula);
       } else if (kind === "service" && cost.item && finishedGood) {
@@ -13540,7 +13652,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const slotLocked = Boolean(state.modal.slotLocked);
       const material = getRawMaterial(draft.rawMaterialId);
       const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
-      const dimMeta = describeBomMaterialDimensionSelect(material);
       const materialOptions = slotLocked
         ? getBomSlotMaterialOptions(ply, draft.rawMaterialId)
         : getBomExtraMaterialOptions(draft.rawMaterialId);
@@ -13586,14 +13697,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             ${draft.calculationMethod === "formula" ? `
-              ${renderBomDimensionSelect(
-                dimMeta.linkedIds,
-                draft.dimensionId,
-                "modal-line-dimension",
-                errors.dimensionId,
-                dimMeta.hint,
-                { emptyLabel: dimMeta.emptyLabel, disabled: !material, lockedLabel: "Select a material first" }
-              )}
+              ${renderUseCustomDimensionBlock(draft, errors, {
+                checkId: "modal-material-use-custom-dim",
+                lengthId: "modal-material-custom-length",
+                widthId: "modal-material-custom-width"
+              })}
               <div>
                 <div class="field-label">Quantity Formula</div>
                 <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
@@ -13653,12 +13761,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("UOM", escapeHtml(material.uom))}
           ${renderPreviewField("Rate", escapeHtml(formatRatePkr(getMaterialRate(material.id)?.rate, getMaterialRate(material.id)?.rateUOM)))}
         </section>
-        <section class="preview-section" aria-label="Selected dimension">
-          <h3 class="preview-heading">Selected dimension</h3>
-          ${getDimension(state.modal.draft && state.modal.draft.dimensionId)
-            ? `<div class="preview-value">${escapeHtml(formatDimensionChipLabel(getDimension(state.modal.draft.dimensionId)))}</div>`
-            : `<p class="stat-hint">Not selected — using formula variable defaults.</p>`}
-        </section>
+        ${renderPreviewCustomDimSection(state.modal.draft)}
         <section class="preview-section" aria-label="Formula and calculation">
           <h3 class="preview-heading">Formula &amp; calculation</h3>
           ${renderPreviewField(
@@ -13836,7 +13939,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const material = getRawMaterial(line.rawMaterialId);
       const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId);
-      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId, formula) : {};
+      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId, formula, line) : {};
       return `
         <div class="modal-header">
           <div>
@@ -14089,6 +14192,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
         manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
         wastagePercent: parseByRule(draft.wastagePercent, "wastage").value,
+        ...customDimensionFields(draft),
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -14406,6 +14510,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         state.modal.errors = {};
         refreshBomLinePreview();
         return true;
+      } else if (target.id === "modal-material-use-custom-dim") {
+        draft.useCustomDimensions = target.checked;
+        if (target.checked) fillCustomDimensionsFromAuto(draft);
+      } else if (target.id === "modal-material-custom-length") {
+        draft.customLength = target.value;
+        state.modal.errors = {};
+        refreshBomLinePreview();
+        return true;
+      } else if (target.id === "modal-material-custom-width") {
+        draft.customWidth = target.value;
+        state.modal.errors = {};
+        refreshBomLinePreview();
+        return true;
       } else return false;
       state.modal.errors = {};
       renderModal();
@@ -14415,15 +14532,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function defaultServiceDraft(line) {
       const printingQty = getFormulaByCode("PRINTING_QTY");
       if (line) {
-        const service = getService(line.serviceId);
         return {
           serviceId: line.serviceId,
           calculationMethod: line.calculationMethod,
           formulaId: line.formulaId || (printingQty ? printingQty.id : null),
           dimensionId: line.dimensionId != null ? Number(line.dimensionId) : null,
           manualQty: line.manualQty,
-          customLength: line.customLength != null ? line.customLength : (service && service.customLength != null ? service.customLength : ""),
-          customWidth: line.customWidth != null ? line.customWidth : (service && service.customWidth != null ? service.customWidth : "")
+          useCustomDimensions: Boolean(line.useCustomDimensions),
+          customLength: line.customLength != null ? line.customLength : "",
+          customWidth: line.customWidth != null ? line.customWidth : ""
         };
       }
       return {
@@ -14432,6 +14549,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: null,
         dimensionId: null,
         manualQty: 1,
+        useCustomDimensions: false,
         customLength: "",
         customWidth: ""
       };
@@ -14470,6 +14588,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ? "This finishing service is already added to the BOM."
           : "This service is already added to the BOM.";
       }
+      validateCustomDimensionDraft(draft, errors);
       if (!Object.keys(errors).length) {
         const preview = calculateServiceCost({
           id: lineId || 0,
@@ -14478,8 +14597,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           formulaId: draft.formulaId,
           dimensionId: draft.dimensionId,
           manualQty: draft.manualQty,
-          customLength: numericOrNull(draft.customLength),
-          customWidth: numericOrNull(draft.customWidth),
+          ...customDimensionFields(draft),
           quantity: 0,
           rate: 0,
           costPerPiece: 0
@@ -14509,20 +14627,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : ""}
             </div>
-            ${renderBomDimensionSelect(
-              service ? getServiceLinkedDimensionIds(service) : [],
-              draft.dimensionId,
-              "modal-service-dimension",
-              errors.dimensionId,
-              service
-                ? "Optional. Select a dimension used for this service quantity."
-                : "",
-              {
-                disabled: !service,
-                lockedLabel: "Select a service first",
-                emptyLabel: "No dimensions linked"
-              }
-            )}
+            ${renderUseCustomDimensionBlock(draft, errors, {
+              checkId: "modal-service-use-custom-dim",
+              lengthId: "modal-service-custom-length",
+              widthId: "modal-service-custom-width"
+            })}
             <div>
               <label class="form-label" for="modal-service-method">Calculation Method</label>
               <select id="modal-service-method" class="full-select">
@@ -14545,22 +14654,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
                 ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
               </div>
-              ${formula && (formula.serviceLength || formula.serviceWidth) ? `
-              <div class="dim-input-row two">
-                ${formula.serviceLength ? `
-                  <div>
-                    <label class="form-label" for="modal-service-custom-length">Area Length</label>
-                    <input id="modal-service-custom-length" class="full-search" type="number" step="any" value="${draft.customLength == null || draft.customLength === "" ? "" : escapeHtml(String(draft.customLength))}" />
-                  </div>
-                ` : ""}
-                ${formula.serviceWidth ? `
-                  <div>
-                    <label class="form-label" for="modal-service-custom-width">Area Width</label>
-                    <input id="modal-service-custom-width" class="full-search" type="number" step="any" value="${draft.customWidth == null || draft.customWidth === "" ? "" : escapeHtml(String(draft.customWidth))}" />
-                  </div>
-                ` : ""}
-              </div>
-              ` : ""}
             ` : `
               <div>
                 <label class="form-label" for="modal-service-qty">Quantity / Piece</label>
@@ -14588,7 +14681,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const service = data.item;
       const preview = data.preview;
       const formula = data.formula;
-      const draftDim = getDimension(state.modal.draft && state.modal.draft.dimensionId);
       const varsHtml = data.breakdown.variables.length
         ? `<div class="preview-vars" aria-label="Formula variables">
             ${data.breakdown.variables.map((row) => `
@@ -14607,12 +14699,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("UOM", escapeHtml(service.uom))}
           ${renderPreviewField("Rate", escapeHtml(formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM)))}
         </section>
-        <section class="preview-section" aria-label="Selected dimension">
-          <h3 class="preview-heading">Selected dimension</h3>
-          ${draftDim
-            ? renderPreviewField("Dimension", escapeHtml(formatDimensionChipLabel(draftDim)))
-            : `<p class="stat-hint">Not selected — using formula variable defaults.</p>`}
-        </section>
+        ${renderPreviewCustomDimSection(state.modal.draft)}
         <section class="preview-section" aria-label="Formula and calculation">
           <h3 class="preview-heading">Formula &amp; calculation</h3>
           ${renderPreviewField(
@@ -14634,7 +14721,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <section class="preview-section" aria-label="Cost summary">
           <h3 class="preview-heading">Cost summary</h3>
           ${renderPreviewField(state.modal.collection === "finishing" ? "Finishing Service" : "Service", escapeHtml(service.name))}
-          ${renderPreviewField("Dimension", draftDim ? escapeHtml(formatDimensionChipLabel(draftDim)) : "Not selected")}
+          ${renderPreviewField("Dimension", isUseCustomDimensions(state.modal.draft) ? "Custom" : "Not selected")}
           ${preview && !preview.error ? `
             ${renderPreviewField("Qty", escapeHtml(formatQty(preview.quantity) + " " + service.uom))}
             ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, getServiceRate(service.id)?.rateUOM)))}
@@ -14775,8 +14862,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
         manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
-        customLength: numericOrNull(draft.customLength),
-        customWidth: numericOrNull(draft.customWidth),
+        ...customDimensionFields(draft),
         quantity: 0,
         rate: 0,
         costPerPiece: 0
@@ -14826,9 +14912,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (target.id === "modal-service-select") {
         draft.serviceId = target.value ? Number(target.value) : null;
         draft.dimensionId = null;
-        const service = getService(draft.serviceId);
-        draft.customLength = service && service.customLength != null ? service.customLength : "";
-        draft.customWidth = service && service.customWidth != null ? service.customWidth : "";
         applyServiceFormulaBinding(draft);
       }
       else if (target.id === "modal-service-method") {
@@ -14836,9 +14919,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (draft.calculationMethod === "formula") applyServiceFormulaBinding(draft);
       }
       else if (target.id === "modal-service-formula") draft.formulaId = target.value ? Number(target.value) : null;
-      else if (target.id === "modal-service-dimension") {
-        draft.dimensionId = target.value ? Number(target.value) : null;
-        applyServiceFormulaBinding(draft);
+      else if (target.id === "modal-service-use-custom-dim") {
+        draft.useCustomDimensions = target.checked;
+        if (target.checked) fillCustomDimensionsFromAuto(draft);
       }
       else if (target.id === "modal-service-qty") {
         draft.manualQty = target.value === "" ? null : target.value;
@@ -15787,7 +15870,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.getElementById("modal-dialog").addEventListener("input", (event) => {
-        if (event.target.id === "modal-manual-qty" || event.target.id === "modal-wastage") {
+        if (event.target.id === "modal-manual-qty" || event.target.id === "modal-wastage" || event.target.id === "modal-material-custom-length" || event.target.id === "modal-material-custom-width") {
           updateMaterialDraftFromEvent(event.target);
           restoreFocus(event.target.id);
         }

@@ -1572,6 +1572,16 @@
       cursor: pointer;
     }
     .fb-flag input { margin: 0; }
+    .custom-dim-flag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .custom-dim-flag input { margin: 0; }
     .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip .formula-src { margin-left: 4px; }
     .chip, .op-btn {
