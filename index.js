@@ -9245,6 +9245,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
       const finishingPct = total > 0 ? roundTo((Number(state.totalFinishingServiceCost) / total) * 100, 1) : 0;
       const colorPct = showColorCost && total > 0 ? roundTo((Number(state.totalColorCost) / total) * 100, 1) : 0;
+      const colorsValue = state.bomNumberOfColors == null || state.bomNumberOfColors === ""
+        ? ""
+        : String(state.bomNumberOfColors);
       const colorRateValue = state.bomColorRate == null || state.bomColorRate === ""
         ? ""
         : formatDecimal(state.bomColorRate, 2, false);
@@ -9260,9 +9263,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cost-optional-row">
               <div class="cost-optional-field">
                 <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
-                <select id="bom-number-of-colors" class="full-select" aria-label="Number of colors">
-                  ${bomColorCountOptions(state.bomNumberOfColors)}
-                </select>
+                <input class="wastage-input" type="text" inputmode="numeric" id="bom-number-of-colors" value="${escapeHtml(colorsValue)}" placeholder="Optional" aria-label="Number of colors" />
               </div>
               <div class="cost-optional-field">
                 <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
@@ -15092,6 +15093,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const caret = event.target.selectionStart;
           updateBomMarginPercent(fieldId === "bom-profit-percent" ? "profit" : "overhead", event.target.value);
           restoreBomSummaryFieldFocus(fieldId, caret);
+        } else if (event.target.id === "bom-number-of-colors") {
+          const caret = event.target.selectionStart;
+          updateBomNumberOfColors(event.target.value);
+          restoreBomSummaryFieldFocus("bom-number-of-colors", caret);
         } else if (event.target.id === "bom-color-rate") {
           const caret = event.target.selectionStart;
           updateBomColorRate(event.target.value);
@@ -15151,9 +15156,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           renderBomList();
           refreshIcons();
           persistPrefs();
-        }
-        if (event.target.id === "bom-number-of-colors") {
-          updateBomNumberOfColors(event.target.value);
         }
         if (event.target.id === "bom-order-quantity-uom") {
           updateBomOrderQuantityUom(event.target.value);
