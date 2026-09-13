@@ -15516,15 +15516,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function restoreBomSummaryFieldFocus(fieldId, caret) {
-      const next = document.getElementById(fieldId);
-      if (!next) return;
-      next.focus();
-      try {
-        const pos = Math.min(Number(caret) || next.value.length, next.value.length);
-        next.setSelectionRange(pos, pos);
-      } catch (error) {
-        /* number inputs may not support selection ranges */
-      }
+      restoreFocus(fieldId, caret, caret);
     }
 
     function updateBomNumberOfColors(value) {
@@ -16240,23 +16232,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        Event handlers
        ================================================== */
 
-    function restoreFocus(id) {
-      const field = document.getElementById(id);
+    function clampCaret(pos, len) {
+      if (pos == null || pos === "" || Number.isNaN(Number(pos))) return len;
+      return Math.min(Math.max(0, Number(pos)), len);
+    }
+
+    function restoreFieldSelection(field, start, end) {
       if (!field) return;
       field.focus();
+      if (typeof field.setSelectionRange !== "function") return;
       try {
-        const len = field.value.length;
-        if (typeof field.setSelectionRange === "function") {
-          field.setSelectionRange(len, len);
-        }
+        const len = String(field.value ?? "").length;
+        const from = clampCaret(start, len);
+        const to = end == null || end === "" ? from : clampCaret(end, len);
+        field.setSelectionRange(from, to);
       } catch (error) {
         /* some input types do not support selection ranges */
       }
     }
 
+    function restoreFocus(id, start, end) {
+      restoreFieldSelection(document.getElementById(id), start, end);
+    }
+
+    function applyUppercasePreservingCaret(field) {
+      if (!field) return;
+      const start = field.selectionStart;
+      const end = field.selectionEnd;
+      field.value = String(field.value || "").toUpperCase();
+      restoreFieldSelection(field, start, end);
+    }
+
     function setupEventHandlers() {
       document.querySelector(".content").addEventListener("input", (event) => {
         const id = event.target.id;
+        const caretStart = event.target.selectionStart;
+        const caretEnd = event.target.selectionEnd;
         if (id === "calc-length" || id === "calc-width" || id === "calc-height") {
           applyCostCalculatorDimensionLive(event.target);
           return;
@@ -16265,115 +16276,95 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           state.searches.finishedGoods = event.target.value;
           renderFinishedGoods();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "rm-search") {
           state.searches.rawMaterials = event.target.value;
           renderRawMaterials();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "orm-search") {
           state.searches.otherRawMaterials = event.target.value;
           renderOtherRawMaterials();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "mrate-search") {
           state.searches.materialRates = event.target.value;
           renderRawMaterialRates();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "omrate-search") {
           state.searches.otherMaterialRates = event.target.value;
           renderOtherRawMaterialRates();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "srv-search") {
           state.searches.services = event.target.value;
           renderServices();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "srate-search") {
           state.searches.serviceRates = event.target.value;
           renderServiceRates();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "bom-list-search") {
           state.searches.boms = event.target.value;
           renderBomList();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "style-search") {
           state.searches.style = event.target.value;
           renderStyles();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "fvar-search") {
           state.searches.formulaVariables = event.target.value;
           renderFormulaVariables();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "dim-search") {
           state.searches.dimensions = event.target.value;
           renderDimensions();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "formula-search") {
           state.searches.formulas = event.target.value;
           renderFormulas();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "fg-combo-search") {
           state.searches.bomFinishedGood = event.target.value;
           state.fgSelectorOpen = true;
           renderFinishedGoodSelector();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
           persistPrefs();
         } else if (id === "cc-style-search") {
           state.ccStyleSearch = event.target.value;
           state.ccStyleSelectorOpen = true;
           renderCostCalculatorStylePicker();
           refreshIcons();
-          restoreFocus(id);
+          restoreFocus(id, caretStart, caretEnd);
         } else if (event.target.dataset.wastageLine) {
           const lineId = event.target.dataset.wastageLine;
-          const caret = event.target.selectionStart;
           updateLineWastage(lineId, event.target.value);
-          const next = document.querySelector(`[data-wastage-line="${lineId}"]`);
-          if (next) {
-            next.focus();
-            try {
-              const pos = Math.min(Number(caret) || next.value.length, next.value.length);
-              next.setSelectionRange(pos, pos);
-            } catch (error) {
-              /* number inputs may not support selection ranges */
-            }
-          }
+          restoreFieldSelection(document.querySelector(`[data-wastage-line="${lineId}"]`), caretStart, caretEnd);
         } else if (event.target.dataset.otherWastageLine) {
           const lineId = event.target.dataset.otherWastageLine;
-          const caret = event.target.selectionStart;
           updateOtherLineWastage(lineId, event.target.value);
-          const next = document.querySelector(`[data-other-wastage-line="${lineId}"]`);
-          if (next) {
-            next.focus();
-            try {
-              const pos = Math.min(Number(caret) || next.value.length, next.value.length);
-              next.setSelectionRange(pos, pos);
-            } catch (error) {
-              /* number inputs may not support selection ranges */
-            }
-          }
+          restoreFieldSelection(document.querySelector(`[data-other-wastage-line="${lineId}"]`), caretStart, caretEnd);
         } else if (event.target.id === "bom-profit-percent" || event.target.id === "bom-overhead-percent") {
           const fieldId = event.target.id;
           const caret = event.target.selectionStart;
@@ -17009,10 +17000,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           showFgComboList();
         }
         if (event.target.id === "cc-style-search" && !state.ccStyleSelectorOpen) {
+          const start = event.target.selectionStart;
+          const end = event.target.selectionEnd;
           state.ccStyleSelectorOpen = true;
           renderCostCalculatorStylePicker();
           refreshIcons();
-          restoreFocus("cc-style-search");
+          restoreFocus("cc-style-search", start, end);
         }
         if (event.target.closest("[data-cc-ply]") && !event.target.disabled) {
           if (openCostCalculatorStyleFormulas()) refreshCostCalculatorStyleFormulas();
@@ -17187,66 +17180,61 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.getElementById("modal-dialog").addEventListener("input", (event) => {
+        const caretStart = event.target.selectionStart;
+        const caretEnd = event.target.selectionEnd;
         if (event.target.id === "modal-manual-qty" || event.target.id === "modal-manual-rate" || event.target.id === "modal-wastage" || event.target.id === "modal-material-custom-length" || event.target.id === "modal-material-custom-width") {
           updateMaterialDraftFromEvent(event.target);
-          restoreFocus(event.target.id);
+          return;
         }
         if (event.target.id === "modal-other-manual-qty" || event.target.id === "modal-other-manual-rate" || event.target.id === "modal-other-wastage") {
           updateOtherMaterialDraftFromEvent(event.target);
-          restoreFocus(event.target.id);
+          return;
         }
         if (event.target.id === "modal-service-qty" || event.target.id === "modal-service-rate" || event.target.id === "modal-service-custom-length" || event.target.id === "modal-service-custom-width") {
           updateServiceDraftFromEvent(event.target);
-          restoreFocus(event.target.id);
+          return;
         }
-        if (updateFinishedGoodDraftFromEvent(event.target)) {
-          if (event.target.id === "rm-code") event.target.value = String(event.target.value || "").toUpperCase();
-          restoreFocus(event.target.id);
-        }
+        if (updateFinishedGoodDraftFromEvent(event.target)) return;
         if (updateRawMaterialDraftFromEvent(event.target)) {
-          if (event.target.id === "rm-code") event.target.value = String(event.target.value || "").toUpperCase();
-          restoreFocus(event.target.id);
+          if (event.target.id === "rm-code") applyUppercasePreservingCaret(event.target);
+          return;
         }
         if (updateOtherRawMaterialDraftFromEvent(event.target)) {
-          if (event.target.id === "orm-code") event.target.value = String(event.target.value || "").toUpperCase();
-          restoreFocus(event.target.id);
+          if (event.target.id === "orm-code") applyUppercasePreservingCaret(event.target);
+          return;
         }
-        if (updateMaterialRateDraftFromEvent(event.target)) {
-          restoreFocus(event.target.id);
-        }
-        if (updateOtherMaterialRateDraftFromEvent(event.target)) {
-          restoreFocus(event.target.id);
-        }
+        if (updateMaterialRateDraftFromEvent(event.target)) return;
+        if (updateOtherMaterialRateDraftFromEvent(event.target)) return;
         if (updateServiceMasterDraftFromEvent(event.target)) {
-          if (event.target.id === "srv-code") event.target.value = String(event.target.value || "").toUpperCase();
-          restoreFocus(event.target.id);
+          if (event.target.id === "srv-code") applyUppercasePreservingCaret(event.target);
+          return;
         }
-        if (updateServiceRateDraftFromEvent(event.target)) {
-          restoreFocus(event.target.id);
+        if (updateServiceRateDraftFromEvent(event.target)) return;
+        if (updateStyleDraftFromEvent(event.target)) return;
+        const pendingChange = updatePendingStyleVariableFromEvent(event.target);
+        if (pendingChange) {
+          if (pendingChange === "rerender") {
+            renderModal();
+            refreshIcons();
+            restoreFocus(event.target.id, caretStart, caretEnd);
+          }
+          return;
         }
-        if (updateStyleDraftFromEvent(event.target)) {
-          restoreFocus(event.target.id);
-        }
-        if (updatePendingStyleVariableFromEvent(event.target)) {
-          restoreFocus(event.target.id);
-        }
-        if (updateStyleVariableDraftFromEvent(event.target)) {
-          restoreFocus(event.target.id);
-        }
+        if (updateStyleVariableDraftFromEvent(event.target)) return;
         if (updateFormulaVariableDraftFromEvent(event.target)) {
-          if (event.target.id === "fvar-code") event.target.value = String(event.target.value || "").toUpperCase();
-          restoreFocus(event.target.id);
+          if (event.target.id === "fvar-code") applyUppercasePreservingCaret(event.target);
+          return;
         }
         if (updateDimensionDraftFromEvent(event.target)) {
           if (event.target.id === "dim-l" || event.target.id === "dim-w") {
             refreshDimensionCodePreview();
           }
-          restoreFocus(event.target.id);
+          return;
         }
         if (!state.modal.draft) return;
         if (event.target.id === "fb-name") state.modal.draft.name = event.target.value;
         if (event.target.id === "fb-code") {
-          event.target.value = event.target.value.toUpperCase();
+          applyUppercasePreservingCaret(event.target);
           state.modal.draft.code = event.target.value;
         }
         if (event.target.id === "fb-description") state.modal.draft.description = event.target.value;
@@ -17255,10 +17243,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.id === "fb-expression") {
           state.modal.draft.expression = event.target.value;
-          state.modal.cursor = event.target.selectionStart;
+          state.modal.cursor = caretStart;
           state.modal.draft.testResult = null;
           renderModal();
-          restoreFocus("fb-expression");
+          restoreFocus("fb-expression", caretStart, caretEnd);
         }
       });
 
