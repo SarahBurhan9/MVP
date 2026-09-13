@@ -108,6 +108,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const serviceRates = [];
 
+    const SERVICE_CATEGORY_OPTIONS = [
+      { id: "general", label: "General" },
+      { id: "finishing", label: "Finishing" },
+      { id: "other", label: "Other" }
+    ];
+    const SERVICE_CATEGORY_IDS = SERVICE_CATEGORY_OPTIONS.map((item) => item.id);
+
     const formulas = [
       {
         id: 301,
@@ -2527,6 +2534,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
       services.forEach((item) => {
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
+        item.categories = normalizeServiceCategories(item.categories);
         delete item.serviceRate;
         delete item.rateUOM;
         delete item.formulaId;
@@ -3775,6 +3783,45 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getService(id) {
       return services.find((item) => item.id === Number(id)) || null;
+    }
+
+    function normalizeServiceCategories(value, options) {
+      const allowEmpty = Boolean(options && options.allowEmpty);
+      const raw = Array.isArray(value) ? value : (value ? [value] : []);
+      const seen = new Set();
+      const next = [];
+      raw.forEach((item) => {
+        const id = String(item || "").trim().toLowerCase();
+        if (!SERVICE_CATEGORY_IDS.includes(id) || seen.has(id)) return;
+        seen.add(id);
+        next.push(id);
+      });
+      if (!next.length && !allowEmpty) return ["general"];
+      return next;
+    }
+
+    function serviceCategoryLabels(categories) {
+      return normalizeServiceCategories(categories).map((id) => {
+        const option = SERVICE_CATEGORY_OPTIONS.find((item) => item.id === id);
+        return option ? option.label : id;
+      });
+    }
+
+    function formatServiceCategoryBadges(categories) {
+      return serviceCategoryLabels(categories)
+        .map((label) => `<span class="badge badge-info">${escapeHtml(label)}</span>`)
+        .join(" ");
+    }
+
+    function serviceHasCategory(service, categoryId) {
+      if (!categoryId) return true;
+      return normalizeServiceCategories(service && service.categories).includes(categoryId);
+    }
+
+    function bomCollectionToServiceCategory(collection) {
+      if (collection === "finishing") return "finishing";
+      if (collection === "additional") return "other";
+      return "general";
     }
 
     function getServiceFormulas(purpose) {
@@ -6354,8 +6401,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (next.error) showNotification(next.error, "error");
     }
 
-    function getActiveServicesForBomPicker(selectedId) {
-      const options = services.filter((item) => item.status !== "Inactive");
+    function getActiveServicesForBomPicker(selectedId, categoryId) {
+      const options = services.filter((item) => item.status !== "Inactive" && serviceHasCategory(item, categoryId));
       const id = Number(selectedId);
       if (id && !options.some((item) => item.id === id)) {
         const current = getService(id);
@@ -6391,8 +6438,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function addBomAdditionalService() {
       if (!getSelectedFinishedGood()) return;
-      if (!getActiveServicesForBomPicker().length) {
-        showNotification("No services found. Add Block, Film, Plate etc. under Services first.", "error");
+      if (!getActiveServicesForBomPicker(null, "other").length) {
+        showNotification("No Other services found. Mark a service as Other in Service Master first.", "error");
         refreshBomViews();
         return;
       }
@@ -7440,7 +7487,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const q = state.searches.services;
       return services.filter((item) =>
         matchesQuery(
-          [item.code, item.name, item.uom, item.status],
+          [item.code, item.name, item.uom, item.status, serviceCategoryLabels(item.categories).join(" ")],
           q
         )
       );
@@ -8052,16 +8099,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td class="mono">${escapeHtml(item.code)}</td>
               <td>${escapeHtml(item.name)}</td>
               <td>${escapeHtml(item.uom)}</td>
+              <td>${formatServiceCategoryBadges(item.categories)}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-srv-master", item.id, "data-delete-srv-master", item.id)}
             </tr>
           `).join("")
-        : emptyRow(5, "No services match this search.");
+        : emptyRow(6, "No services match this search.");
 
       document.getElementById("page-services").innerHTML = `
         <div class="toolbar">
           <div class="toolbar-left">
-            ${toolbarSearch("srv-search", state.searches.services, "Search code, service, UOM...")}
+            ${toolbarSearch("srv-search", state.searches.services, "Search code, service, UOM, category...")}
           </div>
           <div class="toolbar-right">
             <button type="button" class="btn btn-primary" id="btn-add-service-master">
@@ -8078,6 +8126,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <th>Code</th>
                   <th>Service</th>
                   <th>UOM</th>
+                  <th>Category</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -9051,7 +9100,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : getFormula(line && line.formulaId);
       const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
       const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
-      const options = getActiveServicesForBomPicker(line && line.serviceId);
+      const options = getActiveServicesForBomPicker(line && line.serviceId, "other");
       const title = service ? service.name : (line && line.layer ? line.layer : "Additional");
       const selectId = "bom-additional-svc-" + (line && line.id != null ? line.id : index);
       const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
@@ -11305,6 +11354,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: "",
         uom: "piece",
         dimensionIds: [],
+        categories: ["general"],
         status: "Active"
       };
     }
@@ -11317,6 +11367,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!String(draft.name || "").trim()) errors.name = "Name is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
+      if (!normalizeServiceCategories(draft.categories, { allowEmpty: true }).length) {
+        errors.categories = "Select at least one service category.";
+      }
       return errors;
     }
 
@@ -11353,9 +11406,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="form-span-2">
               <p class="stat-hint">Rates managed in Service Rates page</p>
             </div>
+            <div class="form-span-2">
+              <label class="form-label">Service Category</label>
+              <div class="service-category-row">
+                ${SERVICE_CATEGORY_OPTIONS.map((option) => `
+                  <label class="custom-dim-flag" for="srv-cat-${option.id}">
+                    <input id="srv-cat-${option.id}" type="checkbox" ${normalizeServiceCategories(draft.categories, { allowEmpty: true }).includes(option.id) ? "checked" : ""} />
+                    <span>${escapeHtml(option.label)}</span>
+                  </label>
+                `).join("")}
+              </div>
+              ${errors.categories ? `<div class="field-error">${escapeHtml(errors.categories)}</div>` : ""}
+            </div>
           </div>
       `;
-      const linked = editing && draft.id ? getServiceDimensionLinks(draft.id) : [];
+      const canLinkDims = Boolean(editing && draft.id);
+      const linked = canLinkDims ? getServiceDimensionLinks(draft.id) : [];
       const dimRows = linked.length
         ? linked.map((row) => {
             const dim = getDimension(row.dimensionId);
@@ -11371,9 +11437,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="section-head">
           <div>
             <div class="section-kicker">Service dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension (and ply) to this service. Quantity uses the formula on the active Service Rate.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">${canLinkDims ? "Link a dimension (and ply) to this service. Quantity uses the formula on the active Service Rate." : "Save the service first, then add dimensions."}</p>
           </div>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-add-service-dimension">
+          <button type="button" class="btn btn-primary btn-sm" id="btn-add-service-dimension" ${canLinkDims ? "" : "disabled"}>
             <i data-lucide="plus"></i> Add Dimension to Service
           </button>
         </div>
@@ -11399,17 +11465,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
-          ${editing ? `
-            <div class="section-tabs">
-              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-service-tab="info">Service Info</button>
-              <button type="button" class="section-tab ${tab === "dimensions" ? "active" : ""}" data-service-tab="dimensions">Dimensions</button>
-            </div>
-            ${tab === "dimensions" ? dimsForm : infoForm}
-          ` : infoForm}
+          <div class="section-tabs">
+            <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-service-tab="info">Service Info</button>
+            <button type="button" class="section-tab ${tab === "dimensions" ? "active" : ""}" data-service-tab="dimensions">Dimensions</button>
+          </div>
+          ${tab === "dimensions" ? dimsForm : infoForm}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-service-master">${editing ? "Update Service Info" : "Add Service"}</button>` : ""}
+          ${tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-service-master">${editing ? "Update Service Info" : "Add Service"}</button>` : ""}
         </div>
       `;
     }
@@ -11421,6 +11485,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: item.name,
         uom: item.uom,
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
+        categories: normalizeServiceCategories(item.categories),
         status: item.status
       };
     }
@@ -11453,6 +11518,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         uom: draft.uom,
+        categories: normalizeServiceCategories(draft.categories),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -11486,6 +11552,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "srv-name") draft.name = target.value;
       else if (target.id === "srv-uom") draft.uom = target.value;
       else if (target.id === "srv-status") draft.status = target.value;
+      else if (target.id && target.id.startsWith("srv-cat-")) {
+        const categoryId = target.id.slice("srv-cat-".length);
+        if (!SERVICE_CATEGORY_IDS.includes(categoryId)) return false;
+        const selected = new Set(normalizeServiceCategories(draft.categories, { allowEmpty: true }));
+        if (target.checked) selected.add(categoryId);
+        else selected.delete(categoryId);
+        draft.categories = SERVICE_CATEGORY_IDS.filter((id) => selected.has(id));
+      }
       else return false;
       return true;
     }
@@ -14766,6 +14840,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = state.modal.errors || {};
       const service = getService(draft.serviceId);
       const formula = getFormula(draft.formulaId);
+      const categoryId = bomCollectionToServiceCategory(state.modal.collection);
+      const categoryOption = SERVICE_CATEGORY_OPTIONS.find((item) => item.id === categoryId);
+      const categoryLabel = categoryOption ? categoryOption.label : "General";
+      const options = getActiveServicesForBomPicker(draft.serviceId, categoryId);
       return `
         <section aria-label="Service selection and inputs">
           <div class="form-grid">
@@ -14773,13 +14851,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <label class="form-label" for="modal-service-select">${state.modal.collection === "finishing" ? "Finishing Service" : "Service"}</label>
               <select id="modal-service-select" class="full-select ${errors.serviceId ? "input-invalid" : ""}" aria-invalid="${errors.serviceId ? "true" : "false"}">
                 <option value="">Select a service...</option>
-                ${services.map((item) => `
+                ${options.map((item) => `
                   <option value="${item.id}" ${Number(draft.serviceId) === item.id ? "selected" : ""}>
                     ${escapeHtml(item.code)} — ${escapeHtml(item.name)}
                   </option>
                 `).join("")}
               </select>
-              ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : ""}
+              ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">Showing ${escapeHtml(categoryLabel)} services from Service Master.</p>`}
             </div>
             ${renderUseCustomDimensionBlock(draft, errors, {
               checkId: "modal-service-use-custom-dim",

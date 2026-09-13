@@ -1625,6 +1625,12 @@
       cursor: pointer;
     }
     .custom-dim-flag input { margin: 0; }
+    .service-category-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 18px;
+    }
     .chip-wrap { display: flex; flex-wrap: wrap; gap: 6px; }
     .chip .formula-src { margin-left: 4px; }
     .chip, .op-btn {
