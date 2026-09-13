@@ -283,6 +283,203 @@
       outline: none;
     }
 
+    /* Formula Management — visual only */
+    #page-formulas .fm-hero { margin-bottom: 12px; }
+    #page-formulas .fm-hero-sub {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    #page-formulas .fm-controls {
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    #page-formulas .fm-controls .toolbar-left {
+      flex: 1;
+      min-width: 0;
+    }
+    #page-formulas .fm-controls .search {
+      flex: 1;
+      min-width: 320px;
+      max-width: 720px;
+    }
+    #page-formulas .fm-controls .search input {
+      width: 100%;
+    }
+    #page-formulas .fm-group {
+      overflow: hidden;
+    }
+    #page-formulas .fm-group-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #page-formulas .fm-group-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      background: #f1f5f9;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    #page-formulas .fm-group-icon svg { width: 16px; height: 16px; }
+    #page-formulas .fm-group.is-material { border-left: 3px solid #0f766e; }
+    #page-formulas .fm-group.is-material .fm-group-icon { background: var(--primary-soft); color: #115e59; }
+    #page-formulas .fm-group.is-service { border-left: 3px solid #b45309; }
+    #page-formulas .fm-group.is-service .fm-group-icon { background: #fef3c7; color: #92400e; }
+    #page-formulas .fm-group.is-style { border-left: 3px solid #047857; }
+    #page-formulas .fm-group.is-style .fm-group-icon { background: #d1fae5; color: #065f46; }
+
+    #page-formulas .fm-filter { position: relative; }
+    #page-formulas .fm-filter-native {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    #page-formulas .fm-filter-trigger {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 188px;
+      min-height: 40px;
+      padding: 6px 10px 6px 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    #page-formulas .fm-filter-trigger:hover,
+    #page-formulas .fm-filter:focus-within .fm-filter-trigger {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    #page-formulas .fm-filter-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: grid;
+      place-items: center;
+      background: var(--primary-soft);
+      color: #115e59;
+      flex-shrink: 0;
+    }
+    #page-formulas .fm-filter-icon svg,
+    #page-formulas .fm-filter-chevron {
+      width: 14px;
+      height: 14px;
+    }
+    #page-formulas .fm-filter-copy {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.15;
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+    }
+    #page-formulas .fm-filter-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    #page-formulas .fm-filter-value {
+      font-size: 13px;
+      font-weight: 650;
+    }
+    #page-formulas .fm-filter-chevron {
+      color: var(--text-muted);
+      transition: transform 0.15s ease;
+    }
+    #page-formulas .fm-filter-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      z-index: 30;
+      min-width: 220px;
+      padding: 8px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    }
+    #page-formulas .fm-filter:focus-within .fm-filter-panel { display: block; }
+    #page-formulas .fm-filter:focus-within .fm-filter-chevron { transform: rotate(180deg); }
+    #page-formulas .fm-filter-heading {
+      padding: 8px 10px 4px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    #page-formulas .fm-filter-option {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 550;
+    }
+    #page-formulas .fm-filter-option:hover { background: #f8fafc; }
+    #page-formulas .fm-filter-option.selected {
+      background: var(--primary-soft);
+      color: #115e59;
+      font-weight: 700;
+    }
+
+    #page-formulas table.fm-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    #page-formulas table.fm-table tbody tr:nth-child(even) { background: #f8fafc; }
+    #page-formulas table.fm-table tbody tr:hover { background: #f0fdfa; }
+    #page-formulas .fm-num {
+      width: 36px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    #page-formulas .fm-name { font-weight: 650; }
+    #page-formulas .fm-code { color: var(--text-muted); }
+    #page-formulas .fm-expr-cell {
+      white-space: normal;
+      max-width: 340px;
+    }
+    #page-formulas .fm-expr {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+      font-size: 12px;
+      color: #334155;
+      white-space: normal;
+      word-break: break-word;
+    }
+    #page-formulas .row-actions .btn { border-radius: 6px; }
+
     label.radio-row {
       display: flex;
       align-items: center;
@@ -1765,6 +1962,8 @@
       .stat-grid { grid-template-columns: 1fr; }
       .search input { width: 100%; }
       .search { width: 100%; }
+      #page-formulas .fm-filter,
+      #page-formulas .fm-filter-trigger { width: 100%; }
       .toolbar { align-items: stretch; }
       .toolbar-left, .toolbar-right { width: 100%; }
       .header { padding: 0 12px; }

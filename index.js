@@ -8455,12 +8455,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderFormulaTable(items, emptyMessage) {
       const body = items.length
-        ? items.map((item) => `
+        ? items.map((item, index) => `
             <tr>
-              <td>${escapeHtml(item.name)}</td>
-              <td class="mono">${escapeHtml(item.code)}</td>
+              <td class="fm-num">${index + 1}</td>
+              <td>
+                <div class="fm-name">${escapeHtml(item.name)}</div>
+              </td>
+              <td class="mono fm-code">${escapeHtml(item.code)}</td>
               <td>${formulaTypeBadge(item.type)}</td>
-              <td class="mono">${escapeHtml(item.expression)}</td>
+              <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(item.expression)}</code></td>
               <td>${renderDependencyBadges(item.expression)}</td>
               <td>${statusBadge(item.isActive ? "Active" : "Inactive", item.isActive)}</td>
               <td>
@@ -8474,12 +8477,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </td>
             </tr>
           `).join("")
-        : emptyRow(7, emptyMessage || "No formulas match this search or filter.");
+        : emptyRow(8, emptyMessage || "No formulas match this search or filter.");
       return `
         <div class="table-wrap">
-          <table class="data-table" style="min-width:1100px;">
+          <table class="data-table fm-table" style="min-width:1100px;">
             <thead>
               <tr>
+                <th class="fm-num">#</th>
                 <th>Formula Name</th>
                 <th>Code</th>
                 <th>Type</th>
@@ -8495,19 +8499,68 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderFormulaFilter() {
+      const options = [
+        { value: "all", label: "All", group: "View" },
+        { value: "material", label: "Material", group: "Type" },
+        { value: "service", label: "Service", group: "Type" },
+        { value: "style", label: "Style", group: "Type" },
+        { value: "active", label: "Active", group: "Status" },
+        { value: "inactive", label: "Inactive", group: "Status" }
+      ];
+      const current = options.find((opt) => opt.value === state.formulaFilter) || options[0];
+      let lastGroup = "";
+      const menu = options.map((opt) => {
+        const heading = opt.group !== lastGroup
+          ? `<div class="fm-filter-heading">${escapeHtml(opt.group)}</div>`
+          : "";
+        lastGroup = opt.group;
+        const selected = opt.value === current.value ? " selected" : "";
+        return `${heading}<button type="button" class="fm-filter-option${selected}" role="option" aria-selected="${opt.value === current.value}" data-formula-filter="${opt.value}">${escapeHtml(opt.label)}</button>`;
+      }).join("");
+
+      return `
+        <div class="fm-filter">
+          <button type="button" class="fm-filter-trigger" id="formula-filter-toggle" aria-haspopup="listbox" aria-expanded="false">
+            <span class="fm-filter-icon"><i data-lucide="list-filter"></i></span>
+            <span class="fm-filter-copy">
+              <span class="fm-filter-label">Filter</span>
+              <span class="fm-filter-value">${escapeHtml(current.label)}</span>
+            </span>
+            <i data-lucide="chevron-down" class="fm-filter-chevron"></i>
+          </button>
+          <div class="fm-filter-panel" role="listbox" aria-label="Formula filter">
+            ${menu}
+          </div>
+          <select class="fm-filter-native" id="formula-filter" tabindex="-1" aria-hidden="true">
+            ${options.map((opt) => `<option value="${opt.value}" ${opt.value === current.value ? "selected" : ""}>${escapeHtml(opt.label)}</option>`).join("")}
+          </select>
+        </div>
+      `;
+    }
+
     function renderFormulas() {
       const rows = filterFormulas();
       const grouped = state.formulaFilter === "all";
+      const typeMeta = {
+        Material: { icon: "package", cls: "is-material" },
+        Service: { icon: "wrench", cls: "is-service" },
+        Style: { icon: "palette", cls: "is-style" }
+      };
       const tables = grouped
         ? FORMULA_TYPES.map((type) => {
             const items = rows.filter((item) => item.type === type);
+            const meta = typeMeta[type] || { icon: "sigma", cls: "" };
             return `
-              <div class="card" style="margin-bottom:16px;">
+              <div class="card fm-group ${meta.cls}" style="margin-bottom:16px;">
                 <div class="card-body">
                   <div class="section-head">
-                    <div>
-                      <div class="section-kicker">${escapeHtml(type)} formulas</div>
-                      <div class="section-title">${escapeHtml(type)}</div>
+                    <div class="fm-group-title">
+                      <span class="fm-group-icon"><i data-lucide="${meta.icon}"></i></span>
+                      <div>
+                        <div class="section-kicker">${escapeHtml(type)} formulas</div>
+                        <div class="section-title">${escapeHtml(type)}</div>
+                      </div>
                     </div>
                     <span class="badge badge-muted">${items.length}</span>
                   </div>
@@ -8516,32 +8569,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             `;
           }).join("")
-        : `<div class="card">${renderFormulaTable(rows)}</div>`;
+        : `<div class="card fm-group">${renderFormulaTable(rows)}</div>`;
 
       document.getElementById("page-formulas").innerHTML = `
-        <div class="toolbar">
+        <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
             <div class="section-title">Formula Management</div>
+            <div class="fm-hero-sub">Definitions, builder, and validation</div>
           </div>
           <button type="button" class="btn btn-primary" id="btn-new-formula">
             <i data-lucide="plus"></i> New Formula
           </button>
         </div>
-        <div class="toolbar">
-          <div class="toolbar-left">
-            ${toolbarSearch("formula-search", state.searches.formulas, "Search formula name, code, expression...")}
-            <select class="filter-select" id="formula-filter">
-              <option value="all" ${state.formulaFilter === "all" ? "selected" : ""}>All</option>
-              <option value="material" ${state.formulaFilter === "material" ? "selected" : ""}>Material</option>
-              <option value="service" ${state.formulaFilter === "service" ? "selected" : ""}>Service</option>
-              <option value="style" ${state.formulaFilter === "style" ? "selected" : ""}>Style</option>
-              <option value="active" ${state.formulaFilter === "active" ? "selected" : ""}>Active</option>
-              <option value="inactive" ${state.formulaFilter === "inactive" ? "selected" : ""}>Inactive</option>
-            </select>
-          </div>
-          <div class="toolbar-right">
-            <span class="badge badge-muted">${rows.length} of ${formulas.length}</span>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("formula-search", state.searches.formulas, "Search formula name, code, expression...")}
+              ${renderFormulaFilter()}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted">${rows.length} of ${formulas.length}</span>
+            </div>
           </div>
         </div>
         ${tables}
@@ -15529,6 +15578,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.querySelector(".content").addEventListener("click", (event) => {
+        const formulaFilterOption = event.target.closest("[data-formula-filter]");
+        if (formulaFilterOption) {
+          const select = document.getElementById("formula-filter");
+          if (select) {
+            select.value = formulaFilterOption.dataset.formulaFilter;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+          return;
+        }
+
         const dashboardNav = event.target.closest("[data-dashboard-nav]");
         if (dashboardNav && dashboardNav.closest("#page-dashboard")) {
           navigateTo(dashboardNav.dataset.dashboardNav);
