@@ -8248,7 +8248,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-product-root", label: "Product Information" },
       { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
-      { id: "bom-other-materials-root", label: "Other Raw Materials" },
+      { id: "bom-other-materials-root", label: "Additional materials" },
       { id: "bom-services-root", label: "Services" },
       { id: "bom-finishing-root", label: "Finishing Services" }
     ];
@@ -8920,21 +8920,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         root.innerHTML = "";
         return;
       }
-      const layout = getBomOtherMaterialSlotLayout(state.bomOtherMaterials);
-      const slotCards = layout.slots.map((slot, index) => renderBomOtherMaterialCard({
-        layer: slot.layer,
-        line: slot.line,
-        ply: layout.ply,
-        extra: false,
-        index
-      })).join("");
-      const extraCards = layout.extras.map((line, index) => renderBomOtherMaterialCard({
-        layer: line.layer || "Additional",
-        line,
-        ply: layout.ply,
-        extra: true,
-        index
-      })).join("");
       const materialLayout = getBomMaterialSlotLayout(fg, state.bomMaterials);
       const leftoverMaterialCards = materialLayout.extras.map((line, index) => renderBomMaterialCard({
         layer: line.layer || "Additional",
@@ -8948,7 +8933,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const additionalSectionCost = extraMaterialCost + calculateTotalAdditionalServiceCost();
       const additionalHasErrors = materialLayout.extras.some((line) => line.error)
         || additionalRows.some((line) => line.error);
-      const hasCalcErrors = (state.bomOtherMaterials || []).some((line) => line.error);
       const additionalBody = additionalRows.length
         ? additionalRows.map((line, index) => {
             const service = getService(line.serviceId);
@@ -8998,16 +8982,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       root.innerHTML = `
         <section class="card cc-card">
           <div class="card-body">
-            <div class="cc-step">Step ${getBomVisibleStepNumbers().otherMaterials}: Select Other Raw Materials</div>
-            <p class="stat-hint" style="margin:0 0 12px;">Optional ply slots for other raw materials. Empty slots do not block activation. New dimension links are currently stored as 1-ply.</p>
-            ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
-            ${layout.extras.length ? `
-              <div class="section-title" style="margin:16px 0 8px;">Additional other materials</div>
-              <p class="stat-hint" style="margin:0 0 12px;">These lines are not structural ply slots (legacy or extra). They are kept so saved BOM data is not dropped.</p>
-              ${extraCards}
-            ` : ""}
-            <div class="cc-total-line"><span>Total Other Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalOtherMaterialCost)}</strong></div>
-            <div class="section-head" style="margin-top:16px;">
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().otherMaterials}: Additional materials</div>
+            <div class="section-head" style="margin-top:0;">
               <div>
                 <div class="section-title">Additional materials</div>
                 <p class="stat-hint" style="margin:0;">Add Block, Film, Plate, and similar items here. New cards are costed as services. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
