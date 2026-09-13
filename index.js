@@ -399,8 +399,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         description: "Fixed. Sum of material, service, and finishing service costs. Other materials are additional cost and are not included. Color printing is added when entered."
       },
       finalCostCalculator: {
-        formula: "Materials + Services + Color Printing",
-        description: "Fixed. Sum of material and service costs. Other materials are additional cost and are not included. Color printing is added when entered."
+        formula: "Materials + Services + Finishing Services + Color Printing",
+        description: "Fixed. Sum of material, service, and finishing service costs. Other materials are additional cost and are not included. Color printing is added when entered."
       },
       additionalCost: {
         formula: "Other Materials",
@@ -560,6 +560,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         layers: [],
         otherLayers: [],
         services: [],
+        finishingServices: [],
         removedServices: [],
         nextServiceKey: 1,
         styleFormulasOpen: false,
@@ -3818,8 +3819,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return normalizeServiceCategories(service && service.categories).includes(categoryId);
     }
 
+    function isFinishingServiceCollection(collection) {
+      return collection === "finishing" || collection === "cc-finishing";
+    }
+
     function bomCollectionToServiceCategory(collection) {
-      if (collection === "finishing") return "finishing";
+      if (isFinishingServiceCollection(collection)) return "finishing";
       if (collection === "additional") return "general";
       return "general";
     }
@@ -5197,6 +5202,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         layers: [],
         otherLayers: [],
         services: [],
+        finishingServices: [],
         removedServices: [],
         nextServiceKey: 1,
         styleFormulasOpen: false,
@@ -5245,18 +5251,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           otherRawMaterialId: id && getOtherRawMaterial(id) ? id : ""
         };
       }).filter((row) => row.layer);
-      const serviceRows = [];
       let maxKey = 0;
-      (Array.isArray(merged.services) ? merged.services : []).forEach((row) => {
-        const next = normalizeCostCalculatorServiceRow(row);
-        if (!next) return;
-        const nextKey = next.id || maxKey + 1;
-        next.id = nextKey;
-        next.key = nextKey;
-        if (nextKey > maxKey) maxKey = nextKey;
-        serviceRows.push(next);
-      });
-      merged.services = serviceRows;
+      const hydrateServiceList = (rows) => {
+        const nextRows = [];
+        (Array.isArray(rows) ? rows : []).forEach((row) => {
+          const next = normalizeCostCalculatorServiceRow(row);
+          if (!next) return;
+          const nextKey = next.id || maxKey + 1;
+          next.id = nextKey;
+          next.key = nextKey;
+          if (nextKey > maxKey) maxKey = nextKey;
+          nextRows.push(next);
+        });
+        return nextRows;
+      };
+      merged.services = hydrateServiceList(merged.services);
+      merged.finishingServices = hydrateServiceList(merged.finishingServices);
       const storedNext = Number(merged.nextServiceKey);
       merged.nextServiceKey = Math.max(1, maxKey + 1, Number.isFinite(storedNext) ? storedNext : 1);
       merged.removedServices = (Array.isArray(merged.removedServices) ? merged.removedServices : [])
@@ -5459,6 +5469,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Boolean(service && service.status === "Active" && serviceHasCategory(service, "general"));
     }
 
+    function isActiveFinishingService(service) {
+      return Boolean(service && service.status === "Active" && serviceHasCategory(service, "finishing"));
+    }
+
     function getActiveGeneralServices() {
       return services
         .filter((item) => isActiveGeneralService(item))
@@ -5523,7 +5537,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function isCostCalculatorServiceModal() {
-      return Boolean(state.modal && state.modal.collection === "cost-calculator");
+      return Boolean(state.modal && (state.modal.collection === "cost-calculator" || state.modal.collection === "cc-finishing"));
+    }
+
+    function isCostCalculatorFinishingModal() {
+      return Boolean(state.modal && state.modal.collection === "cc-finishing");
     }
 
     function getServiceModalFinishedGood() {
@@ -5537,6 +5555,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getCostCalculatorServiceOptions(selectedId) {
       const options = services.filter((item) => isActiveGeneralService(item));
+      const id = Number(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getService(id);
+        if (current) options.unshift(current);
+      }
+      return options.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+    }
+
+    function getCostCalculatorFinishingServiceOptions(selectedId) {
+      const options = services.filter((item) => isActiveFinishingService(item));
       const id = Number(selectedId);
       if (id && !options.some((item) => item.id === id)) {
         const current = getService(id);
@@ -5577,6 +5605,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.costCalculator.styleId = styles.some((item) => item.id === id) ? id : "";
       state.costCalculator.removedServices = [];
       state.costCalculator.services = [];
+      state.costCalculator.finishingServices = [];
       state.ccStyleSelectorOpen = false;
       state.ccStyleSearch = "";
       const steps = getCostCalculatorStepState();
@@ -5630,6 +5659,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function findCostCalculatorServiceLineById(lineId) {
       const id = Number(lineId);
       return (state.costCalculator.services || []).find((item) => Number(item.id || item.key) === id) || null;
+    }
+
+    function findCostCalculatorFinishingServiceLineById(lineId) {
+      const id = Number(lineId);
+      return (state.costCalculator.finishingServices || []).find((item) => Number(item.id || item.key) === id) || null;
     }
 
     function renderCostCalculatorServices(summary, steps) {
@@ -5688,6 +5722,76 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <tr>
                 <th>#</th>
                 <th>Service</th>
+                <th>Calculation</th>
+                <th>Formula</th>
+                <th>Qty / Piece</th>
+                <th>Rate</th>
+                <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>${body}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function renderCostCalculatorFinishingServices(summary) {
+      const body = summary.finishingServices.length
+        ? summary.finishingServices.map((row, index) => {
+            const service = getService(row.serviceId);
+            const calc = row.calc;
+            const formula = row.calculationMethod === "formula"
+              ? getFormula(getServiceDefaultFormulaId(service && service.id)) || getFormula(row.formulaId) || getFormula(calc.formulaId)
+              : getFormula(row.formulaId);
+            const methodLabel = row.calculationMethod === "manual" ? "Manual" : "Formula";
+            const formulaLabel = row.calculationMethod === "formula" && formula ? formula.name : "—";
+            const lineId = row.id || row.key;
+            return `
+              <tr>
+                <td>${index + 1}</td>
+                <td>
+                  <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
+                  ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
+                  <div class="stat-hint">${escapeHtml(service ? service.code : "")}${row.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(row.dimensionId))) : ""}${!isActiveFinishingService(service) && service ? " · Not an active Finishing service" : ""}</div>
+                </td>
+                <td>${escapeHtml(methodLabel)}</td>
+                <td>
+                  <span class="formula-cell">
+                    ${escapeHtml(formulaLabel)}
+                    ${formulaHelpButton("cc-service", lineId, "Explain quantity")}
+                  </span>
+                </td>
+                <td>${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td>
+                  ${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}
+                  <div class="stat-hint">Service Rates</div>
+                </td>
+                <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-finishing-service="${lineId}" title="Calculation breakdown">
+                      <i data-lucide="calculator"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-icon" data-edit-cc-finishing-service="${lineId}" title="Edit">
+                      <i data-lucide="pencil"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-cc-finishing-service="${lineId}" title="Delete">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            `;
+          }).join("")
+        : emptyRow(8, "No finishing services added yet.");
+      return `
+        <div class="table-wrap">
+          <table class="data-table" style="min-width:980px;">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Finishing Service</th>
                 <th>Calculation</th>
                 <th>Formula</th>
                 <th>Qty / Piece</th>
@@ -5946,7 +6050,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!service) {
         return { ...empty, error: "This service does not exist in the Service Master." };
       }
-      if (!isActiveGeneralService(service)) {
+      const finishing = Boolean(serviceRow.finishing);
+      if (finishing && !isActiveFinishingService(service)) {
+        return { ...empty, error: "Only active Finishing services can be used in Cost Calculator." };
+      }
+      if (!finishing && !isActiveGeneralService(service)) {
         return { ...empty, error: "Only active General services can be used in Cost Calculator." };
       }
       const calcContext = { finishedGood: fg, useEnteredDimensions: true };
@@ -5998,13 +6106,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const calc = calculateCostCalculatorService(row);
         return { ...row, calc };
       });
+      const finishingServices = (state.costCalculator.finishingServices || []).map((row) => {
+        const calc = calculateCostCalculatorService({ ...row, finishing: true });
+        return { ...row, calc };
+      });
       const materialCost = roundTo(layers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
       const otherMaterialCost = roundTo(otherLayers.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
       const serviceCost = roundTo(services.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
+      const finishingCost = roundTo(finishingServices.reduce((sum, row) => sum + Number(row.calc.cost || 0), 0), 2);
       const colorCost = hasCostCalculatorColorCost()
         ? roundTo(Number(state.costCalculator.ccNumberOfColors) * Number(state.costCalculator.ccColorRate), 2)
         : 0;
-      const perPiece = roundTo(materialCost + serviceCost + colorCost, 2);
+      const perPiece = roundTo(materialCost + serviceCost + finishingCost + colorCost, 2);
       const totalOrderCost = hasCostCalculatorOrderQuantity()
         // Known simplification: box/kg are multiplied as-is (no conversion to pieces).
         ? roundTo(perPiece * Number(state.costCalculator.ccOrderQuantity), 2)
@@ -6012,23 +6125,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const materialsComplete = layers.length > 0 && layers.every((row) => row.rawMaterialId && !row.calc.error);
       const otherError = otherLayers.find((row) => row.otherRawMaterialId && row.calc.error);
       const serviceError = services.find((row) => row.calc.error);
+      const finishingError = finishingServices.find((row) => row.calc.error);
       return {
         layers,
         otherLayers,
         services,
+        finishingServices,
         materialCost,
         otherMaterialCost,
         serviceCost,
+        finishingCost,
         colorCost,
         perPiece,
         per100: roundTo(perPiece * 100, 2),
         per1000: roundTo(perPiece * 1000, 2),
         totalOrderCost,
         materialsComplete,
-        canSave: materialsComplete && !otherError && !serviceError,
+        canSave: materialsComplete && !otherError && !serviceError && !finishingError,
         saveError: !layers.length
           ? "Select ply and materials before saving."
-          : (!materialsComplete ? "Select a valid material for each layer before saving." : (otherError ? otherError.calc.error : (serviceError ? serviceError.calc.error : "")))
+          : (!materialsComplete ? "Select a valid material for each layer before saving." : (otherError ? otherError.calc.error : (serviceError ? serviceError.calc.error : (finishingError ? finishingError.calc.error : ""))))
       };
     }
 
@@ -6189,6 +6305,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }).join("");
 
       const serviceRows = renderCostCalculatorServices(summary, steps);
+      const finishingRows = renderCostCalculatorFinishingServices(summary);
 
       page.innerHTML = `
         <div class="toolbar">
@@ -6303,12 +6420,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${steps.hasPly ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>` : ""}
               </div>
             </section>
+
+            <section class="card cc-card">
+              <div class="card-body">
+                <div class="section-head" style="margin-top:0;">
+                  <div>
+                    <div class="cc-step">Step 7: Finishing Services</div>
+                    <div class="section-title">Finishing steps</div>
+                  </div>
+                  <button type="button" class="btn btn-primary" id="btn-cc-add-finishing-service" ${steps.hasPly ? "" : "disabled"}>
+                    <i data-lucide="plus"></i> Add Finishing Service
+                  </button>
+                </div>
+                ${finishingRows}
+                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Finishing Service Cost</span><strong>${formatRupees(summary.finishingCost)}</strong></div>` : ""}
+              </div>
+            </section>
           </div>
 
           <aside class="card cc-card cost-calc-summary" id="cost-calc-print">
             <div class="card-body">
-              <div class="cc-step">Step 7: Final Cost Summary</div>
-              ${summary.layers.some((row) => row.calc.error) || summary.otherLayers.some((row) => row.calc.error) || summary.services.some((row) => row.calc.error)
+              <div class="section-title" style="margin-bottom:12px;">Final Cost Summary</div>
+              ${summary.layers.some((row) => row.calc.error) || summary.otherLayers.some((row) => row.calc.error) || summary.services.some((row) => row.calc.error) || summary.finishingServices.some((row) => row.calc.error)
                 ? `<div class="field-error" style="margin-bottom:8px;">⚠ Error calculating cost</div>`
                 : ""}
               <div class="form-grid two cost-optional-row">
@@ -6335,6 +6468,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
               <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
               <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}<strong>${formatRupees(summary.finishingCost)}</strong></div>
               ${summary.colorCost > 0 ? `<div class="cc-summary-line">${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}<strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
               <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Cost Per Piece", FIXED_COST_FORMULAS.finalCostCalculator.formula, FIXED_COST_FORMULAS.finalCostCalculator.description)}<strong>${formatRupees(summary.perPiece)}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Cost Per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}<strong>${formatRupees(summary.per100)}</strong></div>
@@ -6613,6 +6747,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return state.bomServices.find((item) => item.id === id)
         || (state.bomAdditionalServices || []).find((item) => item.id === id)
         || (state.bomFinishingServices || []).find((item) => item.id === id)
+        || findCostCalculatorFinishingServiceLineById(id)
         || findCostCalculatorServiceLineById(id);
     }
 
@@ -6739,6 +6874,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       openServiceModal(lineId, "cost-calculator");
     }
 
+    function openCostCalculatorFinishingServiceModal(lineId) {
+      if (!getCostCalculatorStepState().hasPly) return;
+      if (!lineId && !getCostCalculatorFinishingServiceOptions().length) {
+        showNotification("No finishing services found. Mark a service as Finishing and Active in Service Master first.", "error");
+        return;
+      }
+      openServiceModal(lineId, "cc-finishing");
+    }
+
     function saveCostCalculatorAsBom() {
       const summary = updateCostCalculatorSummary();
       if (!summary.canSave) {
@@ -6801,7 +6945,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         costPerPiece: 0
       }));
       state.bomAdditionalServices = [];
-      state.bomFinishingServices = [];
+      state.bomFinishingServices = (summary.finishingServices || []).map((row) => calculateServiceCost({
+        id: nextBomLineId(),
+        serviceId: Number(row.serviceId),
+        layer: "Finishing",
+        calculationMethod: row.calculationMethod === "manual" ? "manual" : "formula",
+        formulaId: row.calculationMethod === "formula" ? (row.formulaId || (row.calc && row.calc.formulaId)) : null,
+        dimensionId: row.dimensionId || (row.calc && row.calc.dimensionId) || null,
+        manualQty: row.calculationMethod === "manual" ? row.manualQty : null,
+        manualRate: row.calculationMethod === "manual" ? row.manualRate : null,
+        useCustomDimensions: Boolean(row.useCustomDimensions),
+        customLength: row.customLength,
+        customWidth: row.customWidth,
+        quantity: 0,
+        rate: 0,
+        costPerPiece: 0
+      }));
       state.bomOtherMaterials = costCalculatorOtherLayerRows(summary)
         .filter((row) => row && row.otherRawMaterialId)
         .map((row) => calculateOtherMaterialCost({
@@ -6895,6 +7054,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             `;
           }).join("")
         : `<tr><td colspan="4">No services selected.</td></tr>`;
+      const finishingRows = (summary.finishingServices || []).length
+        ? summary.finishingServices.map((row) => {
+            const service = getService(row.serviceId);
+            const calc = row.calc || {};
+            const ok = !calc.error;
+            return `
+              <tr>
+                <td>${escapeHtml(service ? service.name : "Finishing Service")}</td>
+                <td class="num">${ok ? escapeHtml(formatQty(calc.qty)) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM))) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : "Error"}</td>
+              </tr>
+            `;
+          }).join("")
+        : `<tr><td colspan="4">No finishing services selected.</td></tr>`;
       const root = document.createElement("div");
       root.className = "cc-pdf-root";
       root.setAttribute("aria-hidden", "true");
@@ -6937,11 +7111,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </table>
         </section>
         <section class="cc-pdf-section">
+          <h2>Finishing services</h2>
+          <table>
+            <thead>
+              <tr><th>Finishing Service</th><th class="num">Qty</th><th class="num">Rate</th><th class="num">Cost</th></tr>
+            </thead>
+            <tbody>${finishingRows}</tbody>
+          </table>
+        </section>
+        <section class="cc-pdf-section">
           <h2>Cost summary</h2>
           <table class="cc-pdf-totals">
             <tbody>
               <tr><td>Material Cost</td><td class="num">${escapeHtml(formatRupees(summary.materialCost))}</td></tr>
               <tr><td>Service Cost</td><td class="num">${escapeHtml(formatRupees(summary.serviceCost))}</td></tr>
+              <tr><td>Finishing Services</td><td class="num">${escapeHtml(formatRupees(summary.finishingCost))}</td></tr>
               ${summary.colorCost > 0 ? `<tr><td>Color Printing Cost</td><td class="num">${escapeHtml(formatRupees(summary.colorCost))}</td></tr>` : ""}
               <tr><td>Cost Per Piece</td><td class="num">${escapeHtml(formatRupees(summary.perPiece))}</td></tr>
               <tr><td>Cost Per 100</td><td class="num">${escapeHtml(formatRupees(summary.per100))}</td></tr>
@@ -7000,6 +7184,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function getBomServiceLines(collection) {
       if (collection === "additional") return state.bomAdditionalServices || [];
       if (collection === "finishing") return state.bomFinishingServices || [];
+      if (collection === "cc-finishing") return state.costCalculator.finishingServices || [];
       if (collection === "cost-calculator") return state.costCalculator.services || [];
       return state.bomServices || [];
     }
@@ -13728,11 +13913,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function buildFormulaExplainModel_CostCalcService(rowId) {
       const fg = getCostCalculatorFinishedGood();
-      const row = (state.costCalculator.services || []).find((item) => Number(item.id || item.key) === Number(rowId));
+      const finishingRow = findCostCalculatorFinishingServiceLineById(rowId);
+      const row = findCostCalculatorServiceLineById(rowId) || finishingRow;
       if (!fg || !row || !row.serviceId) {
         return { error: "Calculation details are unavailable." };
       }
-      const calc = calculateCostCalculatorService(row);
+      const calc = calculateCostCalculatorService(finishingRow ? { ...row, finishing: true } : row);
       const service = getService(row.serviceId);
       const formula = getFormula(calc.formulaId);
       if (!formula) {
@@ -14520,8 +14706,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else if (state.modal.type === "service-breakdown") {
         dialog.innerHTML = renderServiceBreakdownModal();
       } else if (state.modal.type === "confirm-delete-service") {
-        const finishing = state.modal.collection === "finishing";
-        const fromCalculator = state.modal.collection === "cost-calculator";
+        const finishing = isFinishingServiceCollection(state.modal.collection);
+        const fromCalculator = state.modal.collection === "cost-calculator" || state.modal.collection === "cc-finishing";
         dialog.innerHTML = `
           <div class="modal-header">
             <div>
@@ -14531,7 +14717,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
           </div>
           <div class="modal-body">
-            <p>${finishing ? "Remove this finishing service from the BOM?" : (fromCalculator ? "Remove this service from the Cost Calculator?" : "Remove this service from the BOM?")}</p>
+            <p>${finishing
+              ? (fromCalculator ? "Remove this finishing service from the Cost Calculator?" : "Remove this finishing service from the BOM?")
+              : (fromCalculator ? "Remove this service from the Cost Calculator?" : "Remove this service from the BOM?")}</p>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn" data-modal-close>Cancel</button>
@@ -15022,15 +15210,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       if (!getServiceModalFinishedGood()) {
         errors.finishedGood = isCostCalculatorServiceModal()
-          ? "Complete style, dimensions, and ply before adding services."
-          : (state.modal.collection === "finishing"
+          ? (isCostCalculatorFinishingModal()
+            ? "Complete style, dimensions, and ply before adding finishing services."
+            : "Complete style, dimensions, and ply before adding services.")
+          : (isFinishingServiceCollection(state.modal.collection)
             ? "Select a Finished Good before adding finishing services."
             : "Select a Finished Good before adding services.");
       }
       if (!draft.serviceId) errors.serviceId = "Service is required.";
       const service = getService(draft.serviceId);
       if (draft.serviceId && !service) errors.serviceId = "Service must exist in the Service Master.";
-      if (service && isCostCalculatorServiceModal() && !isActiveGeneralService(service)) {
+      if (service && isCostCalculatorFinishingModal() && !isActiveFinishingService(service)) {
+        errors.serviceId = "Select an active Finishing service.";
+      } else if (service && isCostCalculatorServiceModal() && !isCostCalculatorFinishingModal() && !isActiveGeneralService(service)) {
         errors.serviceId = "Select an active General service.";
       }
       if (service) {
@@ -15059,8 +15251,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (!qty.ok) errors.manualQty = qty.error;
       }
       if (state.modal.collection !== "additional" && draft.serviceId && findDuplicateService(draft.serviceId, lineId, state.modal.collection)) {
-        errors.duplicate = state.modal.collection === "finishing"
-          ? "This finishing service is already added to the BOM."
+        errors.duplicate = isFinishingServiceCollection(state.modal.collection)
+          ? (isCostCalculatorFinishingModal()
+            ? "This finishing service is already added to the Cost Calculator."
+            : "This finishing service is already added to the BOM.")
           : (isCostCalculatorServiceModal()
             ? "This service is already added to the Cost Calculator."
             : "This service is already added to the BOM.");
@@ -15093,14 +15287,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const categoryId = bomCollectionToServiceCategory(state.modal.collection);
       const categoryOption = SERVICE_CATEGORY_OPTIONS.find((item) => item.id === categoryId);
       const categoryLabel = categoryOption ? categoryOption.label : "General";
-      const options = isCostCalculatorServiceModal()
-        ? getCostCalculatorServiceOptions(draft.serviceId)
-        : getActiveServicesForBomPicker(draft.serviceId, categoryId);
+      const finishing = isFinishingServiceCollection(state.modal.collection);
+      const options = isCostCalculatorFinishingModal()
+        ? getCostCalculatorFinishingServiceOptions(draft.serviceId)
+        : (isCostCalculatorServiceModal()
+          ? getCostCalculatorServiceOptions(draft.serviceId)
+          : getActiveServicesForBomPicker(draft.serviceId, categoryId));
       return `
         <section aria-label="Service selection and inputs">
           <div class="form-grid">
             <div>
-              <label class="form-label" for="modal-service-select">${state.modal.collection === "finishing" ? "Finishing Service" : "Service"}</label>
+              <label class="form-label" for="modal-service-select">${finishing ? "Finishing Service" : "Service"}</label>
               <select id="modal-service-select" class="full-select ${errors.serviceId ? "input-invalid" : ""}" aria-invalid="${errors.serviceId ? "true" : "false"}">
                 <option value="">Select a service...</option>
                 ${options.map((item) => `
@@ -15109,7 +15306,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </option>
                 `).join("")}
               </select>
-              ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">${isCostCalculatorServiceModal() ? "Showing active General services from Service Master." : "Showing " + escapeHtml(categoryLabel) + " services from Service Master."}</p>`}
+              ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">${isCostCalculatorFinishingModal() ? "Showing active Finishing services from Service Master." : (isCostCalculatorServiceModal() ? "Showing active General services from Service Master." : "Showing " + escapeHtml(categoryLabel) + " services from Service Master.")}</p>`}
             </div>
             ${renderUseCustomDimensionBlock(draft, errors, {
               checkId: "modal-service-use-custom-dim",
@@ -15154,7 +15351,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderServiceModalRight() {
       const data = formatPreviewData("service", state.modal.draft);
       if (!data.ready) {
-        return `<p class="preview-empty">${state.modal.collection === "finishing" ? "Select a finishing service to see live quantity, formula variables, and cost." : "Select a service to see live quantity, formula variables, and cost."}</p>`;
+        return `<p class="preview-empty">${isFinishingServiceCollection(state.modal.collection) ? "Select a finishing service to see live quantity, formula variables, and cost." : "Select a service to see live quantity, formula variables, and cost."}</p>`;
       }
       const service = data.item;
       const preview = data.preview;
@@ -15171,7 +15368,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : `<p class="stat-hint" style="margin-top:8px;">No formula variables to display.</p>`;
       return `
         <section class="preview-section" aria-label="Service details">
-          <h3 class="preview-heading">${state.modal.collection === "finishing" ? "Finishing service details" : "Service details"}</h3>
+          <h3 class="preview-heading">${isFinishingServiceCollection(state.modal.collection) ? "Finishing service details" : "Service details"}</h3>
           ${renderPreviewField("Code", `<span class="mono">${escapeHtml(service.code)}</span>`)}
           ${renderPreviewField("Name", escapeHtml(service.name))}
           ${renderPreviewField("UOM", escapeHtml(service.uom))}
@@ -15198,7 +15395,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </section>
         <section class="preview-section" aria-label="Cost summary">
           <h3 class="preview-heading">Cost summary</h3>
-          ${renderPreviewField(state.modal.collection === "finishing" ? "Finishing Service" : "Service", escapeHtml(service.name))}
+          ${renderPreviewField(isFinishingServiceCollection(state.modal.collection) ? "Finishing Service" : "Service", escapeHtml(service.name))}
           ${renderPreviewField("Dimension", isUseCustomDimensions(state.modal.draft) ? "Custom" : "Not selected")}
           ${preview && !preview.error ? `
             ${renderPreviewField("Qty", escapeHtml(formatQty(preview.quantity) + " " + service.uom))}
@@ -15213,7 +15410,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceFormModal() {
-      const finishing = state.modal.collection === "finishing";
+      const finishing = isFinishingServiceCollection(state.modal.collection);
       const title = state.modal.mode === "edit"
         ? (finishing ? "Edit Finishing Service" : "Edit Service")
         : (finishing ? "Add Finishing Service" : "Add Service");
@@ -15243,13 +15440,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="modal-header">
           <div>
             <div class="section-kicker">Calculation Breakdown</div>
-            <strong>${getBomServiceCollection(state.modal.lineId) === "finishing" ? "Finishing service calculation" : "Service calculation"}</strong>
+            <strong>${isFinishingServiceCollection(getBomServiceCollection(state.modal.lineId) || state.modal.collection) ? "Finishing service calculation" : "Service calculation"}</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
           <div class="detail-list">
-            <div><span>${getBomServiceCollection(state.modal.lineId) === "finishing" ? "Finishing Service" : "Service"}</span><strong>${escapeHtml(service ? service.name : "—")}</strong></div>
+            <div><span>${isFinishingServiceCollection(getBomServiceCollection(state.modal.lineId) || state.modal.collection) ? "Finishing Service" : "Service"}</span><strong>${escapeHtml(service ? service.name : "—")}</strong></div>
             <div><span>${isCostCalculatorServiceModal() ? "Estimate" : "Finished Good"}</span><strong>${escapeHtml(fg?.product ?? "missing data")}${fg?.variant ? " — " + escapeHtml(fg.variant) : ""}${isCostCalculatorServiceModal() && fg?.style ? " · " + escapeHtml(fg.style) : ""}</strong></div>
             <div><span>Dimensions</span><strong>${escapeHtml(formatDimensions(fg))}</strong></div>
             <div><span>Calculation Method</span><strong>${escapeHtml(live.calculationMethod === "manual" ? "Manual" : "Formula")}</strong></div>
@@ -15279,13 +15476,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (state.bomServices.some((item) => item.id === id)) return "services";
       if ((state.bomAdditionalServices || []).some((item) => item.id === id)) return "additional";
       if ((state.bomFinishingServices || []).some((item) => item.id === id)) return "finishing";
+      if (findCostCalculatorFinishingServiceLineById(id)) return "cc-finishing";
       if (findCostCalculatorServiceLineById(id)) return "cost-calculator";
       return null;
     }
 
     function openServiceModal(lineId, collection) {
       const resolved = collection || getBomServiceCollection(lineId) || "services";
-      if (resolved === "cost-calculator") {
+      if (resolved === "cost-calculator" || resolved === "cc-finishing") {
         if (!getCostCalculatorStepState().hasPly) return;
       } else if (!getSelectedFinishedGood()) {
         return;
@@ -15341,7 +15539,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       const isAdditional = state.modal.collection === "additional";
-      const isFinishing = state.modal.collection === "finishing";
+      const isFinishing = isFinishingServiceCollection(state.modal.collection);
       const nextLine = calculateServiceCost({
         id: state.modal.lineId || (isCostCalculatorServiceModal() ? nextCostCalculatorServiceKey() : nextBomLineId()),
         serviceId: Number(draft.serviceId),
@@ -15361,7 +15559,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const editing = state.modal.mode === "edit";
         nextLine.id = nextLine.id || nextLine.key;
         nextLine.key = nextLine.id;
-        if (editing) {
+        if (isCostCalculatorFinishingModal()) {
+          if (editing) {
+            state.costCalculator.finishingServices = (state.costCalculator.finishingServices || []).map((line) =>
+              Number(line.id || line.key) === Number(nextLine.id) ? nextLine : line
+            );
+          } else {
+            state.costCalculator.finishingServices = (state.costCalculator.finishingServices || []).concat([nextLine]);
+          }
+        } else if (editing) {
           state.costCalculator.services = (state.costCalculator.services || []).map((line) =>
             Number(line.id || line.key) === Number(nextLine.id) ? nextLine : line
           );
@@ -15375,7 +15581,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         renderCostCalculator();
         refreshIcons();
         const service = getService(nextLine.serviceId);
-        showNotification((service ? service.name : "Service") + (editing ? " updated" : " added"));
+        showNotification((service ? service.name : (isCostCalculatorFinishingModal() ? "Finishing service" : "Service")) + (editing ? " updated" : " added"));
         return;
       }
 
@@ -15404,6 +15610,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function confirmDeleteService() {
+      if (state.modal.collection === "cc-finishing") {
+        state.costCalculator.finishingServices = (state.costCalculator.finishingServices || []).filter((line) =>
+          Number(line.id || line.key) !== Number(state.modal.lineId)
+        );
+        closeModal();
+        persistCostCalculatorState();
+        renderCostCalculator();
+        refreshIcons();
+        return;
+      }
       if (state.modal.collection === "cost-calculator") {
         const removed = findCostCalculatorServiceLineById(state.modal.lineId);
         const removedServiceId = removed ? Number(removed.serviceId) : 0;
@@ -15925,6 +16141,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-cc-add-service")) {
           openCostCalculatorServiceModal();
+          return;
+        }
+        if (event.target.closest("#btn-cc-add-finishing-service")) {
+          openCostCalculatorFinishingServiceModal();
+          return;
+        }
+        const editCcFinishing = event.target.closest("[data-edit-cc-finishing-service]");
+        if (editCcFinishing) {
+          openCostCalculatorFinishingServiceModal(editCcFinishing.dataset.editCcFinishingService);
+          return;
+        }
+        const deleteCcFinishing = event.target.closest("[data-delete-cc-finishing-service]");
+        if (deleteCcFinishing) {
+          openDeleteServiceModal(deleteCcFinishing.dataset.deleteCcFinishingService, "cc-finishing");
+          return;
+        }
+        const breakdownCcFinishing = event.target.closest("[data-breakdown-cc-finishing-service]");
+        if (breakdownCcFinishing) {
+          openServiceBreakdownModal(breakdownCcFinishing.dataset.breakdownCcFinishingService, "cc-finishing");
           return;
         }
         const editCcService = event.target.closest("[data-edit-cc-service]");
