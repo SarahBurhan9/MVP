@@ -8012,6 +8012,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function prettySelect(id, options, selectedValue) {
+      const current = options.find((opt) => String(opt.value) === String(selectedValue)) || options[0] || { value: "", label: "" };
+      const menu = options.map((opt) => {
+        const selected = String(opt.value) === String(current.value);
+        return `<button type="button" class="pretty-select-option${selected ? " selected" : ""}" role="option" aria-selected="${selected}" data-pretty-select="${escapeHtml(id)}" data-pretty-value="${escapeHtml(String(opt.value))}">${escapeHtml(opt.label)}</button>`;
+      }).join("");
+      return `
+        <div class="pretty-select">
+          <button type="button" class="pretty-select-trigger" id="${escapeHtml(id)}-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="${escapeHtml(id)}-panel">
+            <span class="pretty-select-value">${escapeHtml(current.label)}</span>
+            <span class="pretty-select-chevron" aria-hidden="true"></span>
+          </button>
+          <div class="pretty-select-panel" id="${escapeHtml(id)}-panel" role="listbox">
+            ${menu}
+          </div>
+          <select id="${escapeHtml(id)}" class="pretty-select-native" tabindex="-1" aria-hidden="true">
+            ${options.map((opt) => `<option value="${escapeHtml(String(opt.value))}" ${String(opt.value) === String(current.value) ? "selected" : ""}>${escapeHtml(opt.label)}</option>`).join("")}
+          </select>
+        </div>
+      `;
+    }
+
     function refreshIcons() {
       if (window.lucide && typeof window.lucide.createIcons === "function") {
         window.lucide.createIcons();
@@ -13639,22 +13661,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div>
               <label class="form-label" for="fvar-category">Category</label>
-              <select id="fvar-category" class="full-select">
-                ${["Dimension", "Material", "Costing", "Sheet", "Area", "Service", "Other", "Cost", "Finishing", "Percentage", "Printing", "Quantity", "Rate", "System"].map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
-              </select>
+              ${prettySelect("fvar-category", ["Dimension", "Material", "Costing", "Sheet", "Area", "Service", "Other", "Cost", "Finishing", "Percentage", "Printing", "Quantity", "Rate", "System"].map((cat) => ({ value: cat, label: cat })), draft.category)}
             </div>
             <div>
               <label class="form-label" for="fvar-datatype">Data Type</label>
-              <select id="fvar-datatype" class="full-select">
-                <option value="numeric" ${draft.dataType === "numeric" ? "selected" : ""}>numeric</option>
-                <option value="text" ${draft.dataType === "text" ? "selected" : ""}>text</option>
-              </select>
+              ${prettySelect("fvar-datatype", [
+                { value: "numeric", label: "numeric" },
+                { value: "text", label: "text" }
+              ], draft.dataType)}
             </div>
             <div>
               <label class="form-label" for="fvar-unit">Unit</label>
-              <select id="fvar-unit" class="full-select">
-                ${["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", "factor", "gram", "Other", "pcs", "Rs./kg", "Rs./pc", "sq.ft", "sq.in", "Type", "g/cm³", "Ply", "clr", "thd", ""].map((unit) => `<option value="${escapeHtml(unit)}" ${String(draft.unit) === unit ? "selected" : ""}>${unit || "(none)"}</option>`).join("")}
-              </select>
+              ${prettySelect("fvar-unit", ["inch", "cm", "mm", "kg", "gm", "sq.m", "sq.inch", "%", "pieces", "gsm", "Rs.", "factor", "gram", "Other", "pcs", "Rs./kg", "Rs./pc", "sq.ft", "sq.in", "Type", "g/cm³", "Ply", "clr", "thd", ""].map((unit) => ({ value: unit, label: unit || "(none)" })), draft.unit)}
             </div>
             <div>
               <label class="form-label" for="fvar-default">Default Value</label>
@@ -13665,10 +13683,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div>
               <label class="form-label" for="fvar-status">Status</label>
-              <select id="fvar-status" class="full-select">
-                <option value="Active" ${draft.isActive ? "selected" : ""}>Active</option>
-                <option value="Inactive" ${!draft.isActive ? "selected" : ""}>Inactive</option>
-              </select>
+              ${prettySelect("fvar-status", [
+                { value: "Active", label: "Active" },
+                { value: "Inactive", label: "Inactive" }
+              ], draft.isActive ? "Active" : "Inactive")}
             </div>
           </div>
         </div>
@@ -17511,6 +17529,46 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.getElementById("modal-dialog").addEventListener("click", (event) => {
+        const prettyOption = event.target.closest("[data-pretty-select]");
+        if (prettyOption) {
+          const select = document.getElementById(prettyOption.dataset.prettySelect);
+          const wrap = prettyOption.closest(".pretty-select");
+          if (select && wrap) {
+            select.value = prettyOption.dataset.prettyValue;
+            wrap.querySelectorAll(".pretty-select-option").forEach((btn) => {
+              const selected = btn === prettyOption;
+              btn.classList.toggle("selected", selected);
+              btn.setAttribute("aria-selected", selected ? "true" : "false");
+            });
+            const valueEl = wrap.querySelector(".pretty-select-value");
+            if (valueEl) valueEl.textContent = prettyOption.textContent;
+            wrap.classList.remove("open");
+            const trigger = wrap.querySelector(".pretty-select-trigger");
+            if (trigger) trigger.setAttribute("aria-expanded", "false");
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+          }
+          return;
+        }
+        const prettyTrigger = event.target.closest(".pretty-select-trigger");
+        if (prettyTrigger) {
+          const wrap = prettyTrigger.closest(".pretty-select");
+          const willOpen = wrap && !wrap.classList.contains("open");
+          document.querySelectorAll(".pretty-select.open").forEach((el) => {
+            el.classList.remove("open");
+            const otherTrigger = el.querySelector(".pretty-select-trigger");
+            if (otherTrigger) otherTrigger.setAttribute("aria-expanded", "false");
+          });
+          if (wrap) {
+            wrap.classList.toggle("open", willOpen);
+            prettyTrigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+          }
+          return;
+        }
+        document.querySelectorAll(".pretty-select.open").forEach((el) => {
+          el.classList.remove("open");
+          const trigger = el.querySelector(".pretty-select-trigger");
+          if (trigger) trigger.setAttribute("aria-expanded", "false");
+        });
         const removeLinkedDim = event.target.closest("[data-remove-linked-dim]");
         if (removeLinkedDim && state.modal.draft) {
           state.modal.draft.dimensionIds = removeLinkedDimensionId(state.modal.draft.dimensionIds, removeLinkedDim.dataset.removeLinkedDim);

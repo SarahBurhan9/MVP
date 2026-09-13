@@ -1518,6 +1518,98 @@
       background: #fff;
     }
 
+    .pretty-select { position: relative; }
+    .pretty-select-native {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .pretty-select-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      min-height: 42px;
+      padding: 8px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+      text-align: left;
+    }
+    .pretty-select-trigger:hover,
+    .pretty-select.open .pretty-select-trigger {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+    }
+    .pretty-select-value {
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .pretty-select-chevron {
+      width: 8px;
+      height: 8px;
+      border-right: 2px solid #64748b;
+      border-bottom: 2px solid #64748b;
+      transform: rotate(45deg);
+      margin-top: -4px;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
+    }
+    .pretty-select.open .pretty-select-chevron {
+      transform: rotate(225deg);
+      margin-top: 2px;
+    }
+    .pretty-select-panel {
+      display: none;
+      position: absolute;
+      top: calc(100% + 6px);
+      left: 0;
+      right: 0;
+      z-index: 40;
+      max-height: 260px;
+      overflow: auto;
+      padding: 8px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+    }
+    .pretty-select.open .pretty-select-panel { display: block; }
+    .pretty-select-option {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      text-align: left;
+      padding: 8px 10px;
+      border-radius: 7px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 550;
+    }
+    .pretty-select-option:hover { background: #f0fdfa; }
+    .pretty-select-option.selected {
+      background: var(--primary-soft);
+      color: #115e59;
+      font-weight: 700;
+    }
+
     .btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-danger { color: var(--danger); }
     .btn-danger-solid { background: var(--danger); border-color: var(--danger); color: #fff; }
