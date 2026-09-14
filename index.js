@@ -10023,24 +10023,41 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
-            <div class="cc-metrics">
-              <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
-              <div><span>Formula</span><strong>${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.grossQty), formulaHelpButton("material", line.id, "Explain quantity"))}</strong></div>
+            <div class="cc-layer-facts">
               <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
               <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
-              <div><span>Net Qty</span><strong>${line.error ? "—" : formatQty(line.netQty)}</strong></div>
-              <div>
-                <span>Wastage %</span>
-                <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
-              </div>
-              <div><span>Gross Qty</span><strong>${line.error ? "—" : formatQty(line.grossQty)}</strong></div>
-              <div><span>Required Qty</span><strong>${formatBomRequiredQtyFromOrder()}</strong></div>
-              <div>
-                <span>Rate</span>
-                <strong>${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</strong>
-              </div>
-              <div><span>Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
-              <div><span>Total Cost</span><strong>${formatBomLineOrderTotal(line.costPerPiece, line.error)}</strong></div>
+            </div>
+            <div class="table-wrap cc-layer-metrics-wrap">
+              <table class="data-table cc-grid-table cc-layer-metrics">
+                <thead>
+                  <tr>
+                    <th>Calculation</th>
+                    <th>Formula</th>
+                    <th>Net Qty</th>
+                    <th>Wastage %</th>
+                    <th>Gross Qty</th>
+                    <th>Required Qty</th>
+                    <th>Rate</th>
+                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                    <th>Total Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>${escapeHtml(methodLabel)}</td>
+                    <td>${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.grossQty), formulaHelpButton("material", line.id, "Explain quantity"))}</td>
+                    <td class="cc-layer-num">${line.error ? "—" : formatQty(line.netQty)}</td>
+                    <td>
+                      <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
+                    </td>
+                    <td class="cc-layer-num">${line.error ? "—" : formatQty(line.grossQty)}</td>
+                    <td class="cc-layer-num cc-layer-emphasis">${formatBomRequiredQtyFromOrder()}</td>
+                    <td class="cc-layer-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+                    <td class="cc-layer-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                    <td class="cc-layer-num cc-layer-emphasis">${formatBomLineOrderTotal(line.costPerPiece, line.error)}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           ` : `<p class="stat-hint">Select a material for this ply layer. Calculation details become available after a material is chosen.</p>`}
         </div>
