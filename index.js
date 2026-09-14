@@ -2491,12 +2491,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formatQty(Number(state.bomOrderQuantity));
     }
 
-    function formatBomLineOrderTotal(costPerPiece, hasError) {
+    function formatCostTimesQuantity(costPerPiece, quantity, hasError) {
       if (hasError) return `<span class="calc-error-cost">Error</span>`;
-      if (!hasBomOrderQuantity()) return "—";
+      const qty = Number(quantity);
+      if (!Number.isFinite(qty) || qty <= 0) return "—";
       const cost = Number(costPerPiece);
       if (!Number.isFinite(cost)) return "—";
-      return formatRupees(roundTo(cost * Number(state.bomOrderQuantity), 2));
+      return formatRupees(roundTo(cost * qty, 2));
+    }
+
+    function formatBomLineOrderTotal(costPerPiece, hasError) {
+      return formatCostTimesQuantity(costPerPiece, state.bomOrderQuantity, hasError);
     }
 
     function renderBomStepSubtotalFooter(costPerPiece, hasError) {
@@ -6656,6 +6661,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       if (ensureCostCalculatorGeneralServices()) persistCostCalculatorState();
       const summary = updateCostCalculatorSummary();
+      const ccHasCalcErrors = summary.layers.some((row) => row.calc.error)
+        || summary.otherLayers.some((row) => row.calc.error)
+        || (summary.additionalMaterials || []).some((row) => row.calc.error)
+        || (summary.additionalServices || []).some((row) => row.calc.error)
+        || summary.services.some((row) => row.calc.error)
+        || summary.finishingServices.some((row) => row.calc.error);
       const styleOptions = styles.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
       const selectedStyle = styleOptions.find((item) => item.id === Number(cc.styleId)) || null;
       const materials = steps.hasPly ? getCostCalculatorMaterials(steps.ply) : [];
@@ -6843,7 +6854,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <aside class="card cc-card cost-calc-summary" id="cost-calc-print">
             <div class="card-body">
               <div class="section-title" style="margin-bottom:12px;">Final Cost Summary</div>
-              ${summary.layers.some((row) => row.calc.error) || summary.otherLayers.some((row) => row.calc.error) || (summary.additionalMaterials || []).some((row) => row.calc.error) || (summary.additionalServices || []).some((row) => row.calc.error) || summary.services.some((row) => row.calc.error) || summary.finishingServices.some((row) => row.calc.error)
+              ${ccHasCalcErrors
                 ? `<div class="field-error" style="margin-bottom:8px;">⚠ Error calculating cost</div>`
                 : ""}
               <div class="form-grid two cost-optional-row">
@@ -6868,14 +6879,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </select>
                 </div>
               </div>
-              <div class="cc-summary-line"><span>Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
-              <div class="cc-summary-line"><span>Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}<strong>${formatRupees(summary.finishingCost)}</strong></div>
+              <div class="cc-summary-line"><span>Material Per Piece Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
+              <div class="cc-summary-line"><span>Material Total Cost</span><strong>${formatCostTimesQuantity(summary.materialCost, cc.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
+              <div class="cc-summary-line"><span>Service Per Piece Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
+              <div class="cc-summary-line"><span>Service Total Cost</span><strong>${formatStep6LineTotal(summary.serviceCost, ccHasCalcErrors)}</strong></div>
+              <div class="cc-summary-line"><span>Finishing Services Per Piece Cost</span><strong>${formatRupees(summary.finishingCost)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}<strong>${formatCostTimesQuantity(summary.finishingCost, cc.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
               ${summary.colorCost > 0 ? `<div class="cc-summary-line">${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}<strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
               <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Cost Per Piece", FIXED_COST_FORMULAS.finalCostCalculator.formula, FIXED_COST_FORMULAS.finalCostCalculator.description)}<strong>${formatRupees(summary.perPiece)}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Cost Per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}<strong>${formatRupees(summary.per100)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Cost Per 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}<strong>${formatRupees(roundTo(summary.perPiece * 500, 2))}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Cost Per 1000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}<strong>${formatRupees(summary.per1000)}</strong></div>
-              ${summary.totalOrderCost != null ? `<div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Total Order Cost", FIXED_COST_FORMULAS.orderCost.formula, FIXED_COST_FORMULAS.orderCost.description)}<strong>${formatRupees(summary.totalOrderCost)}</strong></div>` : ""}
               <div class="cc-summary-line">${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}<strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
               <div class="cc-actions">
                 <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
@@ -10616,7 +10630,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const calcErrors = collectBomCalculationErrors();
       const hasCalcErrors = calcErrors.length > 0;
       const showColorCost = hasBomColorCost();
-      const showOrderCost = hasBomOrderQuantity();
       const total = hasCalcErrors ? 0 : (Number(state.finalCostPerPiece) || 0);
       const materialPct = total > 0 ? roundTo((Number(state.totalMaterialCost) / total) * 100, 1) : 0;
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
@@ -10660,16 +10673,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             </div>
             <div class="cost-row">
-              <span>Material Cost</span>
+              <span>Material Per Piece Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
             </div>
             <div class="cost-row">
-              <span>Service Cost</span>
+              <span>Material Total Cost</span>
+              <strong>${formatCostTimesQuantity(state.totalMaterialCost, state.bomOrderQuantity, hasCalcErrors)}</strong>
+            </div>
+            <div class="cost-row">
+              <span>Service Per Piece Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
             </div>
             <div class="cost-row">
-              ${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}
+              <span>Service Total Cost</span>
+              <strong>${formatStep6LineTotal(state.totalServiceCost, hasCalcErrors)}</strong>
+            </div>
+            <div class="cost-row">
+              <span>Finishing Services Per Piece Cost</span>
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalFinishingServiceCost)}</strong>
+            </div>
+            <div class="cost-row">
+              ${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}
+              <strong>${formatCostTimesQuantity(state.totalFinishingServiceCost, state.bomOrderQuantity, hasCalcErrors)}</strong>
             </div>
             ${showColorCost ? `
             <div class="cost-row">
@@ -10693,12 +10718,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${labeledFixedFormula("Cost per 1,000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1000)}</strong>
             </div>
-            ${showOrderCost ? `
-            <div class="cost-row cost-final">
-              ${labeledFixedFormula("Total Order Cost", FIXED_COST_FORMULAS.orderCost.formula, FIXED_COST_FORMULAS.orderCost.description)}
-              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.totalOrderCost)}</strong>
-            </div>
-            ` : ""}
             <div class="cost-row">
               ${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}
               <strong>${hasCalcErrors ? "Error" : formatCurrency(calculateTotalConsumableMaterialCost())}</strong>
