@@ -10087,7 +10087,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${line ? `
             <div class="cc-layer-facts">
               <div><span>Dimension</span><strong>${autoDims ? renderLengthWidthArea(autoDims.L, autoDims.W) : "—"}</strong></div>
-              <div><span>Manual Qty</span><strong>${customDims}</strong></div>
+              <div><span>Manual Dimension</span><strong>${customDims}</strong></div>
             </div>
             <div class="table-wrap cc-layer-metrics-wrap">
               <table class="data-table cc-grid-table cc-layer-metrics">
