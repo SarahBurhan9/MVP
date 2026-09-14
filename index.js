@@ -10375,12 +10375,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </td>
                   <td>${escapeHtml(methodLabel)}</td>
                   <td>
-                    <span class="formula-cell">
-                      ${escapeHtml(formulaLabel)}
-                      ${formulaHelpButton("service", line.id, "Explain quantity")}
-                    </span>
+                    ${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.quantity), formulaHelpButton("service", line.id, "Explain quantity"))}
                   </td>
-                  <td>${formatQty(line.quantity)}</td>
+                  <td>${formatBomRequiredQtyFromOrder()}</td>
                   <td>
                     ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
                     <div class="stat-hint">Service Rates</div>
@@ -10424,7 +10421,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <th>Service</th>
                     <th>Calculation</th>
                     <th>Formula</th>
-                    <th>Qty / Piece</th>
+                    <th>Required Qty</th>
                     <th>Rate</th>
                     <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
                     <th>Action</th>
