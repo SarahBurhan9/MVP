@@ -2457,6 +2457,31 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Number.isFinite(qty) && qty > 0;
     }
 
+    function formatBomRequiredQtyFromOrder() {
+      if (!hasBomOrderQuantity()) return "—";
+      return formatQty(Number(state.bomOrderQuantity));
+    }
+
+    function formatBomLineOrderTotal(costPerPiece, hasError) {
+      if (hasError) return `<span class="calc-error-cost">Error</span>`;
+      if (!hasBomOrderQuantity()) return "—";
+      const cost = Number(costPerPiece);
+      if (!Number.isFinite(cost)) return "—";
+      return formatRupees(roundTo(cost * Number(state.bomOrderQuantity), 2));
+    }
+
+    function renderFormulaNameWithQty(formulaLabel, qtyDisplay, helpHtml) {
+      return `
+        <div class="formula-stack">
+          <span class="formula-cell">
+            ${escapeHtml(formulaLabel)}
+            ${helpHtml || ""}
+          </span>
+          <div class="stat-hint">${qtyDisplay}</div>
+        </div>
+      `;
+    }
+
     function hasCostCalculatorColorCost() {
       const colors = Number(state.costCalculator && state.costCalculator.ccNumberOfColors);
       const rate = Number(state.costCalculator && state.costCalculator.ccColorRate);
@@ -10000,7 +10025,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${line ? `
             <div class="cc-metrics">
               <div><span>Calculation</span><strong>${escapeHtml(methodLabel)}</strong></div>
-              <div><span>Formula</span><strong class="formula-cell">${escapeHtml(formulaLabel)}${formulaHelpButton("material", line.id, "Explain quantity")}</strong></div>
+              <div><span>Formula</span><strong>${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.grossQty), formulaHelpButton("material", line.id, "Explain quantity"))}</strong></div>
               <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
               <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
               <div><span>Net Qty</span><strong>${line.error ? "—" : formatQty(line.netQty)}</strong></div>
@@ -10009,11 +10034,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
               </div>
               <div><span>Gross Qty</span><strong>${line.error ? "—" : formatQty(line.grossQty)}</strong></div>
+              <div><span>Required Qty</span><strong>${formatBomRequiredQtyFromOrder()}</strong></div>
               <div>
                 <span>Rate</span>
                 <strong>${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</strong>
               </div>
               <div><span>Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</span><strong>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</strong></div>
+              <div><span>Total Cost</span><strong>${formatBomLineOrderTotal(line.costPerPiece, line.error)}</strong></div>
             </div>
           ` : `<p class="stat-hint">Select a material for this ply layer. Calculation details become available after a material is chosen.</p>`}
         </div>
@@ -10439,17 +10466,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </td>
                   <td>${escapeHtml(methodLabel)}</td>
                   <td>
-                    <span class="formula-cell">
-                      ${escapeHtml(formulaLabel)}
-                      ${formulaHelpButton("service", line.id, "Explain quantity")}
-                    </span>
+                    ${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.quantity), formulaHelpButton("service", line.id, "Explain quantity"))}
                   </td>
-                  <td>${formatQty(line.quantity)}</td>
+                  <td>${formatBomRequiredQtyFromOrder()}</td>
                   <td>
                     ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
                     <div class="stat-hint">Service Rates</div>
                   </td>
                   <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                  <td>${formatBomLineOrderTotal(line.costPerPiece, line.error)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
@@ -10466,7 +10491,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </tr>
               `;
             }).join("")
-          : emptyRow(8, "No finishing services added yet.");
+          : emptyRow(9, "No finishing services added yet.");
 
       root.innerHTML = `
         <div class="card">
@@ -10481,16 +10506,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table" style="min-width:980px;">
+              <table class="data-table" style="min-width:1080px;">
                 <thead>
                   <tr>
                     <th>#</th>
                     <th>Finishing Service</th>
                     <th>Calculation</th>
                     <th>Formula</th>
-                    <th>Qty / Piece</th>
+                    <th>Required Qty</th>
                     <th>Rate</th>
                     <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                    <th>Total Cost</th>
                     <th>Action</th>
                   </tr>
                 </thead>

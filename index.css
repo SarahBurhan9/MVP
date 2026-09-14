@@ -1400,6 +1400,15 @@
       gap: 6px;
     }
 
+    .formula-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 2px;
+    }
+
+    .formula-stack .stat-hint { margin-top: 0; }
+
     .formula-help-btn {
       display: inline-flex;
       align-items: center;
