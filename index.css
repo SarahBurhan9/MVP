@@ -350,6 +350,8 @@
     .lib-page .fm-group.is-area .fm-group-icon { background: #d1fae5; color: #065f46; }
     .lib-page .fm-group.is-costing { border-left: 3px solid #b45309; }
     .lib-page .fm-group.is-costing .fm-group-icon { background: #fef3c7; color: #92400e; }
+    .lib-page .fm-group.is-printing { border-left: 3px solid #7c3aed; }
+    .lib-page .fm-group.is-printing .fm-group-icon { background: #ede9fe; color: #5b21b6; }
     .lib-page .fm-group.is-other { border-left: 3px solid #64748b; }
     .lib-page .fm-group.is-other .fm-group-icon { background: #f1f5f9; color: #475569; }
     .lib-page .fm-group-hint {

@@ -87,7 +87,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 15, code: "SERVICE_RATE", name: "Service Rate", description: "Rate from service master", dataType: "numeric", defaultValue: 2.5, unit: "Rs./piece", category: "Service", isActive: true },
       { id: 16, code: "PRINT_AREA", name: "Print Area", description: "Printable area", dataType: "numeric", defaultValue: 435, unit: "sq.inch", category: "Area", isActive: true },
       { id: 17, code: "MATERIAL_COST", name: "Material Cost", description: "Rolled-up material cost", dataType: "numeric", defaultValue: 0, unit: "Rs.", category: "Costing", isActive: true },
-      { id: 18, code: "SERVICE_COST", name: "Service Cost", description: "Rolled-up service cost", dataType: "numeric", defaultValue: 0, unit: "Rs.", category: "Service", isActive: true }
+      { id: 18, code: "SERVICE_COST", name: "Service Cost", description: "Rolled-up service cost", dataType: "numeric", defaultValue: 0, unit: "Rs.", category: "Service", isActive: true },
+      { id: 19, code: "NO_OF_COLOR", name: "Number of Colors", description: "Number of print colors entered by the user", dataType: "numeric", defaultValue: 1, unit: "", category: "Printing", isActive: true }
     ];
 
     const dimensions = [
@@ -331,7 +332,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "L", "W", "H", "GSM", "PLY", "GLUE_FLAP", "WASTAGE", "NET_QTY", "ORDER_QTY",
       "SHEET_LENGTH", "SHEET_WIDTH", "SHEET_AREA", "PIECE_AREA",
       "FLAT_LENGTH", "FLAT_WIDTH", "FLAT_AREA", "COVERED_AREA",
-      "MATERIAL_RATE", "SERVICE_RATE", "PRINT_AREA", "MATERIAL_COST", "SERVICE_COST"
+      "MATERIAL_RATE", "SERVICE_RATE", "PRINT_AREA", "MATERIAL_COST", "SERVICE_COST", "NO_OF_COLOR"
     ];
 
     const ENGINE_CONSTANTS = {
@@ -364,12 +365,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         value: ENGINE_CONSTANTS.CONVERSION_FACTOR,
         formula: "1 / (SQ_IN_TO_SQ_M × GRAM_TO_KG)",
         description: "Fixed. Combined unit conversion factor used by the formula engine."
-      },
-      {
-        code: "NO_OF_COLOR",
-        value: 1,
-        formula: "1",
-        description: "Fixed. Number of colors."
       },
       {
         code: "ORDER_QTY",
@@ -457,7 +452,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       SERVICE_RATE: 2.5,
       PRINT_AREA: 435,
       MATERIAL_COST: 0,
-      SERVICE_COST: 0
+      SERVICE_COST: 0,
+      NO_OF_COLOR: 1
     };
 
     /* ==================================================
@@ -1201,6 +1197,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ensureSeedStyleWastageVariables();
         ensureSeedWindowLidSheetVariables();
         ensureCalculatedSheetAreaCatalog();
+        ensureSeedNoOfColorVariable();
         ensureServiceRates();
         ensureMaterialRates();
         ensureOtherMaterialRates();
@@ -1573,10 +1570,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             const seededWastage = ensureSeedStyleWastageVariables();
             const seededSheetVars = ensureSeedWindowLidSheetVariables();
             const seededSheetArea = ensureCalculatedSheetAreaCatalog();
+            const seededNoOfColor = ensureSeedNoOfColorVariable();
             const seededServiceRates = ensureServiceRates();
             const seededMaterialRates = ensureMaterialRates();
             const seededOtherMaterialRates = ensureOtherMaterialRates();
-            if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededServiceRates || seededMaterialRates || seededOtherMaterialRates) {
+            if (seededStyle || seededServiceDims || seededMaterialDims || seededWastage || seededSheetVars || seededSheetArea || seededNoOfColor || seededServiceRates || seededMaterialRates || seededOtherMaterialRates) {
               syncSequencesFromData();
               await persistAllCollections();
               await persistSequencesNow();
@@ -1783,6 +1781,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
       });
       return added;
+    }
+
+    function ensureSeedNoOfColorVariable() {
+      if (seedCatalogBlocked()) return false;
+      if (getFormulaVariableByCode("NO_OF_COLOR")) return false;
+      const seed = (SEED_DATA.formulaVariables || []).find((item) => item.code === "NO_OF_COLOR");
+      formulaVariables.push({
+        id: nextMasterId(formulaVariables),
+        code: "NO_OF_COLOR",
+        name: (seed && seed.name) || "Number of Colors",
+        description: (seed && seed.description) || "Number of print colors entered by the user",
+        dataType: "numeric",
+        defaultValue: seed && seed.defaultValue != null ? seed.defaultValue : 1,
+        unit: seed && seed.unit != null ? seed.unit : "",
+        category: (seed && seed.category) || "Printing",
+        isActive: seed ? seed.isActive !== false : true
+      });
+      return true;
     }
 
     function ensureCalculatedSheetAreaCatalog() {
@@ -2392,6 +2408,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!Number.isFinite(n) || n < 0) return null;
       const places = extras && extras.places != null ? extras.places : 2;
       return roundTo(n, places);
+    }
+
+    function resolveNumberOfColors(finishedGood, fallback) {
+      const typed = storedBomColorCount(state.bomNumberOfColors)
+        ?? storedBomColorCount(state.costCalculator && state.costCalculator.ccNumberOfColors);
+      if (typed != null) return typed;
+      const resolved = numericOrNull(resolveVariableValue("NO_OF_COLOR", finishedGood, fallback));
+      if (resolved !== null && resolved >= 0) return Math.round(resolved);
+      const fallbackNumber = numericOrNull(fallback);
+      return fallbackNumber !== null ? Math.round(fallbackNumber) : 1;
     }
 
     function storedBomColorCount(value) {
@@ -4638,6 +4664,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         MATERIAL_RATE: material ? roundTo((getMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
+        NO_OF_COLOR: resolveNumberOfColors(finishedGood, defaults.NO_OF_COLOR ?? 1),
         SHEET_LENGTH: sheet.length,
         SHEET_WIDTH: sheet.width,
         SHEET_AREA: sheet.area,
@@ -4680,6 +4707,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         MATERIAL_RATE: material ? roundTo((getOtherMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
+        NO_OF_COLOR: resolveNumberOfColors(finishedGood, defaults.NO_OF_COLOR ?? 1),
         SHEET_LENGTH: sheet.length,
         SHEET_WIDTH: sheet.width,
         SHEET_AREA: sheet.area,
@@ -5059,6 +5087,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         PLY: Number(finishedGood?.ply ?? defaults.PLY),
         GLUE_FLAP: glueFlap,
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
+        NO_OF_COLOR: resolveNumberOfColors(finishedGood, defaults.NO_OF_COLOR ?? 1),
         SERVICE_RATE: roundTo((getServiceRate(service && service.id)?.rate) ?? 0, 2),
         PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, defaults.PRINT_AREA),
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
@@ -9090,7 +9119,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         Sheet: { icon: "layers", cls: "is-sheet" },
         Area: { icon: "square", cls: "is-area" },
         Costing: { icon: "calculator", cls: "is-costing" },
-        Service: { icon: "wrench", cls: "is-service" }
+        Service: { icon: "wrench", cls: "is-service" },
+        Printing: { icon: "palette", cls: "is-printing" }
       };
       return map[category] || { icon: "variable", cls: "is-other" };
     }
@@ -9148,7 +9178,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderFormulaVariables() {
       const rows = filterFormulaVariables();
-      const categoryOrder = ["Dimension", "Material", "Sheet", "Area", "Costing", "Service"];
+      const categoryOrder = ["Dimension", "Material", "Sheet", "Area", "Costing", "Service", "Printing"];
       const extras = [];
       rows.forEach((item) => {
         if (!categoryOrder.includes(item.category) && !extras.includes(item.category)) extras.push(item.category);
