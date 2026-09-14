@@ -895,6 +895,11 @@
       color: var(--text-muted);
     }
 
+    .cc-layer-facts .lw-area {
+      font-weight: 650;
+      line-height: 1.45;
+    }
+
     .cc-layer-metrics-wrap { margin-top: 10px; }
 
     table.cc-layer-metrics {

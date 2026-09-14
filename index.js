@@ -3368,6 +3368,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { L: roundTo(resolved.L, 2), W: roundTo(resolved.W, 2) };
     }
 
+    function renderLengthWidthArea(L, W) {
+      const length = Number(L);
+      const width = Number(W);
+      if (!Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) return "—";
+      const area = roundTo(length * width, 4);
+      return `
+        <div class="lw-area">
+          <div>Length = ${escapeHtml(formatQty(length))}</div>
+          <div>Width = ${escapeHtml(formatQty(width))}</div>
+          <div>Area = ${escapeHtml(formatQty(area))} inch²</div>
+        </div>
+      `;
+    }
+
     function getCustomDimensionOverride(line) {
       const out = { L: null, W: null, error: null };
       if (!isUseCustomDimensions(line)) return out;
@@ -10036,7 +10050,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const selectAttr = extra
         ? `data-bom-extra-material="${line.id}"`
         : `data-bom-layer-material="${escapeHtml(layer)}"`;
-      const dimLabel = line && line.dimensionId ? formatDimensionChipLabel(getDimension(line.dimensionId)) : "—";
+      const autoDims = line ? getAutoQuantityLW(getSelectedFinishedGood(), line.dimensionId) : null;
+      const customDims = line && isUseCustomDimensions(line)
+        ? renderLengthWidthArea(line.customLength, line.customWidth)
+        : "—";
       return `
         <div class="cc-layer">
           <div class="cc-layer-head">
@@ -10069,8 +10086,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
             <div class="cc-layer-facts">
-              <div><span>Dimension</span><strong>${escapeHtml(dimLabel)}</strong></div>
-              <div><span>Manual Qty</span><strong>${line.calculationMethod === "manual" ? formatQty(line.manualQty) : "—"}</strong></div>
+              <div><span>Dimension</span><strong>${autoDims ? renderLengthWidthArea(autoDims.L, autoDims.W) : "—"}</strong></div>
+              <div><span>Manual Qty</span><strong>${customDims}</strong></div>
             </div>
             <div class="table-wrap cc-layer-metrics-wrap">
               <table class="data-table cc-grid-table cc-layer-metrics">
