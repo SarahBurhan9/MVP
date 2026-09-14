@@ -853,6 +853,19 @@
       letter-spacing: 0.03em;
     }
 
+    table.data-table.cc-grid-table th,
+    table.data-table.cc-grid-table td {
+      border: 1px solid #cbd5e1;
+      vertical-align: top;
+    }
+
+    table.data-table.cc-grid-table th {
+      background: #f1f5f9;
+      text-transform: none;
+      letter-spacing: 0;
+      color: var(--text);
+    }
+
     table.data-table tbody tr:hover { background: #f8fafc; }
     table.data-table tbody tr.cc-style-selected { background: #eff6ff; }
     table.data-table td.cc-style-desc {

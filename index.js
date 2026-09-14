@@ -10390,7 +10390,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table" style="min-width:980px;">
+              <table class="data-table cc-grid-table" style="min-width:980px;">
                 <thead>
                   <tr>
                     <th>#</th>
