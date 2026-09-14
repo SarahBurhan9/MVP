@@ -2457,6 +2457,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Number.isFinite(qty) && qty > 0;
     }
 
+    const STEP6_REQUIRED_QTY = 1000;
+
+    function formatStep6RequiredQty() {
+      return formatQty(STEP6_REQUIRED_QTY);
+    }
+
+    function formatStep6LineTotal(costPerPiece, hasError) {
+      if (hasError) return `<span class="calc-error-cost">Error</span>`;
+      const cost = Number(costPerPiece);
+      if (!Number.isFinite(cost)) return "—";
+      return formatRupees(roundTo(cost * STEP6_REQUIRED_QTY, 2));
+    }
+
+    function renderStep6SubtotalFooter(costPerPiece, hasError) {
+      const pieceSubtotal = hasError
+        ? `<span class="calc-error-cost">Error</span>`
+        : formatRupees(Number(costPerPiece) || 0);
+      return `
+        <tfoot>
+          <tr class="cc-subtotal-row">
+            <th colspan="6">Subtotal</th>
+            <td class="cc-layer-num">${pieceSubtotal}</td>
+            <td class="cc-layer-num">${formatStep6LineTotal(costPerPiece, hasError)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      `;
+    }
+
     function formatBomRequiredQtyFromOrder() {
       if (!hasBomOrderQuantity()) return "—";
       return formatQty(Number(state.bomOrderQuantity));
@@ -5963,17 +5992,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </td>
                 <td>${escapeHtml(methodLabel)}</td>
                 <td>
-                  <span class="formula-cell">
-                    ${escapeHtml(formulaLabel)}
-                    ${formulaHelpButton("cc-service", lineId, "Explain quantity")}
-                  </span>
+                  ${renderFormulaNameWithQty(formulaLabel, !calc.error ? formatQty(calc.qty) : "—", formulaHelpButton("cc-service", lineId, "Explain quantity"))}
                 </td>
-                <td>${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td>${formatStep6RequiredQty()}</td>
                 <td>
                   ${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}
                   <div class="stat-hint">Service Rates</div>
                 </td>
                 <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+                <td>${formatStep6LineTotal(calc.cost, calc.error)}</td>
                 <td>
                   <div class="row-actions">
                     <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-service="${lineId}" title="Calculation breakdown">
@@ -5990,23 +6017,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(8, "No general services found.");
+        : emptyRow(9, "No general services found.");
+      const hasServiceErrors = (summary.services || []).some((row) => row.calc && row.calc.error);
       return `
         <div class="table-wrap">
-          <table class="data-table" style="min-width:980px;">
+          <table class="data-table cc-grid-table" style="min-width:1080px;">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Service</th>
                 <th>Calculation</th>
                 <th>Formula</th>
-                <th>Qty / Piece</th>
+                <th>Required Qty</th>
                 <th>Rate</th>
                 <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                <th>Total Cost</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>
+            ${summary.services.length ? renderStep6SubtotalFooter(summary.serviceCost, hasServiceErrors) : ""}
           </table>
         </div>
       `;
@@ -6776,7 +6806,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </button>
                 </div>
                 ${serviceRows}
-                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>` : ""}
               </div>
             </section>
 
@@ -10411,13 +10440,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <td>
                     ${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.quantity), formulaHelpButton("service", line.id, "Explain quantity"))}
                   </td>
-                  <td>${formatBomRequiredQtyFromOrder()}</td>
+                  <td>${formatStep6RequiredQty()}</td>
                   <td>
                     ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
                     <div class="stat-hint">Service Rates</div>
                   </td>
                   <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
-                  <td>${formatBomLineOrderTotal(line.costPerPiece, line.error)}</td>
+                  <td>${formatStep6LineTotal(line.costPerPiece, line.error)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-service="${line.id}" title="Calculation breakdown">
@@ -10464,7 +10493,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </tr>
                 </thead>
                 <tbody>${body}</tbody>
-                ${rows.length ? renderBomStepSubtotalFooter(state.totalServiceCost, hasServiceErrors) : ""}
+                ${rows.length ? renderStep6SubtotalFooter(state.totalServiceCost, hasServiceErrors) : ""}
               </table>
             </div>
           </div>
