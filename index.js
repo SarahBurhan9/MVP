@@ -2470,6 +2470,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formatRupees(roundTo(cost * Number(state.bomOrderQuantity), 2));
     }
 
+    function renderBomStepSubtotalFooter(costPerPiece, hasError) {
+      const pieceSubtotal = hasError
+        ? `<span class="calc-error-cost">Error</span>`
+        : formatRupees(Number(costPerPiece) || 0);
+      return `
+        <tfoot>
+          <tr class="cc-subtotal-row">
+            <th colspan="6">Subtotal</th>
+            <td class="cc-layer-num">${pieceSubtotal}</td>
+            <td class="cc-layer-num">${formatBomLineOrderTotal(costPerPiece, hasError)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      `;
+    }
+
     function renderFormulaNameWithQty(formulaLabel, qtyDisplay, helpHtml) {
       return `
         <div class="formula-stack">
@@ -10373,6 +10389,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         persistEditorState();
       }
       const rows = state.bomServices;
+      const hasServiceErrors = rows.some((line) => line.error);
 
       const body = rows.length
           ? rows.map((line, index) => {
@@ -10447,6 +10464,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </tr>
                 </thead>
                 <tbody>${body}</tbody>
+                ${rows.length ? renderBomStepSubtotalFooter(state.totalServiceCost, hasServiceErrors) : ""}
               </table>
             </div>
           </div>
@@ -10463,6 +10481,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const rows = state.bomFinishingServices || [];
+      const hasFinishingErrors = rows.some((line) => line.error);
 
       const body = rows.length
           ? rows.map((line, index) => {
@@ -10537,6 +10556,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </tr>
                 </thead>
                 <tbody>${body}</tbody>
+                ${rows.length ? renderBomStepSubtotalFooter(state.totalFinishingServiceCost, hasFinishingErrors) : ""}
               </table>
             </div>
           </div>

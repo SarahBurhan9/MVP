@@ -866,6 +866,22 @@
       color: var(--text);
     }
 
+    table.data-table.cc-grid-table tfoot th,
+    table.data-table.cc-grid-table tfoot td {
+      background: #f1f5f9;
+      font-weight: 650;
+      vertical-align: middle;
+    }
+
+    table.data-table.cc-grid-table tfoot th {
+      text-align: right;
+    }
+
+    table.data-table.cc-grid-table tfoot td.cc-layer-num {
+      text-align: right;
+      white-space: nowrap;
+    }
+
     .cc-layer-facts {
       display: grid;
       grid-template-columns: 1fr;
