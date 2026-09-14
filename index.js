@@ -10400,6 +10400,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div class="stat-hint">Service Rates</div>
                   </td>
                   <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                  <td>${formatBomLineOrderTotal(line.costPerPiece, line.error)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-service="${line.id}" title="Calculation breakdown">
@@ -10416,7 +10417,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </tr>
               `;
             }).join("")
-          : emptyRow(8, "No services added yet.");
+          : emptyRow(9, "No services added yet.");
 
       root.innerHTML = `
         <div class="card">
@@ -10431,7 +10432,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table cc-grid-table" style="min-width:980px;">
+              <table class="data-table cc-grid-table" style="min-width:1080px;">
                 <thead>
                   <tr>
                     <th>#</th>
@@ -10441,6 +10442,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <th>Required Qty</th>
                     <th>Rate</th>
                     <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                    <th>Total Cost</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -10520,7 +10522,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table" style="min-width:1080px;">
+              <table class="data-table cc-grid-table" style="min-width:1080px;">
                 <thead>
                   <tr>
                     <th>#</th>
