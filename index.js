@@ -3382,31 +3382,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { serviceL, serviceW, serviceLCode, serviceWCode };
     }
 
-    const STYLE_PERIMETER_EXPRESSION = "2 * (Area Length + Area Width)";
+    const STYLE_PERIMETER_EXPRESSION = "2 * (L + W)";
 
-    function getStylePerimeterFromFormulaRows(rows) {
-      const dims = getServiceDimensionOverridesFromStyleFormulas(null, Array.isArray(rows) ? rows : []);
-      const length = numericOrNull(dims.serviceL);
-      const width = numericOrNull(dims.serviceW);
-      const hasL = isUsableStyleServiceDim(length);
-      const hasW = isUsableStyleServiceDim(width);
-      if (!hasL || !hasW) {
+    function getStylePerimeterFromFinishedGood(finishedGood) {
+      const dims = finishedGood?.dimensions ?? {};
+      const length = numericOrNull(dims.L);
+      const width = numericOrNull(dims.W);
+      if (length === null || width === null) {
         const missing = [];
-        if (!hasL) missing.push("Area Length");
-        if (!hasW) missing.push("Area Width");
+        if (length === null) missing.push("L");
+        if (width === null) missing.push("W");
         return {
           success: false,
           result: null,
-          areaLength: length,
-          areaWidth: width,
-          error: "Needs " + missing.join(" and ") + " from style formulas."
+          length,
+          width,
+          error: "Needs finished good " + missing.join(" and ") + "."
         };
       }
       return {
         success: true,
         result: 2 * (Number(length) + Number(width)),
-        areaLength: length,
-        areaWidth: width,
+        length,
+        width,
         error: null
       };
     }
@@ -5594,8 +5592,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function renderStylePerimeterRow(rows) {
-      const perimeter = getStylePerimeterFromFormulaRows(rows);
+    function renderStylePerimeterRow(finishedGood) {
+      const perimeter = getStylePerimeterFromFinishedGood(finishedGood);
       return `
         <div class="style-formula-row">
           <div>
@@ -5614,7 +5612,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderStyleFormulaResultRows(rows) {
+    function renderStyleFormulaResultRows(rows, finishedGood) {
       const list = Array.isArray(rows) ? rows : [];
       const formulaRows = !list.length
         ? `<p class="stat-hint" style="margin:0;">No style formulas linked to this style.</p>`
@@ -5639,7 +5637,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `
         <div class="style-formula-results">
           ${formulaRows}
-          ${renderStylePerimeterRow(list)}
+          ${renderStylePerimeterRow(finishedGood)}
         </div>
       `;
     }
@@ -5662,7 +5660,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             </div>
             <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg.style || "—")}</strong>. Values update when the style variables or size inputs change.</p>
-            ${renderStyleFormulaResultRows(rows)}
+            ${renderStyleFormulaResultRows(rows, fg)}
           </div>
         </section>
       `;
@@ -10190,7 +10188,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <span class="badge badge-muted">Read-only</span>
             </div>
             <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
-            ${renderStyleFormulaResultRows(rows)}
+            ${renderStyleFormulaResultRows(rows, fg)}
           </div>
         </div>
       `;
@@ -14893,20 +14891,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!fg) {
         return { error: "Calculation details are unavailable." };
       }
-      const rows = evaluateStyleFormulasForFinishedGood(fg);
-      const perimeter = getStylePerimeterFromFormulaRows(rows);
+      const perimeter = getStylePerimeterFromFinishedGood(fg);
       if (!perimeter.success) {
         return { error: perimeter.error };
       }
-      const lengthText = formatFormulaResult(perimeter.areaLength);
-      const widthText = formatFormulaResult(perimeter.areaWidth);
+      const lengthText = formatFormulaResult(perimeter.length);
+      const widthText = formatFormulaResult(perimeter.width);
       const resultText = formatFormulaResult(perimeter.result);
       return {
         title: "Perimeter",
         formulaName: "Perimeter",
         sourceType: "formula",
-        subtitle: fromCalculator ? "Dimensions typed in Cost Calculator" : "",
-        summaryHtml: "Perimeter is always 2 × (Area Length + Area Width). Area Length and Area Width come from the style formulas marked for those values.",
+        subtitle: fromCalculator ? "Dimensions typed in Cost Calculator" : "Length and Width from the finished good",
+        summaryHtml: "Perimeter is always 2 × (L + W). L and W come from the finished good size, not from style formulas.",
         steps: [{
           index: 1,
           heading: "Perimeter",
