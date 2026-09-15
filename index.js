@@ -290,7 +290,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const STRUCTURAL_PLY_LAYERS = {
       1: ["Single Layer"],
       2: ["Top Liner", "Bottom Liner"],
-      3: ["Top Liner", "Fluting", "Bottom Liner"]
+      3: ["Top Liner", "Inner Liner", "Bottom Liner"]
     };
 
     let bomLineSeq = 1;
@@ -2349,7 +2349,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function plyLayerMappingHint() {
-      return `<p class="stat-hint" style="margin:8px 0 0;">Fixed ply mapping: 1 Ply → Single Layer · 2 Ply → Top Liner / Bottom Liner · 3 Ply → Top Liner / Fluting / Bottom Liner</p>`;
+      return `<p class="stat-hint" style="margin:8px 0 0;">Fixed ply mapping: 1 Ply → Single Layer · 2 Ply → Top Liner / Bottom Liner · 3 Ply → Top Liner / Inner Liner / Bottom Liner</p>`;
     }
 
     function renderFixedVariableChip(item) {
@@ -3524,6 +3524,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return finishedGoods.filter((item) => String(item.style || "").trim().toLowerCase() === needle);
     }
 
+    function canonicalPlyLayerName(layer) {
+      return String(layer || "") === "Fluting" ? "Inner Liner" : layer;
+    }
+
     function getPlyLayers(plyCount) {
       return STRUCTURAL_PLY_LAYERS[Number(plyCount)] || STRUCTURAL_PLY_LAYERS[3];
     }
@@ -3535,7 +3539,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function getLayerOptionsForEditor(currentLayer) {
       const fg = getSelectedFinishedGood();
       const layers = getPlyLayers(fg ? fg.ply : 3);
-      if (currentLayer && !layers.includes(currentLayer)) return layers.concat([currentLayer]);
+      const current = canonicalPlyLayerName(currentLayer);
+      if (current && !layers.includes(current)) return layers.concat([current]);
       return layers;
     }
 
@@ -3825,6 +3830,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         materials: cloneData(split.materials).map((line) => ({
           ...line,
+          layer: canonicalPlyLayerName(line.layer),
           id: nextBomLineId(),
           netQty: 0,
           grossQty: 0,
@@ -3833,6 +3839,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         })),
         otherMaterials: cloneData(split.otherMaterials).map((line) => ({
           ...line,
+          layer: canonicalPlyLayerName(line.layer),
           id: nextBomLineId(),
           netQty: 0,
           grossQty: 0,
@@ -3876,8 +3883,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function hydrateBomEditorMaterials(materials, otherMaterials) {
       const split = splitBomRecordMaterials({ materials: materials || [], otherMaterials: otherMaterials || [] });
-      state.bomMaterials = Array.isArray(split.materials) ? split.materials : [];
-      state.bomOtherMaterials = Array.isArray(split.otherMaterials) ? split.otherMaterials : [];
+      const renameLayer = (line) => {
+        if (!line || typeof line !== "object") return line;
+        return { ...line, layer: canonicalPlyLayerName(line.layer) };
+      };
+      state.bomMaterials = (Array.isArray(split.materials) ? split.materials : []).map(renameLayer);
+      state.bomOtherMaterials = (Array.isArray(split.otherMaterials) ? split.otherMaterials : []).map(renameLayer);
     }
 
     function showNotification(message, type) {
@@ -5437,7 +5448,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       merged.W = storedCostCalculatorDimension(merged.W);
       merged.H = storedCostCalculatorDimension(merged.H);
       merged.layers = (Array.isArray(merged.layers) ? merged.layers : []).map((row) => {
-        const layer = row && row.layer ? String(row.layer) : "";
+        const layer = canonicalPlyLayerName(row && row.layer ? String(row.layer) : "");
         const id = Number(row && row.rawMaterialId);
         return {
           layer,
@@ -5445,7 +5456,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         };
       }).filter((row) => row.layer);
       merged.otherLayers = (Array.isArray(merged.otherLayers) ? merged.otherLayers : []).map((row) => {
-        const layer = row && row.layer ? String(row.layer) : "";
+        const layer = canonicalPlyLayerName(row && row.layer ? String(row.layer) : "");
         const id = Number(row && row.otherRawMaterialId);
         return {
           layer,
@@ -7749,7 +7760,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (ply === 1) return "1-ply requires material on Single Layer";
       if (ply === 2) return "2-ply requires materials on Top Liner and Bottom Liner";
       if (ply === 3) {
-        return "3-ply requires materials on Top Liner, Fluting, and Bottom Liner. Missing: " + missing.join(", ");
+        return "3-ply requires materials on Top Liner, Inner Liner, and Bottom Liner. Missing: " + missing.join(", ");
       }
       return "BOM is missing required layers: " + missing.join(", ");
     }
@@ -9889,7 +9900,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function plyLayerClass(layer) {
       if (layer === "Single Layer") return "ply-single";
       if (layer === "Top Liner") return "ply-top";
-      if (layer === "Fluting") return "ply-flute";
+      if (layer === "Inner Liner" || layer === "Fluting") return "ply-flute";
       if (layer === "Bottom Liner") return "ply-bottom";
       return "";
     }
