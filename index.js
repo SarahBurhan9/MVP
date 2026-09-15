@@ -405,17 +405,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formula: "Sum of Finishing Service line costs",
         description: "Fixed. Each finishing service line is converted quantity × master rate."
       },
+      per1: {
+        formula: "(Material Per Piece × 1 + Service Total + Finishing Per Piece × 1) / 1",
+        description: "Fixed. Service Total is packaging services × 1,000. Material and finishing use per-piece × 1."
+      },
       per100: {
-        formula: "Final Cost / 100",
-        description: "Fixed. Material Total + Service Total + Finishing Total, then divide by 100. Not Order Quantity."
+        formula: "(Material Per Piece × 100 + Service Total + Finishing Per Piece × 100) / 100",
+        description: "Fixed. Service Total is packaging services × 1,000. Material and finishing use per-piece × 100. Not Order Quantity."
       },
       per500: {
-        formula: "Final Cost / 500",
-        description: "Fixed. Material Total + Service Total + Finishing Total, then divide by 500. Not Order Quantity."
+        formula: "(Material Per Piece × 500 + Service Total + Finishing Per Piece × 500) / 500",
+        description: "Fixed. Service Total is packaging services × 1,000. Material and finishing use per-piece × 500. Not Order Quantity."
       },
       per1000: {
-        formula: "Final Cost / 1,000",
-        description: "Fixed. Material Total + Service Total + Finishing Total, then divide by 1,000. Not Order Quantity."
+        formula: "(Material Per Piece × 1,000 + Service Total + Finishing Per Piece × 1,000) / 1,000",
+        description: "Fixed. Service Total is packaging services × 1,000. Material and finishing use per-piece × 1,000. Not Order Quantity."
       },
       orderCost: {
         formula: "Final Cost/Piece × Order Quantity",
@@ -2470,20 +2474,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formatRupees(roundTo(cost * STEP6_REQUIRED_QTY, 2));
     }
 
-    function computeExcelFinalCostPack(materialPerPiece, servicePerPiece, finishingPerPiece, orderQty) {
-      const qty = Number(orderQty);
-      if (!Number.isFinite(qty) || qty <= 0) {
-        return { finalCost: null, per100: null, per500: null, per1000: null };
-      }
-      const materialTotal = Number(materialPerPiece) * qty;
-      const serviceTotal = Number(servicePerPiece) * STEP6_REQUIRED_QTY;
-      const finishingTotal = Number(finishingPerPiece) * qty;
-      const finalCost = roundTo(materialTotal + serviceTotal + finishingTotal, 2);
+    function computeExcelFinalCostPack(materialPerPiece, servicePerPiece, finishingPerPiece) {
+      const material = Number(materialPerPiece);
+      const service = Number(servicePerPiece);
+      const finishing = Number(finishingPerPiece);
+      const mat = Number.isFinite(material) ? material : 0;
+      const svc = Number.isFinite(service) ? service : 0;
+      const fin = Number.isFinite(finishing) ? finishing : 0;
+      const serviceTotal = svc * STEP6_REQUIRED_QTY;
+      const costN = (n) => roundTo((mat * n + serviceTotal + fin * n) / n, 2);
       return {
-        finalCost,
-        per100: roundTo(finalCost / 100, 2),
-        per500: roundTo(finalCost / 500, 2),
-        per1000: roundTo(finalCost / 1000, 2)
+        per1: costN(1),
+        per100: costN(100),
+        per500: costN(500),
+        per1000: costN(1000)
       };
     }
 
@@ -5331,9 +5335,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const packCosts = computeExcelFinalCostPack(
         state.totalMaterialCost,
         state.totalServiceCost,
-        state.totalFinishingServiceCost,
-        state.bomOrderQuantity
+        state.totalFinishingServiceCost
       );
+      state.costPer1 = packCosts.per1;
       state.costPer100 = packCosts.per100;
       state.costPer500 = packCosts.per500;
       state.costPer1000 = packCosts.per1000;
@@ -6559,8 +6563,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const packCosts = computeExcelFinalCostPack(
         materialCost,
         serviceCost,
-        finishingCost,
-        state.costCalculator.ccOrderQuantity
+        finishingCost
       );
       const totalOrderCost = hasCostCalculatorOrderQuantity()
         // Known simplification: box/kg are multiplied as-is (no conversion to pieces).
@@ -6588,6 +6591,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         finishingCost,
         colorCost,
         perPiece,
+        per1: packCosts.per1,
         per100: packCosts.per100,
         per500: packCosts.per500,
         per1000: packCosts.per1000,
@@ -6917,9 +6921,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="cc-summary-line">${labeledFixedFormula("Finishing Services", FIXED_COST_FORMULAS.finishingCost.formula, FIXED_COST_FORMULAS.finishingCost.description)}<strong>${formatCostTimesQuantity(summary.finishingCost, cc.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
               ${summary.colorCost > 0 ? `<div class="cc-summary-line">${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}<strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
               <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Cost Per Piece", FIXED_COST_FORMULAS.finalCostCalculator.formula, FIXED_COST_FORMULAS.finalCostCalculator.description)}<strong>${formatRupees(summary.perPiece)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost Per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}<strong>${formatRupees(summary.per100)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost Per 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}<strong>${formatRupees(summary.per500)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost Per 1000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}<strong>${formatRupees(summary.per1000)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Cost 1 Pieces", FIXED_COST_FORMULAS.per1.formula, FIXED_COST_FORMULAS.per1.description)}<strong>${formatRupees(summary.per1)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Cost 100 Pieces", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}<strong>${formatRupees(summary.per100)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Cost 500 Pieces", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}<strong>${formatRupees(summary.per500)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Cost 1,000 Pieces", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}<strong>${formatRupees(summary.per1000)}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}<strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
               <div class="cc-actions">
                 <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
@@ -10737,15 +10742,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.finalCostPerPiece)}</strong>
             </div>
             <div class="cost-row">
-              ${labeledFixedFormula("Cost per 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}
+              ${labeledFixedFormula("Cost 1 Pieces", FIXED_COST_FORMULAS.per1.formula, FIXED_COST_FORMULAS.per1.description)}
+              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1)}</strong>
+            </div>
+            <div class="cost-row">
+              ${labeledFixedFormula("Cost 100 Pieces", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer100)}</strong>
             </div>
             <div class="cost-row">
-              ${labeledFixedFormula("Cost per 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}
+              ${labeledFixedFormula("Cost 500 Pieces", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer500)}</strong>
             </div>
             <div class="cost-row">
-              ${labeledFixedFormula("Cost per 1,000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}
+              ${labeledFixedFormula("Cost 1,000 Pieces", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}
               <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1000)}</strong>
             </div>
             <div class="cost-row">
