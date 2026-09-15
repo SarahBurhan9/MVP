@@ -5660,37 +5660,75 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderStyleFormulaHint(row) {
+      if (!row || !row.success) return "";
+      const hint = styleFormulaHintKind(row);
+      if (hint === "length") return `<div class="stat-hint mono">Area Length = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
+      if (hint === "width") return `<div class="stat-hint mono">Area Width = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
+      if (hint === "coveredArea") return `<div class="stat-hint mono">Covered Area = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
+      return "";
+    }
+
+    function renderStyleFormulaRow(row, options) {
+      const opts = options || {};
+      const classes = ["style-formula-row"];
+      if (opts.nested) classes.push("is-nested");
+      if (opts.primary) classes.push("is-primary");
+      const stepLabel = opts.stepIndex != null ? `<span class="style-formula-step">Step ${opts.stepIndex}</span>` : "";
+      return `
+        <div class="${classes.join(" ")}">
+          <div>
+            <div>${stepLabel}<span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
+            <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
+            ${renderStyleFormulaHint(row)}
+          </div>
+          <div class="style-formula-value">
+            <span class="formula-cell">
+              ${row.success
+                ? `<strong>= ${escapeHtml(formatFormulaResult(row.result))}</strong>`
+                : `<span class="field-error">${escapeHtml(row.error || "Could not evaluate")}</span>`}
+              ${formulaHelpButton("style", row.code, "Explain style formula")}
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
     function renderStyleFormulaResultRows(rows) {
       const list = Array.isArray(rows) ? rows : [];
-      const formulaRows = !list.length
-        ? `<p class="stat-hint" style="margin:0;">No style formulas linked to this style.</p>`
-        : list.map((row) => `
-            <div class="style-formula-row">
-              <div>
-                <div><span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
-                <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
-                ${(() => {
-                  if (!row.success) return "";
-                  const hint = styleFormulaHintKind(row);
-                  if (hint === "length") return `<div class="stat-hint mono">Area Length = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
-                  if (hint === "width") return `<div class="stat-hint mono">Area Width = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
-                  if (hint === "coveredArea") return `<div class="stat-hint mono">Covered Area = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
-                  return "";
-                })()}
-              </div>
-              <div class="style-formula-value">
-                <span class="formula-cell">
-                  ${row.success
-                    ? `<strong>= ${escapeHtml(formatFormulaResult(row.result))}</strong>`
-                    : `<span class="field-error">${escapeHtml(row.error || "Could not evaluate")}</span>`}
-                  ${formulaHelpButton("style", row.code, "Explain style formula")}
-                </span>
-              </div>
-            </div>
-          `).join("");
+      if (!list.length) {
+        return `
+          <div class="style-formula-results">
+            <p class="stat-hint" style="margin:0;">No style formulas linked to this style.</p>
+            ${renderStylePerimeterRow(list)}
+          </div>
+        `;
+      }
+      const covered = list.find((row) => isCoveredAreaStyleFormula(row));
+      const nestedRows = covered ? coveredAreaDependentStyleRows(covered, list) : [];
+      const nestedKeys = new Set(nestedRows.map((row) => String(row.linkId || row.code)));
+      const coveredKey = covered ? String(covered.linkId || covered.code) : "";
+      const independent = list.filter((row) => {
+        const key = String(row.linkId || row.code);
+        if (covered && key === coveredKey) return false;
+        if (nestedKeys.has(key)) return false;
+        return true;
+      });
+      const independentHtml = independent.map((row) => renderStyleFormulaRow(row)).join("");
+      const coveredHtml = covered
+        ? (nestedRows.length
+          ? `<div class="style-formula-group">
+              <div class="style-formula-group-head">Covered Area calculation</div>
+              <p class="stat-hint style-formula-group-note">These formulas are used, in order, to derive Covered Area.</p>
+              ${nestedRows.map((row, index) => renderStyleFormulaRow(row, { nested: true, stepIndex: index + 1 })).join("")}
+              ${renderStyleFormulaRow(covered, { primary: true, stepIndex: nestedRows.length + 1 })}
+            </div>`
+          : renderStyleFormulaRow(covered, { primary: true }))
+        : "";
       return `
         <div class="style-formula-results">
-          ${formulaRows}
+          ${independentHtml}
+          ${coveredHtml}
           ${renderStylePerimeterRow(list)}
         </div>
       `;
@@ -14538,20 +14576,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formatDecimal(n, 4, false);
     }
 
-    function collectNestedFormulas(formula) {
+    function extraFormulasFromStyleRows(rows) {
+      const extra = {};
+      (Array.isArray(rows) ? rows : []).forEach((row) => {
+        const formula = getFormula(row.formulaId) || getFormulaByCode(row.code);
+        if (formula && formula.code) extra[formula.code] = formula;
+      });
+      return extra;
+    }
+
+    function lookupFormulaByCode(code, extraByCode) {
+      return (extraByCode && extraByCode[code]) || getFormulaByCode(code) || null;
+    }
+
+    function collectNestedFormulas(formula, extraByCode) {
       const ordered = [];
       const seen = new Set();
       function visit(item) {
         if (!item || !item.expression || seen.has(item.id)) return;
         seen.add(item.id);
         extractIdentifiers(item.expression).forEach((id) => {
-          const dep = getFormulaByCode(id);
+          const dep = lookupFormulaByCode(id, extraByCode);
           if (dep && dep.id !== item.id) visit(dep);
         });
         ordered.push(item);
       }
       visit(formula);
       return ordered;
+    }
+
+    function coveredAreaDependentStyleRows(coveredRow, allRows) {
+      if (!coveredRow) return [];
+      const formula = getFormula(coveredRow.formulaId) || getFormulaByCode(coveredRow.code);
+      if (!formula) return [];
+      const nested = collectNestedFormulas(formula, extraFormulasFromStyleRows(allRows));
+      const codes = new Set(nested.map((item) => item.code).filter((code) => code && code !== formula.code));
+      return (allRows || []).filter((row) => row && codes.has(row.code));
     }
 
     function resolveExplainIdentifier(id, variables, computed) {
@@ -14625,19 +14685,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         .trim();
     }
 
-    function formulaHasVariableInputs(formula) {
+    function formulaHasVariableInputs(formula, extraByCode) {
       if (!formula || !formula.expression) return false;
-      return collectNestedFormulas(formula).some((item) =>
+      return collectNestedFormulas(formula, extraByCode).some((item) =>
         extractIdentifiers(item.expression).some((id) =>
-          !Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id) && !getFormulaByCode(id)
+          !Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, id) && !lookupFormulaByCode(id, extraByCode)
         )
       );
     }
 
-    function inferExplainSourceType(formula, explicit) {
+    function inferExplainSourceType(formula, explicit, extraByCode) {
       if (explicit) return explicit;
       if (!formula) return "manual";
-      return formulaHasVariableInputs(formula) ? "formula" : "formula-flat";
+      if (collectNestedFormulas(formula, extraByCode).length > 1) return "formula";
+      return formulaHasVariableInputs(formula, extraByCode) ? "formula" : "formula-flat";
     }
 
     function buildGrossQtyExplainSteps(variables, computed, netQty, wastagePercent, grossQty, tagHints, startIndex) {
@@ -14674,7 +14735,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const tagHints = opts.tagHints || {};
       const uom = opts.uom || "";
       const title = opts.title || "Quantity";
-      const sourceType = inferExplainSourceType(formula, opts.sourceType);
+      const extraByCode = opts.extraByCode || extraFormulasFromStyleRows(opts.styleRows);
+      const sourceType = inferExplainSourceType(formula, opts.sourceType, extraByCode);
       const includeGrossQty = Boolean(opts.includeGrossQty) && !(formula && formula.code === "GROSS_QTY");
       const resultValue = opts.resultValue != null ? opts.resultValue : (opts.netQty != null ? opts.netQty : null);
       const formulaName = sourceType === "manual"
@@ -14755,16 +14817,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         };
       }
 
-      const nested = collectNestedFormulas(formula);
+      const nested = collectNestedFormulas(formula, extraByCode);
       const computed = {};
       const steps = [];
       nested.forEach((itemFormula) => {
         const evaluated = evaluateFormula(itemFormula.expression, variables, [itemFormula.code]);
         const result = evaluated.success ? evaluated.result : null;
         computed[itemFormula.code] = result;
+        const role = styleFormulaHintKind({
+          ...itemFormula,
+          coveredArea: Boolean(itemFormula.coveredArea),
+          serviceLength: Boolean(itemFormula.serviceLength),
+          serviceWidth: Boolean(itemFormula.serviceWidth)
+        });
+        const roleLabel = role === "length" ? "Calculate Length" : role === "width" ? "Calculate Width" : role === "coveredArea" ? "Covered Area" : "";
         steps.push({
           index: steps.length + 1,
-          heading: (itemFormula.name || itemFormula.code) + " (" + itemFormula.code + ")",
+          heading: (itemFormula.name || itemFormula.code) + " (" + itemFormula.code + ")" + (roleLabel ? " — " + roleLabel : ""),
           expression: prettyExpressionText(itemFormula.expression),
           pluggedHtml: "= " + expressionToExplainHtml(itemFormula.expression, variables, computed, tagHints) +
             " = <strong class=\"formula-val\">" + escapeHtml(result == null ? (evaluated.error || "Error") : formatExplainNumber(result)) + "</strong>",
@@ -14785,6 +14854,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: opts.subtitle || "",
         formulaName,
         sourceType: "formula",
+        summaryHtml: opts.summaryHtml || "",
         steps,
         finalHtml
       };
@@ -14992,15 +15062,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (item.success && item.code && item.code !== "—") variables[item.code] = item.result;
       });
       const result = row && row.success ? row.result : null;
+      const extraByCode = extraFormulasFromStyleRows(rows);
+      const isCovered = isCoveredAreaStyleFormula(row) || Boolean(formula.coveredArea);
+      const nestedCount = collectNestedFormulas(formula, extraByCode).length;
       return buildFormulaExplainCore({
         formula,
         variables,
+        extraByCode,
+        styleRows: rows,
         resultValue: result,
         resultDisplay: result == null ? "—" : formatFormulaResult(result),
         uom: "",
         title: (formula.name || formula.code) + " — " + (fg.style || "Style"),
         subtitle: fromCalculator ? "Dimensions typed in Cost Calculator" : "",
-        sourceType: inferExplainSourceType(formula),
+        sourceType: isCovered && nestedCount > 1 ? "formula" : inferExplainSourceType(formula, null, extraByCode),
+        summaryHtml: isCovered && nestedCount > 1
+          ? "Covered Area is built from the formulas below. Dependent formulas such as Calculate Length and Calculate Width are included automatically."
+          : "",
         includeGrossQty: false,
         tagHints: fromCalculator ? { L: "manual", W: "manual", H: "manual" } : {},
         resultLabel: "Result",
