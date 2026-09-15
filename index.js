@@ -3382,6 +3382,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { serviceL, serviceW, serviceLCode, serviceWCode };
     }
 
+    const STYLE_PERIMETER_EXPRESSION = "2 * (Area Length + Area Width)";
+
+    function getStylePerimeterFromFormulaRows(rows) {
+      const dims = getServiceDimensionOverridesFromStyleFormulas(null, Array.isArray(rows) ? rows : []);
+      const length = numericOrNull(dims.serviceL);
+      const width = numericOrNull(dims.serviceW);
+      const hasL = isUsableStyleServiceDim(length);
+      const hasW = isUsableStyleServiceDim(width);
+      if (!hasL || !hasW) {
+        const missing = [];
+        if (!hasL) missing.push("Area Length");
+        if (!hasW) missing.push("Area Width");
+        return {
+          success: false,
+          result: null,
+          areaLength: length,
+          areaWidth: width,
+          error: "Needs " + missing.join(" and ") + " from style formulas."
+        };
+      }
+      return {
+        success: true,
+        result: 2 * (Number(length) + Number(width)),
+        areaLength: length,
+        areaWidth: width,
+        error: null
+      };
+    }
+
     function isUsableStyleServiceDim(value) {
       const n = numericOrNull(value);
       return n !== null && n !== 0;
@@ -5565,13 +5594,31 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function renderStyleFormulaResultRows(rows) {
-      if (!rows.length) {
-        return `<p class="stat-hint" style="margin:0;">No style formulas linked to this style.</p>`;
-      }
+    function renderStylePerimeterRow(rows) {
+      const perimeter = getStylePerimeterFromFormulaRows(rows);
       return `
-        <div class="style-formula-results">
-          ${rows.map((row) => `
+        <div class="style-formula-row">
+          <div>
+            <div>Perimeter:</div>
+            <div class="stat-hint mono">${escapeHtml(STYLE_PERIMETER_EXPRESSION)}</div>
+          </div>
+          <div class="style-formula-value">
+            <span class="formula-cell">
+              ${perimeter.success
+                ? `<strong>= ${escapeHtml(formatFormulaResult(perimeter.result))}</strong>`
+                : `<span class="field-error">${escapeHtml(perimeter.error)}</span>`}
+              ${formulaHelpButton("style-perimeter", "PERIMETER", "Explain perimeter")}
+            </span>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderStyleFormulaResultRows(rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      const formulaRows = !list.length
+        ? `<p class="stat-hint" style="margin:0;">No style formulas linked to this style.</p>`
+        : list.map((row) => `
             <div class="style-formula-row">
               <div>
                 <div><span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
@@ -5588,7 +5635,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </span>
               </div>
             </div>
-          `).join("")}
+          `).join("");
+      return `
+        <div class="style-formula-results">
+          ${formulaRows}
+          ${renderStylePerimeterRow(list)}
         </div>
       `;
     }
@@ -14836,6 +14887,36 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
     }
 
+    function buildFormulaExplainModel_StylePerimeter() {
+      const fromCalculator = state.currentPage === "cost-calculator";
+      const fg = fromCalculator ? getCostCalculatorStyleFinishedGood() : getSelectedFinishedGood();
+      if (!fg) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const rows = evaluateStyleFormulasForFinishedGood(fg);
+      const perimeter = getStylePerimeterFromFormulaRows(rows);
+      if (!perimeter.success) {
+        return { error: perimeter.error };
+      }
+      const lengthText = formatFormulaResult(perimeter.areaLength);
+      const widthText = formatFormulaResult(perimeter.areaWidth);
+      const resultText = formatFormulaResult(perimeter.result);
+      return {
+        title: "Perimeter",
+        formulaName: "Perimeter",
+        sourceType: "formula",
+        subtitle: fromCalculator ? "Dimensions typed in Cost Calculator" : "",
+        summaryHtml: "Perimeter is always 2 × (Area Length + Area Width). Area Length and Area Width come from the style formulas marked for those values.",
+        steps: [{
+          index: 1,
+          heading: "Perimeter",
+          expression: STYLE_PERIMETER_EXPRESSION,
+          pluggedHtml: `2 × (${escapeHtml(lengthText)} + ${escapeHtml(widthText)}) = <strong>${escapeHtml(resultText)}</strong>`
+        }],
+        finalHtml: `Result: <strong>${escapeHtml(resultText)}</strong>`
+      };
+    }
+
     function buildFormulaExplainModel_StyleFormula(formulaCode) {
       const fromCalculator = state.currentPage === "cost-calculator";
       const fg = fromCalculator ? getCostCalculatorStyleFinishedGood() : getSelectedFinishedGood();
@@ -14908,6 +14989,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
       if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
       if (kind === "style") return buildFormulaExplainModel_StyleFormula(lineId);
+      if (kind === "style-perimeter") return buildFormulaExplainModel_StylePerimeter();
       return buildFormulaExplainModel_BOMLine(kind, lineId);
     }
 
@@ -14977,7 +15059,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter"];
       const resolved = allowed.includes(kind) ? kind : "material";
       const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material";
       state.modal = {
