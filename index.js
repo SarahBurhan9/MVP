@@ -6305,7 +6305,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : emptyRow(8, "No materials added yet.");
       return `
         <div class="table-wrap">
-          <table class="data-table" style="min-width:980px;">
+          <table class="data-table cc-grid-table" style="min-width:980px;">
             <thead>
               <tr>
                 <th>#</th>
@@ -6396,6 +6396,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderCostCalculatorFinishingServices(summary) {
+      const hasFinishingErrors = summary.finishingServices.some((row) => row.calc && row.calc.error);
       const body = summary.finishingServices.length
         ? summary.finishingServices.map((row, index) => {
             const service = getService(row.serviceId);
@@ -6416,17 +6417,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </td>
                 <td>${escapeHtml(methodLabel)}</td>
                 <td>
-                  <span class="formula-cell">
-                    ${escapeHtml(formulaLabel)}
-                    ${formulaHelpButton("cc-service", lineId, "Explain quantity")}
-                  </span>
+                  ${renderFormulaNameWithQty(formulaLabel, !calc.error ? formatQty(calc.qty) : "—", formulaHelpButton("cc-service", lineId, "Explain quantity"))}
                 </td>
-                <td>${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td>${formatCostCalculatorRequiredQty()}</td>
                 <td>
                   ${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}
                   <div class="stat-hint">Service Rates</div>
                 </td>
                 <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+                <td>${formatCostCalculatorLineTotal(calc.cost, calc.error)}</td>
                 <td>
                   <div class="row-actions">
                     <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-finishing-service="${lineId}" title="Calculation breakdown">
@@ -6443,23 +6442,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(8, "No finishing services added yet.");
+        : emptyRow(9, "No finishing services added yet.");
       return `
         <div class="table-wrap">
-          <table class="data-table" style="min-width:980px;">
+          <table class="data-table cc-grid-table" style="min-width:1080px;">
             <thead>
               <tr>
                 <th>#</th>
                 <th>Finishing Service</th>
                 <th>Calculation</th>
                 <th>Formula</th>
-                <th>Qty / Piece</th>
+                <th>Required Qty</th>
                 <th>Rate</th>
                 <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                <th>Total Cost</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>
+            ${summary.finishingServices.length ? renderCostCalculatorOrderSubtotalFooter(summary.finishingCost, hasFinishingErrors) : ""}
           </table>
         </div>
       `;
@@ -6995,6 +6996,96 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `<span class="cc-dim-override" title="${escapeHtml(tips.join(" "))}">[Using ${escapeHtml(parts.join(", "))}]</span>`;
     }
 
+    function formatCostCalculatorRequiredQty() {
+      return hasCostCalculatorOrderQuantity()
+        ? formatQty(Number(state.costCalculator.ccOrderQuantity))
+        : "—";
+    }
+
+    function formatCostCalculatorLineTotal(costPerPiece, hasError) {
+      return formatCostTimesQuantity(
+        costPerPiece,
+        state.costCalculator.ccOrderQuantity,
+        hasError
+      );
+    }
+
+    function renderCostCalculatorOrderSubtotalFooter(costPerPiece, hasError) {
+      const pieceSubtotal = hasError
+        ? `<span class="calc-error-cost">Error</span>`
+        : formatRupees(Number(costPerPiece) || 0);
+      return `
+        <tfoot>
+          <tr class="cc-subtotal-row">
+            <th colspan="6">Subtotal</th>
+            <td class="cc-layer-num">${pieceSubtotal}</td>
+            <td class="cc-layer-num">${formatCostCalculatorLineTotal(costPerPiece, hasError)}</td>
+            <td></td>
+          </tr>
+        </tfoot>
+      `;
+    }
+
+    function renderCostCalculatorLayerCard(row, index, materials, steps) {
+      const material = getRawMaterial(row.rawMaterialId);
+      const calc = row.calc || {};
+      const formula = material ? getMaterialQtyFormula(material) : null;
+      const formulaLabel = formula ? formula.name : "—";
+      const autoDims = getAutoQuantityLW(getCostCalculatorFinishedGood(), calc.dimensionId);
+      return `
+        <div class="cc-layer">
+          <div class="cc-layer-head">
+            <div class="cc-layer-title">${escapeHtml(row.layer)}</div>
+          </div>
+          <label class="form-label" for="cc-layer-mat-${index}">Material</label>
+          <select id="cc-layer-mat-${index}" class="full-select" data-cc-layer-material="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} material">
+            <option value="">Select Material</option>
+            ${materials.map((item) => `
+              <option value="${item.id}" ${Number(row.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
+            `).join("")}
+          </select>
+          ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
+          ${(calc.dimWarnings || []).map((msg) => `<div class="field-error cc-dim-warn">${escapeHtml(msg)}</div>`).join("")}
+          ${row.rawMaterialId ? `
+            <div class="cc-layer-facts">
+              <div><span>Dimension</span><strong>${autoDims ? renderLengthWidthArea(autoDims.L, autoDims.W) : "—"}</strong></div>
+              <div><span>Covered Area</span><strong>${!calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
+            </div>
+            <div class="table-wrap cc-layer-metrics-wrap">
+              <table class="data-table cc-grid-table cc-layer-metrics">
+                <thead>
+                  <tr>
+                    <th>Calculation</th>
+                    <th>Formula</th>
+                    <th>Net Qty</th>
+                    <th>Wastage %</th>
+                    <th>Gross Qty</th>
+                    <th>Required Qty</th>
+                    <th>Rate</th>
+                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                    <th>Total Cost</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Formula</td>
+                    <td>${renderFormulaNameWithQty(formulaLabel, calc.error ? "—" : formatQty(calc.grossQty), formulaHelpButton("cc-material", row.layer, "Explain quantity"))}</td>
+                    <td class="cc-layer-num">${calc.error ? "—" : formatQty(calc.netQty)}</td>
+                    <td class="cc-layer-num">${calc.error ? "—" : formatDecimal(calc.wastagePercent, 2, false)}</td>
+                    <td class="cc-layer-num">${calc.error ? "—" : formatQty(calc.grossQty)}</td>
+                    <td class="cc-layer-num cc-layer-emphasis">${formatCostCalculatorRequiredQty()}</td>
+                    <td class="cc-layer-num">${material && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM)) : "—"}</td>
+                    <td class="cc-layer-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+                    <td class="cc-layer-num cc-layer-emphasis">${formatCostCalculatorLineTotal(calc.cost, calc.error)}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ` : `<p class="stat-hint">Select a material for this ply layer. Calculation details become available after a material is chosen.</p>`}
+        </div>
+      `;
+    }
+
     function renderCostCalculator() {
       const page = document.getElementById("page-cost-calculator");
       if (!page) return;
@@ -7027,30 +7118,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         `
         : emptyRow(6, "Select a style from the list to continue.");
 
-      const layerRows = summary.layers.map((row, index) => {
-        const material = getRawMaterial(row.rawMaterialId);
-        const calc = row.calc;
-        return `
-          <div class="cc-layer">
-            <div class="cc-layer-title">${escapeHtml(row.layer)}</div>
-            <label class="form-label" for="cc-layer-mat-${index}">Material</label>
-            <select id="cc-layer-mat-${index}" class="full-select" data-cc-layer-material="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} material">
-              <option value="">Select Material</option>
-              ${materials.map((item) => `
-                <option value="${item.id}" ${Number(row.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
-              `).join("")}
-            </select>
-            ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
-            ${(calc.dimWarnings || []).map((msg) => `<div class="field-error cc-dim-warn">${escapeHtml(msg)}</div>`).join("")}
-            <div class="cc-metrics">
-              <div><span>Qty</span><strong class="formula-cell">${row.rawMaterialId && !calc.error ? formatQty(calc.qty) : "—"} ${calc.uom ? escapeHtml(calc.uom) : ""}${row.rawMaterialId && !calc.error ? renderCostCalculatorMaterialDimHint(calc) : ""}${row.rawMaterialId ? formulaHelpButton("cc-material", row.layer, "Explain quantity") : ""}</strong></div>
-              <div><span>Rate</span><strong>${row.rawMaterialId && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM)) : "—"}</strong></div>
-              <div><span>Cost ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</span><strong>${row.rawMaterialId && !calc.error ? formatRupees(calc.cost) : (row.rawMaterialId && calc.error ? "Error" : "—")}</strong></div>
-              <div><span>Covered Area</span><strong>${row.rawMaterialId && !calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
-            </div>
-          </div>
-        `;
-      }).join("");
+      const layerRows = summary.layers
+        .map((row, index) => renderCostCalculatorLayerCard(row, index, materials, steps))
+        .join("");
 
       const additionalRows = renderCostCalculatorAdditionalMaterials(summary);
       const serviceRows = renderCostCalculatorServices(summary, steps);
@@ -7141,6 +7211,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <section class="card cc-card">
               <div class="card-body">
                 <div class="cc-step">Step 4: Select Raw Materials</div>
+                <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(steps.ply || ""))}-ply structural layer.</p>
                 ${steps.hasPly ? (layerRows || `<p class="stat-hint">No layers for this ply.</p>`) : `<p class="stat-hint">Complete style, dimensions, and ply to load material layers.</p>`}
                 ${steps.hasPly ? `<div class="cc-total-line"><span>Total Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>` : ""}
               </div>
@@ -7190,7 +7261,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </button>
                 </div>
                 ${finishingRows}
-                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Finishing Service Cost</span><strong>${formatRupees(summary.finishingCost)}</strong></div>` : ""}
               </div>
             </section>
           </div>
