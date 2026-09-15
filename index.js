@@ -3138,6 +3138,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (source === "style") return "From style variable";
       if (source === "formula") return "From formula variable default";
       if (source === "covered_area") return "From COVERED_AREA formula";
+      if (source === "style_covered_area") return "From style Covered Area formula";
+      if (source === "style_perimeter") return "From style Area Length and Area Width";
       if (source === "derived") return "Calculated from L and W";
       return "";
     }
@@ -3188,15 +3190,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { context, units, sources, style, dimUnit };
     }
 
+    function jobDimensionsFromFinishedGood(finishedGood) {
+      const dims = finishedGood && finishedGood.dimensions ? finishedGood.dimensions : {};
+      return {
+        L: numericOrNull(dims.L),
+        W: numericOrNull(dims.W),
+        H: numericOrNull(dims.H)
+      };
+    }
+
     function buildFlatStyleFormulaVariables(finishedGood) {
       const { context, style } = resolveBomDimensionContext(finishedGood);
       const vars = { ...getFormulaVariableDefaults(), ...context };
+      delete vars.L;
+      delete vars.W;
+      delete vars.H;
       if (style) {
         getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
-          if (n !== null) vars[row.variableCode] = n;
+          if (n !== null && row.variableCode !== "L" && row.variableCode !== "W" && row.variableCode !== "H") {
+            vars[row.variableCode] = n;
+          }
         });
       }
+      const job = jobDimensionsFromFinishedGood(finishedGood);
+      if (job.L !== null) vars.L = job.L;
+      if (job.W !== null) vars.W = job.W;
+      if (job.H !== null) vars.H = job.H;
       return vars;
     }
 
@@ -3206,21 +3226,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const L = Number(context.L) || 0;
       const W = Number(context.W) || 0;
       const linearUnit = dimUnit || units.L || units.W || "";
+      const styleMetrics = getStyleFormulaMetrics(finishedGood);
       const rows = BOM_DIMENSION_DISPLAY.map((def) => {
         if (def.kind === "derived" && def.code === "AREA") {
-          const coveredAreaFormula = getFormulaByCode("COVERED_AREA");
-          const areaEval = coveredAreaFormula
-            ? evaluateFormula(coveredAreaFormula.expression, buildFlatStyleFormulaVariables(finishedGood), ["COVERED_AREA"])
-            : { success: false, result: null };
+          const areaEval = evaluateCoveredAreaValue(finishedGood, null, styleMetrics);
           return {
             code: def.code,
             name: def.name,
             value: areaEval.success ? roundTo(areaEval.result, 2) : null,
             unit: squaredDimensionUnit(linearUnit),
-            source: "covered_area"
+            source: areaEval.source || "covered_area"
           };
         }
         if (def.kind === "derived" && def.code === "PERIMETER") {
+          const perimeter = getStylePerimeterFromFormulaRows(styleMetrics.rows);
+          if (perimeter.success) {
+            return {
+              code: def.code,
+              name: def.name,
+              value: roundTo(perimeter.result, 2),
+              unit: linearUnit,
+              source: "style_perimeter"
+            };
+          }
           return {
             code: def.code,
             name: def.name,
@@ -3277,11 +3305,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               const unit = row.unit ? ` ${row.unit}` : "";
               const source = dimensionSourceLabel(row.source);
               const perimeterHint = row.code === "PERIMETER"
-                ? ` <span class="badge badge-muted">Fixed</span> ${fixedFormulaMark("2 × (Length + Width)", "Fixed calculation. Perimeter is always calculated from Length and Width.")}`
+                ? (row.source === "style_perimeter"
+                  ? ` <span class="badge badge-muted">Style</span> ${fixedFormulaMark("2 × (Area Length + Area Width)", "Perimeter uses Area Length and Area Width from style formulas.")}`
+                  : ` <span class="badge badge-muted">Fixed</span> ${fixedFormulaMark("2 × (Length + Width)", "Fixed calculation. Perimeter is always calculated from Length and Width.")}`)
+                : "";
+              const areaHint = row.code === "AREA" && row.source === "style_covered_area"
+                ? ` <span class="badge badge-muted">Style</span>`
                 : "";
               return `
-                <div class="calc-dims-item" title="${escapeHtml(row.code === "PERIMETER" ? "Fixed calculation. Perimeter is always calculated from Length and Width." : source)}">
-                  <span class="calc-dims-name">${escapeHtml(row.name)}${perimeterHint}</span>
+                <div class="calc-dims-item" title="${escapeHtml(row.code === "PERIMETER" && row.source === "style_perimeter" ? "Perimeter uses Area Length and Area Width from style formulas." : (row.code === "PERIMETER" ? "Fixed calculation. Perimeter is always calculated from Length and Width." : source))}">
+                  <span class="calc-dims-name">${escapeHtml(row.name)}${perimeterHint}${areaHint}</span>
                   <span class="calc-dims-value">= ${escapeHtml(valueText)}${escapeHtml(unit)}</span>
                 </div>
               `;
@@ -3343,7 +3376,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             coveredArea: Boolean(formula.coveredArea)
           };
         }
-        const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
+        const calculated = evaluateFormula(formula.expression, variables, [formula.code], { strictJobDimensions: true });
         if (calculated.success) variables[formula.code] = calculated.result;
         return {
           linkId: link.id,
@@ -3399,6 +3432,57 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return false;
     }
 
+    function getStyleFormulaMetrics(finishedGood, evaluatedStyleFormulas) {
+      const rows = evaluatedStyleFormulas || evaluateStyleFormulasForFinishedGood(finishedGood);
+      return {
+        rows,
+        lengthRow: rows.find((row) => isAreaLengthStyleFormula(row)) || null,
+        widthRow: rows.find((row) => isAreaWidthStyleFormula(row)) || null,
+        coveredRow: rows.find((row) => isCoveredAreaStyleFormula(row)) || null
+      };
+    }
+
+    function evaluateCoveredAreaValue(finishedGood, fallbackVars, metrics) {
+      const snap = metrics || getStyleFormulaMetrics(finishedGood);
+      if (snap.coveredRow) {
+        const n = snap.coveredRow.success ? numericOrNull(snap.coveredRow.result) : null;
+        return {
+          success: n !== null,
+          result: n,
+          error: snap.coveredRow.success ? null : snap.coveredRow.error,
+          source: "style_covered_area",
+          code: snap.coveredRow.code
+        };
+      }
+      const vars = fallbackVars || buildFlatStyleFormulaVariables(finishedGood);
+      snap.rows.forEach((row) => {
+        if (row.success && row.code && row.code !== "—") vars[row.code] = row.result;
+      });
+      const areaFormula = getFormulaByCode("COVERED_AREA");
+      if (!areaFormula || !areaFormula.isActive) {
+        return { success: false, result: null, error: "COVERED_AREA formula is not available.", source: "covered_area" };
+      }
+      const evaluated = evaluateFormula(areaFormula.expression, vars, ["COVERED_AREA"]);
+      return {
+        success: evaluated.success,
+        result: evaluated.success ? evaluated.result : null,
+        error: evaluated.success ? null : evaluated.error,
+        source: "covered_area"
+      };
+    }
+
+    function injectStyleFormulaResults(finishedGood, variables) {
+      if (!finishedGood || !variables) return;
+      const snap = getStyleFormulaMetrics(finishedGood);
+      snap.rows.forEach((row) => {
+        if (row.success && row.code && row.code !== "—") variables[row.code] = row.result;
+      });
+      if (snap.coveredRow && snap.coveredRow.success) {
+        const n = numericOrNull(snap.coveredRow.result);
+        if (n !== null) variables.COVERED_AREA = n;
+      }
+    }
+
     function styleFormulaHintKind(row) {
       if (isCoveredAreaStyleFormula(row)) return "coveredArea";
       if (isAreaLengthStyleFormula(row)) return "length";
@@ -3407,25 +3491,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getServiceDimensionOverridesFromStyleFormulas(finishedGood, evaluatedStyleFormulas) {
-      const rows = evaluatedStyleFormulas || evaluateStyleFormulasForFinishedGood(finishedGood);
-      let serviceL = null;
-      let serviceW = null;
-      let serviceLCode = null;
-      let serviceWCode = null;
-      rows.forEach((row) => {
-        if (!row.success) return;
-        const n = numericOrNull(row.result);
-        if (n === null) return;
-        if (isAreaLengthStyleFormula(row)) {
-          serviceL = n;
-          serviceLCode = row.code;
-        }
-        if (isAreaWidthStyleFormula(row)) {
-          serviceW = n;
-          serviceWCode = row.code;
-        }
-      });
-      return { serviceL, serviceW, serviceLCode, serviceWCode };
+      const snap = getStyleFormulaMetrics(finishedGood, evaluatedStyleFormulas);
+      const lengthN = snap.lengthRow && snap.lengthRow.success ? numericOrNull(snap.lengthRow.result) : null;
+      const widthN = snap.widthRow && snap.widthRow.success ? numericOrNull(snap.widthRow.result) : null;
+      return {
+        serviceL: lengthN,
+        serviceW: widthN,
+        serviceLCode: snap.lengthRow ? snap.lengthRow.code : null,
+        serviceWCode: snap.widthRow ? snap.widthRow.code : null
+      };
     }
 
     const STYLE_PERIMETER_EXPRESSION = "2 * (Area Length + Area Width)";
@@ -3465,26 +3539,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function resolveQuantityFormulaLW(finishedGood, dim, defaults) {
       const catalog = defaults || getFormulaVariableDefaults();
       const fgDims = finishedGood?.dimensions ?? {};
-      const styleDims = getServiceDimensionOverridesFromStyleFormulas(finishedGood);
-      const useL = isUsableStyleServiceDim(styleDims.serviceL);
-      const useW = isUsableStyleServiceDim(styleDims.serviceW);
+      const snap = getStyleFormulaMetrics(finishedGood);
       const warnings = [];
-      if (styleDims.serviceL === 0) {
-        warnings.push("⚠️ Area Length formula evaluated to 0. Check style formula.");
+
+      function pickAxis(row, fallback, label) {
+        if (!row) return { value: fallback, used: false, code: null };
+        if (!row.success) {
+          warnings.push("⚠️ " + label + " formula could not be evaluated. Check style formula.");
+          return { value: numericOrNull(row.result), used: true, code: row.code };
+        }
+        const n = numericOrNull(row.result);
+        if (n === 0) warnings.push("⚠️ " + label + " formula evaluated to 0. Check style formula.");
+        return { value: n, used: true, code: row.code };
       }
-      if (styleDims.serviceW === 0) {
-        warnings.push("⚠️ Area Width formula evaluated to 0. Check style formula.");
-      }
+
+      const lengthPick = pickAxis(snap.lengthRow, dim?.L ?? fgDims.L ?? catalog.L, "Area Length");
+      const widthPick = pickAxis(snap.widthRow, dim?.W ?? fgDims.W ?? catalog.W, "Area Width");
       return {
-        L: useL ? styleDims.serviceL : (dim?.L ?? fgDims.L ?? catalog.L),
-        W: useW ? styleDims.serviceW : (dim?.W ?? fgDims.W ?? catalog.W),
-        useL,
-        useW,
+        L: lengthPick.value,
+        W: widthPick.value,
+        useL: lengthPick.used,
+        useW: widthPick.used,
         warnings,
-        serviceL: styleDims.serviceL,
-        serviceW: styleDims.serviceW,
-        serviceLCode: styleDims.serviceLCode,
-        serviceWCode: styleDims.serviceWCode
+        serviceL: lengthPick.used ? lengthPick.value : snap.lengthRow && snap.lengthRow.success ? numericOrNull(snap.lengthRow.result) : null,
+        serviceW: widthPick.used ? widthPick.value : snap.widthRow && snap.widthRow.success ? numericOrNull(snap.widthRow.result) : null,
+        serviceLCode: lengthPick.code,
+        serviceWCode: widthPick.code
       };
     }
 
@@ -4734,7 +4814,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Number.isFinite(number) ? number : null;
     }
 
-    function resolveIdentifier(id, provided, stack) {
+    function resolveIdentifier(id, provided, stack, options) {
       if (id === "SHEET_AREA") {
         const width = numericOrNull(provided ? provided.SHEET_WIDTH : null);
         const length = numericOrNull(provided ? provided.SHEET_LENGTH : null);
@@ -4757,7 +4837,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (stack.includes(id)) {
           return { success: false, error: "Circular formula dependency detected." };
         }
-        const nested = evaluateFormula(dependency.expression, provided, stack.concat(id));
+        const nested = evaluateFormula(dependency.expression, provided, stack.concat(id), options);
         if (!nested.success) return { success: false, error: nested.error };
         return { success: true, value: nested.result };
       }
@@ -4779,14 +4859,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { success: false, error: "Variable " + id + " not configured" };
     }
 
-    function evaluateFormula(expression, provided, stack) {
+    function evaluateFormula(expression, provided, stack, options) {
       const path = stack || [];
       const syntax = validateFormulaSyntax(expression);
       if (!syntax.valid) return { success: false, result: null, error: syntax.error };
 
-      const variables = { ...getFormulaVariableDefaults(), ...(provided || {}) };
+      const incoming = provided && typeof provided === "object" ? provided : {};
+      const variables = { ...getFormulaVariableDefaults(), ...incoming };
+      if (options && options.strictJobDimensions) {
+        ["L", "W", "H"].forEach((code) => {
+          if (!Object.prototype.hasOwnProperty.call(incoming, code) || numericOrNull(incoming[code]) === null) {
+            delete variables[code];
+          }
+        });
+      }
       for (const id of extractIdentifiers(expression)) {
-        const resolved = resolveIdentifier(id, variables, path);
+        const resolved = resolveIdentifier(id, variables, path, options);
         if (!resolved.success) return { success: false, result: null, error: resolved.error };
         variables[id] = resolved.value;
       }
@@ -4881,7 +4969,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const L = roundTo(override.L !== null ? override.L : resolvedDims.L, 2);
       const W = roundTo(override.W !== null ? override.W : resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
-      return {
+      const vars = {
         ...defaults,
         ...styleVals,
         L,
@@ -4903,6 +4991,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         GRAM_TO_KG,
         CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
       };
+      injectStyleFormulaResults(finishedGood, vars);
+      return vars;
     }
 
     function buildOtherMaterialFormulaVariables(finishedGood, material, wastagePercent, dimensionId, formula) {
@@ -4924,7 +5014,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const L = roundTo(resolvedDims.L, 2);
       const W = roundTo(resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
-      return {
+      const vars = {
         ...defaults,
         ...styleVals,
         L,
@@ -4946,6 +5036,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         GRAM_TO_KG,
         CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
       };
+      injectStyleFormulaResults(finishedGood, vars);
+      return vars;
     }
 
     function parseOptionalManualRate(value) {
@@ -5299,16 +5391,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const W = roundTo(override.W !== null ? override.W : resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
       const glueFlap = resolveVariableValue("GLUE_FLAP", finishedGood, defaults.GLUE_FLAP ?? DEFAULT_GLUE_FLAP);
-      const area = evaluateFormula("COVERED_AREA", {
-        ...defaults,
-        ...styleVals,
-        L,
-        W,
-        H,
-        PLY: Number(finishedGood?.ply ?? defaults.PLY),
-        GLUE_FLAP: glueFlap
-      });
-      return {
+      const area = evaluateCoveredAreaValue(finishedGood);
+      const vars = {
         ...defaults,
         ...styleVals,
         L,
@@ -5323,6 +5407,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
         SERVICE_COST: 0
       };
+      injectStyleFormulaResults(finishedGood, vars);
+      return vars;
     }
 
     function calculateServiceCost(serviceLine, context) {
@@ -6550,7 +6636,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         };
       }
       const variables = buildFormulaVariables(fg, material, wastage, null, formula);
-      const areaEval = evaluateFormula("COVERED_AREA", variables, ["COVERED_AREA"]);
+      const areaEval = evaluateCoveredAreaValue(fg);
       return {
         qty: line.grossQty,
         netQty: line.netQty,
@@ -14589,13 +14675,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return (extraByCode && extraByCode[code]) || getFormulaByCode(code) || null;
     }
 
-    function collectNestedFormulas(formula, extraByCode) {
+    function collectNestedFormulas(formula, extraByCode, skipCodes) {
       const ordered = [];
       const seen = new Set();
+      const skip = skipCodes instanceof Set ? skipCodes : new Set(skipCodes || []);
       function visit(item) {
         if (!item || !item.expression || seen.has(item.id)) return;
         seen.add(item.id);
         extractIdentifiers(item.expression).forEach((id) => {
+          if (skip.has(id)) return;
           const dep = lookupFormulaByCode(id, extraByCode);
           if (dep && dep.id !== item.id) visit(dep);
         });
@@ -14791,7 +14879,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const shown = formatExplainNumber(value);
         const extraSteps = [];
         if (opts.coveredArea != null && Number.isFinite(Number(opts.coveredArea))) {
-          extraSteps.push(...buildCoveredAreaExplainStep(variables, tagHints, opts.coveredArea, extraSteps.length));
+          extraSteps.push(...buildCoveredAreaExplainStep(variables, tagHints, opts.coveredArea, extraSteps.length, opts.finishedGood));
         }
         if (includeGrossQty) {
           extraSteps.push(...buildGrossQtyExplainSteps(
@@ -14817,9 +14905,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         };
       }
 
-      const nested = collectNestedFormulas(formula, extraByCode);
+      const styleSnap = opts.finishedGood ? getStyleFormulaMetrics(opts.finishedGood) : null;
+      const skipCodes = styleSnap && styleSnap.coveredRow ? new Set(["COVERED_AREA"]) : null;
+      const nested = collectNestedFormulas(formula, extraByCode, skipCodes);
       const computed = {};
       const steps = [];
+      if (styleSnap && styleSnap.coveredRow && (opts.coveredArea != null || collectNestedFormulas(formula, extraByCode).some((item) => item.code === "COVERED_AREA"))) {
+        const styleSteps = buildCoveredAreaExplainStep(variables, tagHints, styleSnap.coveredRow.result, 0, opts.finishedGood);
+        styleSteps.forEach((step) => steps.push(step));
+        if (styleSnap.coveredRow.success) computed.COVERED_AREA = styleSnap.coveredRow.result;
+        styleSnap.rows.forEach((row) => {
+          if (row.success && row.code && row.code !== "—") computed[row.code] = row.result;
+        });
+      }
       nested.forEach((itemFormula) => {
         const evaluated = evaluateFormula(itemFormula.expression, variables, [itemFormula.code]);
         const result = evaluated.success ? evaluated.result : null;
@@ -14841,8 +14939,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       });
 
-      if (opts.coveredArea != null && Number.isFinite(Number(opts.coveredArea)) && !nested.some((item) => item.code === "COVERED_AREA")) {
-        steps.push(...buildCoveredAreaExplainStep(variables, tagHints, opts.coveredArea, steps.length));
+      if (opts.coveredArea != null && Number.isFinite(Number(opts.coveredArea)) && !nested.some((item) => item.code === "COVERED_AREA") && !(styleSnap && styleSnap.coveredRow)) {
+        steps.push(...buildCoveredAreaExplainStep(variables, tagHints, opts.coveredArea, steps.length, opts.finishedGood));
       }
 
       if (includeGrossQty) {
@@ -14860,7 +14958,41 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function buildCoveredAreaExplainStep(variables, tagHints, coveredArea, startIndex) {
+    function buildCoveredAreaExplainStep(variables, tagHints, coveredArea, startIndex, finishedGood) {
+      const styleSnap = finishedGood ? getStyleFormulaMetrics(finishedGood) : null;
+      if (styleSnap && styleSnap.coveredRow) {
+        const areaFormula = getFormula(styleSnap.coveredRow.formulaId) || getFormulaByCode(styleSnap.coveredRow.code);
+        if (areaFormula) {
+          const styleVars = { ...buildFlatStyleFormulaVariables(finishedGood) };
+          styleSnap.rows.forEach((row) => {
+            if (row.success && row.code && row.code !== "—") styleVars[row.code] = row.result;
+          });
+          const nested = collectNestedFormulas(areaFormula, extraFormulasFromStyleRows(styleSnap.rows));
+          const computed = {};
+          const steps = [];
+          nested.forEach((itemFormula) => {
+            const evaluated = evaluateFormula(itemFormula.expression, styleVars, [itemFormula.code], { strictJobDimensions: true });
+            const result = evaluated.success ? evaluated.result : null;
+            computed[itemFormula.code] = result;
+            const role = styleFormulaHintKind({
+              ...itemFormula,
+              coveredArea: Boolean(itemFormula.coveredArea),
+              serviceLength: Boolean(itemFormula.serviceLength),
+              serviceWidth: Boolean(itemFormula.serviceWidth)
+            });
+            const roleLabel = role === "length" ? "Calculate Length" : role === "width" ? "Calculate Width" : role === "coveredArea" ? "Covered Area" : "";
+            steps.push({
+              index: startIndex + steps.length + 1,
+              heading: (itemFormula.name || itemFormula.code) + " (" + itemFormula.code + ")" + (roleLabel ? " — " + roleLabel : ""),
+              expression: prettyExpressionText(itemFormula.expression),
+              pluggedHtml: "= " + expressionToExplainHtml(itemFormula.expression, styleVars, computed, tagHints) +
+                " = <strong class=\"formula-val\">" + escapeHtml(result == null ? (evaluated.error || "Error") : formatExplainNumber(result)) + "</strong>",
+              result
+            });
+          });
+          return steps;
+        }
+      }
       const areaFormula = getFormulaByCode("COVERED_AREA");
       if (!areaFormula || !areaFormula.isActive) {
         return [{
@@ -14925,6 +15057,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return buildFormulaExplainCore({
         formula: isManual ? null : formula,
         variables,
+        finishedGood: fg,
+        extraByCode: extraFormulasFromStyleRows(evaluateStyleFormulasForFinishedGood(fg)),
         netQty: isService ? line.quantity : line.netQty,
         grossQty: line.grossQty,
         wastagePercent: line.wastagePercent,
@@ -14961,11 +15095,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : {};
       const coveredInQty = collectNestedFormulas(formula).some((item) => item.code === "COVERED_AREA");
       const finalCovered = Number.isFinite(Number(calc.coveredArea))
-        ? `<br>Covered Area: <strong>${escapeHtml(formatQty(calc.coveredArea))} sq.inch</strong> <span class="formula-src">(entered L / W / H)</span>`
+        ? `<br>Covered Area: <strong>${escapeHtml(formatQty(calc.coveredArea))} sq.inch</strong> <span class="formula-src">(style formula using this job size)</span>`
         : "";
       return buildFormulaExplainCore({
         formula,
         variables,
+        finishedGood: fg,
+        extraByCode: extraFormulasFromStyleRows(evaluateStyleFormulasForFinishedGood(fg)),
         netQty: calc.netQty,
         grossQty: calc.grossQty,
         wastagePercent: calc.wastagePercent,
@@ -15003,6 +15139,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return buildFormulaExplainCore({
         formula,
         variables,
+        finishedGood: fg,
         netQty: calc.qty,
         resultValue: calc.qty,
         uom,
@@ -15070,6 +15207,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         variables,
         extraByCode,
         styleRows: rows,
+        finishedGood: fg,
         resultValue: result,
         resultDisplay: result == null ? "—" : formatFormulaResult(result),
         uom: "",
@@ -15106,6 +15244,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return buildFormulaExplainCore({
         formula: formula || { name: "Manual", code: "MANUAL", expression: "" },
         variables,
+        finishedGood: fg,
         netQty: calc.netQty,
         grossQty: calc.grossQty,
         wastagePercent: calc.wastagePercent,
