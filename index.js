@@ -275,6 +275,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         purpose: null,
         description: "Simple length times width for the style blank.",
         expression: "L * W",
+        coveredArea: true,
         isActive: true
       }
     ];
@@ -1665,6 +1666,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           expression: seed.expression,
           serviceLength: Boolean(seed.serviceLength),
           serviceWidth: Boolean(seed.serviceWidth),
+          coveredArea: Boolean(seed.coveredArea),
           isActive: seed.isActive !== false
         });
         added = true;
@@ -3322,7 +3324,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             result: null,
             error: "Linked style formula no longer exists.",
             serviceLength: false,
-            serviceWidth: false
+            serviceWidth: false,
+            coveredArea: false
           };
         }
         if (!formula.isActive) {
@@ -3336,7 +3339,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             result: null,
             error: "This style formula is inactive.",
             serviceLength: Boolean(formula.serviceLength),
-            serviceWidth: Boolean(formula.serviceWidth)
+            serviceWidth: Boolean(formula.serviceWidth),
+            coveredArea: Boolean(formula.coveredArea)
           };
         }
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
@@ -3352,9 +3356,54 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           result: calculated.success ? calculated.result : null,
           error: calculated.success ? null : calculated.error,
           serviceLength: Boolean(formula.serviceLength),
-          serviceWidth: Boolean(formula.serviceWidth)
+          serviceWidth: Boolean(formula.serviceWidth),
+          coveredArea: Boolean(formula.coveredArea)
         };
       });
+    }
+
+    function styleFormulaSearchText(row) {
+      return [row && row.code, row && row.name, row && row.description]
+        .map((part) => String(part || "").toUpperCase())
+        .join(" ");
+    }
+
+    function isCoveredAreaStyleFormula(row) {
+      if (!row) return false;
+      if (row.coveredArea) return true;
+      const code = String(row.code || "").toUpperCase();
+      const text = styleFormulaSearchText(row);
+      if (code === "AREA_CALC" || code === "COVERED_AREA") return true;
+      if (code.includes("COV_AREA") || code.includes("COVERED_AREA")) return true;
+      if (text.includes("COVERED AREA")) return true;
+      return false;
+    }
+
+    function isAreaLengthStyleFormula(row) {
+      if (!row || isCoveredAreaStyleFormula(row)) return false;
+      if (row.serviceLength) return true;
+      const code = String(row.code || "").toUpperCase();
+      const text = styleFormulaSearchText(row);
+      if (/(^|_)(LNG|LEN)(_|$)/.test(code)) return true;
+      if (/\bLENGTH\b/.test(text) && !/\bWIDTH\b/.test(text)) return true;
+      return false;
+    }
+
+    function isAreaWidthStyleFormula(row) {
+      if (!row || isCoveredAreaStyleFormula(row)) return false;
+      if (row.serviceWidth) return true;
+      const code = String(row.code || "").toUpperCase();
+      const text = styleFormulaSearchText(row);
+      if (/(^|_)(WDT|WID)(_|$)/.test(code)) return true;
+      if (/\bWIDTH\b/.test(text)) return true;
+      return false;
+    }
+
+    function styleFormulaHintKind(row) {
+      if (isCoveredAreaStyleFormula(row)) return "coveredArea";
+      if (isAreaLengthStyleFormula(row)) return "length";
+      if (isAreaWidthStyleFormula(row)) return "width";
+      return null;
     }
 
     function getServiceDimensionOverridesFromStyleFormulas(finishedGood, evaluatedStyleFormulas) {
@@ -3364,19 +3413,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       let serviceLCode = null;
       let serviceWCode = null;
       rows.forEach((row) => {
-        if (row.serviceLength && row.success) {
-          const n = numericOrNull(row.result);
-          if (n !== null) {
-            serviceL = n;
-            serviceLCode = row.code;
-          }
+        if (!row.success) return;
+        const n = numericOrNull(row.result);
+        if (n === null) return;
+        if (isAreaLengthStyleFormula(row)) {
+          serviceL = n;
+          serviceLCode = row.code;
         }
-        if (row.serviceWidth && row.success) {
-          const n = numericOrNull(row.result);
-          if (n !== null) {
-            serviceW = n;
-            serviceWCode = row.code;
-          }
+        if (isAreaWidthStyleFormula(row)) {
+          serviceW = n;
+          serviceWCode = row.code;
         }
       });
       return { serviceL, serviceW, serviceLCode, serviceWCode };
@@ -5623,8 +5669,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>
                 <div><span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
                 <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
-                ${row.success && row.serviceLength ? `<div class="stat-hint mono">Area Length = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
-                ${row.success && row.serviceWidth ? `<div class="stat-hint mono">Area Width = ${escapeHtml(formatFormulaResult(row.result))}</div>` : ""}
+                ${(() => {
+                  if (!row.success) return "";
+                  const hint = styleFormulaHintKind(row);
+                  if (hint === "length") return `<div class="stat-hint mono">Area Length = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
+                  if (hint === "width") return `<div class="stat-hint mono">Area Width = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
+                  if (hint === "coveredArea") return `<div class="stat-hint mono">Covered Area = ${escapeHtml(formatFormulaResult(row.result))}</div>`;
+                  return "";
+                })()}
               </div>
               <div class="style-formula-value">
                 <span class="formula-cell">
@@ -10927,6 +10979,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         expression: formula ? formula.expression : "",
         serviceLength: Boolean(formula && formula.serviceLength),
         serviceWidth: Boolean(formula && formula.serviceWidth),
+        coveredArea: Boolean(formula && formula.coveredArea),
         testValues: { ...getFormulaVariableDefaults() },
         testResult: null
       };
@@ -11037,6 +11090,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <label class="fb-flag">
                     <input id="fb-service-width" type="checkbox" ${draft.serviceWidth ? "checked" : ""} />
                     <span>This formula uses Area Width</span>
+                  </label>
+                  <label class="fb-flag">
+                    <input id="fb-covered-area" type="checkbox" ${draft.coveredArea ? "checked" : ""} />
+                    <span>This formula uses Covered Area</span>
                   </label>
                 </div>
               </div>
@@ -11229,6 +11286,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         expression: String(draft.expression).trim(),
         serviceLength: Boolean(draft.serviceLength),
         serviceWidth: Boolean(draft.serviceWidth),
+        coveredArea: Boolean(draft.coveredArea),
         isActive: draft.id ? (getFormula(draft.id)?.isActive !== false) : true
       };
 
@@ -17691,10 +17749,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.id === "fb-service-length") {
           state.modal.draft.serviceLength = event.target.checked;
+          if (event.target.checked) {
+            state.modal.draft.serviceWidth = false;
+            state.modal.draft.coveredArea = false;
+            renderModal();
+            restoreFocus("fb-service-length");
+          }
           return;
         }
         if (event.target.id === "fb-service-width") {
           state.modal.draft.serviceWidth = event.target.checked;
+          if (event.target.checked) {
+            state.modal.draft.serviceLength = false;
+            state.modal.draft.coveredArea = false;
+            renderModal();
+            restoreFocus("fb-service-width");
+          }
+          return;
+        }
+        if (event.target.id === "fb-covered-area") {
+          state.modal.draft.coveredArea = event.target.checked;
+          if (event.target.checked) {
+            state.modal.draft.serviceLength = false;
+            state.modal.draft.serviceWidth = false;
+            renderModal();
+            restoreFocus("fb-covered-area");
+          }
           return;
         }
         if (updateFinishedGoodDraftFromEvent(event.target)) {
