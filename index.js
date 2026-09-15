@@ -13550,7 +13550,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const editing = state.modal.mode === "edit";
-      const tab = state.modal.styleTab === "formulas" ? "formulas" : "info";
       const infoForm = `
         <div class="form-grid">
           <div>
@@ -13639,15 +13638,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="modal-body">
           ${editing ? `
             <div class="section-tabs">
-              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-style-tab="info">Style Info</button>
-              <button type="button" class="section-tab ${tab === "formulas" ? "active" : ""}" data-style-tab="formulas">Style Formulas</button>
+              <button type="button" class="section-tab active">Style Info</button>
             </div>
-            ${tab === "formulas" ? formulasForm : infoForm}
+            ${infoForm}
+            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+              ${formulasForm}
+            </div>
           ` : `${infoForm}`}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-style">${editing ? "Update Style Info" : "Add Style"}</button>` : ""}
+          <button type="button" class="btn btn-primary" id="btn-save-style">${editing ? "Update Style Info" : "Add Style"}</button>
         </div>
       `;
     }
