@@ -3339,12 +3339,56 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return buildFlatStyleFormulaVariables(finishedGood);
     }
 
+    function buildStyleFormulaResultRow(formula, calculated, linkId) {
+      return {
+        linkId: linkId,
+        formulaId: formula.id,
+        code: formula.code,
+        name: formula.name,
+        description: formula.description || formula.name,
+        expression: formula.expression,
+        success: calculated.success,
+        result: calculated.success ? calculated.result : null,
+        error: calculated.success ? null : calculated.error,
+        serviceLength: Boolean(formula.serviceLength),
+        serviceWidth: Boolean(formula.serviceWidth),
+        coveredArea: Boolean(formula.coveredArea)
+      };
+    }
+
+    function appendCoveredAreaDependencyRows(rows, variables) {
+      const list = Array.isArray(rows) ? rows.slice() : [];
+      const covered = list.find((row) => isCoveredAreaStyleFormula(row));
+      if (!covered) return list;
+      const formula = getFormula(covered.formulaId) || getFormulaByCode(covered.code);
+      if (!formula) return list;
+      const extra = extraFormulasFromStyleRows(list);
+      const nested = collectNestedFormulas(formula, extra);
+      const have = new Set(list.map((row) => row.code));
+      const vars = { ...(variables || {}) };
+      list.forEach((row) => {
+        if (row.success && row.code && row.code !== "—") vars[row.code] = row.result;
+      });
+      const extras = [];
+      nested.forEach((item) => {
+        if (!item || !item.code || item.code === formula.code || have.has(item.code)) return;
+        const calculated = evaluateFormula(item.expression, vars, [item.code], { strictJobDimensions: true });
+        if (calculated.success) vars[item.code] = calculated.result;
+        extras.push(buildStyleFormulaResultRow(item, calculated, "dep:" + item.id));
+        have.add(item.code);
+      });
+      if (!extras.length) return list;
+      const coveredIndex = list.findIndex((row) => isCoveredAreaStyleFormula(row));
+      if (coveredIndex < 0) return list.concat(extras);
+      return list.slice(0, coveredIndex).concat(extras, list.slice(coveredIndex));
+    }
+
     function evaluateStyleFormulasForFinishedGood(finishedGood) {
       if (!finishedGood) return [];
       const style = findStyleByName(finishedGood.style);
       if (!style) return [];
       const variables = buildFlatStyleFormulaVariables(finishedGood);
-      return getStyleFormulaLinks(style.id).map((link) => {
+      const rows = getStyleFormulaLinks(style.id).map((link) => {
         const formula = getFormula(link.formulaId);
         if (!formula) {
           return {
@@ -3378,21 +3422,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         const calculated = evaluateFormula(formula.expression, variables, [formula.code], { strictJobDimensions: true });
         if (calculated.success) variables[formula.code] = calculated.result;
-        return {
-          linkId: link.id,
-          formulaId: formula.id,
-          code: formula.code,
-          name: formula.name,
-          description: formula.description || formula.name,
-          expression: formula.expression,
-          success: calculated.success,
-          result: calculated.success ? calculated.result : null,
-          error: calculated.success ? null : calculated.error,
-          serviceLength: Boolean(formula.serviceLength),
-          serviceWidth: Boolean(formula.serviceWidth),
-          coveredArea: Boolean(formula.coveredArea)
-        };
+        return buildStyleFormulaResultRow(formula, calculated, link.id);
       });
+      return appendCoveredAreaDependencyRows(rows, variables);
     }
 
     function styleFormulaSearchText(row) {
@@ -14698,8 +14730,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = getFormula(coveredRow.formulaId) || getFormulaByCode(coveredRow.code);
       if (!formula) return [];
       const nested = collectNestedFormulas(formula, extraFormulasFromStyleRows(allRows));
-      const codes = new Set(nested.map((item) => item.code).filter((code) => code && code !== formula.code));
-      return (allRows || []).filter((row) => row && codes.has(row.code));
+      const byCode = new Map();
+      (allRows || []).forEach((row) => {
+        if (row && row.code && !byCode.has(row.code)) byCode.set(row.code, row);
+      });
+      return nested
+        .map((item) => (item && item.code && item.code !== formula.code ? byCode.get(item.code) : null))
+        .filter(Boolean);
     }
 
     function resolveExplainIdentifier(id, variables, computed) {
