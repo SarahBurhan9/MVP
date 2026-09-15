@@ -14604,7 +14604,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           dimensionId: line.dimensionId != null ? Number(line.dimensionId) : null,
           manualQty: line.manualQty,
           manualRate: line.manualRate,
-          wastagePercent: line.wastagePercent,
+          wastagePercent: line.wastagePercent == null ? "" : line.wastagePercent,
           useCustomDimensions: Boolean(line.useCustomDimensions),
           customLength: line.customLength != null ? line.customLength : "",
           customWidth: line.customWidth != null ? line.customWidth : ""
@@ -14620,7 +14620,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: null,
         manualQty: 1,
         manualRate: null,
-        wastagePercent: DEFAULT_WASTAGE_PERCENT,
+        wastagePercent: "",
         useCustomDimensions: false,
         customLength: "",
         customWidth: ""
@@ -14677,7 +14677,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Manual quantity must be greater than 0." });
         if (!qty.ok) errors.manualQty = qty.error;
       }
-      const wastage = parseByRule(draft.wastagePercent, "wastage", { requiredError: "Wastage cannot be negative." });
+      const wastageInput = draft.wastagePercent == null || draft.wastagePercent === ""
+        ? 0
+        : draft.wastagePercent;
+      const wastage = parseByRule(wastageInput, "wastage", { requiredError: "Wastage cannot be negative." });
       if (!wastage.ok) errors.wastagePercent = wastage.error;
       if (draft.rawMaterialId && draft.layer && findDuplicateMaterial(draft.rawMaterialId, draft.layer, lineId)) {
         errors.duplicate = "This material is already added to the selected layer.";
@@ -15713,8 +15716,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             ` : renderManualQtyAndRateFields("modal-manual-qty", "modal-manual-rate", draft, errors, "Manual quantity")}
             <div>
-              <label class="form-label" for="modal-wastage">Wastage %</label>
-              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${escapeHtml(formatDecimal(draft.wastagePercent, 2, false))}" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
+              <label class="form-label" for="modal-wastage">Wastage % <span class="stat-hint">(Optional)</span></label>
+              <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${draft.wastagePercent == null || draft.wastagePercent === "" ? "" : escapeHtml(formatDecimal(draft.wastagePercent, 2, false))}" placeholder="0" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
               ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
             </div>
           </div>
@@ -16247,7 +16250,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
         manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
         manualRate: storedManualRateFromDraft(draft),
-        wastagePercent: parseByRule(draft.wastagePercent, "wastage").value,
+        wastagePercent: parseByRule(
+          draft.wastagePercent == null || draft.wastagePercent === "" ? 0 : draft.wastagePercent,
+          "wastage"
+        ).value,
         ...customDimensionFields(draft),
         netQty: 0,
         grossQty: 0,
