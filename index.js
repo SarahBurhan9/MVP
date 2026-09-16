@@ -3714,6 +3714,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderCompactLW(L, W) {
+      const length = Number(L);
+      const width = Number(W);
+      if (!Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) return "";
+      return `L = ${escapeHtml(formatQty(length))}, W = ${escapeHtml(formatQty(width))}`;
+    }
+
+    function renderStepTableDimCell(autoDims, customL, customW) {
+      const autoLine = autoDims ? renderCompactLW(autoDims.L, autoDims.W) : "";
+      const customLine = renderCompactLW(customL, customW);
+      if (!autoLine && !customLine) return "—";
+      return `
+        <div class="step-dim-cell">
+          ${autoLine ? `<div>${autoLine}</div>` : ""}
+          ${customLine ? `<div>${customLine}</div>` : ""}
+        </div>
+      `;
+    }
+
     function getCustomDimensionOverride(line) {
       const out = { L: null, W: null, error: null };
       if (!isUseCustomDimensions(line)) return out;
@@ -6300,11 +6319,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const materialBody = materials.map((row, index) => {
         const material = getRawMaterial(row.rawMaterialId);
         const calc = row.calc || {};
-        const formula = row.calculationMethod === "formula"
-          ? getMaterialQtyFormula(material)
-          : getFormula(row.formulaId);
-        const methodLabel = row.calculationMethod === "manual" ? "Manual" : "Formula";
-        const formulaLabel = row.calculationMethod === "formula" && formula ? formula.name : "—";
         const lineId = row.id || row.key;
         return `
           <tr>
@@ -6312,21 +6326,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td>
               <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
-              <div class="stat-hint">${escapeHtml(material ? material.code : "")}${row.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(row.dimensionId))) : ""}</div>
             </td>
-            <td>${escapeHtml(methodLabel)}</td>
-            <td>
-              <span class="formula-cell">
-                ${escapeHtml(formulaLabel)}
-                ${formulaHelpButton("cc-additional-material", lineId, "Explain quantity")}
-              </span>
-            </td>
-            <td>${!calc.error ? formatQty(calc.netQty) : "—"}</td>
-            <td>
-              ${material ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}
-              <div class="stat-hint">Material Rates</div>
-            </td>
-            <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+            <td class="step-num">${!calc.error ? formatQty(calc.netQty) : "—"}</td>
+            <td class="step-num">${material ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-additional-material="${lineId}" title="Calculation breakdown">
@@ -6346,11 +6349,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const serviceBody = services.map((row, index) => {
         const service = getService(row.serviceId);
         const calc = row.calc || {};
-        const formula = row.calculationMethod === "formula"
-          ? getFormula(getServiceDefaultFormulaId(service && service.id))
-          : getFormula(row.formulaId);
-        const methodLabel = row.calculationMethod === "manual" ? "Manual" : "Formula";
-        const formulaLabel = row.calculationMethod === "formula" && formula ? formula.name : "—";
         const lineId = row.id || row.key;
         return `
           <tr>
@@ -6358,21 +6356,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td>
               <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
-              <div class="stat-hint">${escapeHtml(service ? service.code : "")}${row.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(row.dimensionId))) : ""}</div>
             </td>
-            <td>${escapeHtml(methodLabel)}</td>
-            <td>
-              <span class="formula-cell">
-                ${escapeHtml(formulaLabel)}
-                ${formulaHelpButton("cc-service", lineId, "Explain quantity")}
-              </span>
-            </td>
-            <td>${!calc.error ? formatQty(calc.qty) : "—"}</td>
-            <td>
-              ${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}
-              <div class="stat-hint">Material Rates</div>
-            </td>
-            <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+            <td class="step-num">${!calc.error ? formatQty(calc.qty) : "—"}</td>
+            <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-additional-service="${lineId}" title="Calculation breakdown">
@@ -6391,19 +6378,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }).join("");
       const body = (materials.length || services.length)
         ? materialBody + serviceBody
-        : emptyRow(8, "No materials added yet.");
+        : emptyRow(6, "No materials added yet.");
       return `
         <div class="table-wrap">
-          <table class="data-table cc-grid-table" style="min-width:980px;">
+          <table class="data-table step-grid-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Material</th>
-                <th>Calculation</th>
-                <th>Formula</th>
-                <th>Qty / Piece</th>
+                <th>Additional Materials</th>
+                <th>Required Qty</th>
                 <th>Rate</th>
-                <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                <th>Cost / Piece</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -6418,11 +6403,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? summary.services.map((row, index) => {
             const service = getService(row.serviceId);
             const calc = row.calc;
-            const formula = row.calculationMethod === "formula"
-              ? getFormula(getServiceDefaultFormulaId(service && service.id)) || getFormula(row.formulaId) || getFormula(calc.formulaId)
-              : getFormula(row.formulaId);
-            const methodLabel = row.calculationMethod === "manual" ? "Manual" : "Formula";
-            const formulaLabel = row.calculationMethod === "formula" && formula ? formula.name : "—";
             const lineId = row.id || row.key;
             return `
               <tr>
@@ -6430,19 +6410,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <td>
                   <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                   ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
-                  <div class="stat-hint">${escapeHtml(service ? service.code : "")}${!isActiveGeneralService(service) && service ? " · Not an active General service" : ""}</div>
+                  ${!isActiveGeneralService(service) && service ? `<div class="stat-hint">Not an active General service</div>` : ""}
                 </td>
-                <td>${escapeHtml(methodLabel)}</td>
-                <td>
-                  ${renderFormulaNameWithQty(formulaLabel, !calc.error ? formatQty(calc.qty) : "—", formulaHelpButton("cc-service", lineId, "Explain quantity"))}
-                </td>
-                <td>${formatStep6RequiredQty()}</td>
-                <td>
-                  ${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}
-                  <div class="stat-hint">Service Rates</div>
-                </td>
-                <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
-                <td>${formatStep6LineTotal(calc.cost, calc.error)}</td>
+                <td class="step-num">${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
+                <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                 <td>
                   <div class="row-actions">
                     <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-service="${lineId}" title="Calculation breakdown">
@@ -6459,28 +6431,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(9, "No general services found.");
+        : emptyRow(6, "No general services found.");
       const hasServiceErrors = (summary.services || []).some((row) => row.calc && row.calc.error);
       return `
         <div class="table-wrap">
-          <table class="data-table cc-grid-table" style="min-width:1080px;">
+          <table class="data-table step-grid-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Service</th>
-                <th>Calculation</th>
-                <th>Formula</th>
+                <th>Packaging Services</th>
                 <th>Required Qty</th>
                 <th>Rate</th>
-                <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                <th>Total Cost</th>
+                <th>Cost / Piece</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>
-            ${summary.services.length ? renderStep6SubtotalFooter(summary.serviceCost, hasServiceErrors) : ""}
           </table>
         </div>
+        ${summary.services.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${hasServiceErrors ? "Error" : formatRupees(summary.serviceCost)}</strong></div>` : ""}
       `;
     }
 
@@ -6490,11 +6459,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? summary.finishingServices.map((row, index) => {
             const service = getService(row.serviceId);
             const calc = row.calc;
-            const formula = row.calculationMethod === "formula"
-              ? getFormula(getServiceDefaultFormulaId(service && service.id)) || getFormula(row.formulaId) || getFormula(calc.formulaId)
-              : getFormula(row.formulaId);
-            const methodLabel = row.calculationMethod === "manual" ? "Manual" : "Formula";
-            const formulaLabel = row.calculationMethod === "formula" && formula ? formula.name : "—";
             const lineId = row.id || row.key;
             return `
               <tr>
@@ -6502,19 +6466,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <td>
                   <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                   ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
-                  <div class="stat-hint">${escapeHtml(service ? service.code : "")}${row.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(row.dimensionId))) : ""}${!isActiveFinishingService(service) && service ? " · Not an active Finishing service" : ""}</div>
+                  ${!isActiveFinishingService(service) && service ? `<div class="stat-hint">Not an active Finishing service</div>` : ""}
                 </td>
-                <td>${escapeHtml(methodLabel)}</td>
-                <td>
-                  ${renderFormulaNameWithQty(formulaLabel, !calc.error ? formatQty(calc.qty) : "—", formulaHelpButton("cc-service", lineId, "Explain quantity"))}
-                </td>
-                <td>${formatCostCalculatorRequiredQty()}</td>
-                <td>
-                  ${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}
-                  <div class="stat-hint">Service Rates</div>
-                </td>
-                <td>${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
-                <td>${formatCostCalculatorLineTotal(calc.cost, calc.error)}</td>
+                <td class="step-num">${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
+                <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                 <td>
                   <div class="row-actions">
                     <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-finishing-service="${lineId}" title="Calculation breakdown">
@@ -6531,27 +6487,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(9, "No finishing services added yet.");
+        : emptyRow(6, "No finishing services added yet.");
       return `
         <div class="table-wrap">
-          <table class="data-table cc-grid-table" style="min-width:1080px;">
+          <table class="data-table step-grid-table">
             <thead>
               <tr>
                 <th>#</th>
-                <th>Finishing Service</th>
-                <th>Calculation</th>
-                <th>Formula</th>
+                <th>Finishing Services</th>
                 <th>Required Qty</th>
                 <th>Rate</th>
-                <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                <th>Total Cost</th>
+                <th>Cost / Piece</th>
                 <th>Action</th>
               </tr>
             </thead>
             <tbody>${body}</tbody>
-            ${summary.finishingServices.length ? renderCostCalculatorOrderSubtotalFooter(summary.finishingCost, hasFinishingErrors) : ""}
           </table>
         </div>
+        ${summary.finishingServices.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong>${hasFinishingErrors ? "Error" : formatRupees(summary.finishingCost)}</strong></div>` : ""}
       `;
     }
 
@@ -7114,13 +7067,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCostCalculatorLayerCard(row, index, materials, steps) {
       const material = getRawMaterial(row.rawMaterialId);
       const calc = row.calc || {};
-      const formula = material ? getMaterialQtyFormula(material) : null;
-      const formulaLabel = formula ? formula.name : "—";
       const autoDims = getAutoQuantityLW(getCostCalculatorFinishedGood(), calc.dimensionId);
+      const materialTitle = material
+        ? `${material.name}${material.code ? ` (${material.code})` : ""}`
+        : "Select material";
       return `
-        <div class="cc-layer">
-          <div class="cc-layer-head">
-            <div class="cc-layer-title">${escapeHtml(row.layer)}</div>
+        <div class="cc-layer step-liner-block">
+          <div class="step-liner-head">
+            <div class="step-liner-title">${escapeHtml(row.layer)} Material</div>
+            <div class="step-liner-material">${escapeHtml(materialTitle)}</div>
           </div>
           <label class="form-label" for="cc-layer-mat-${index}">Material</label>
           <select id="cc-layer-mat-${index}" class="full-select" data-cc-layer-material="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} material">
@@ -7132,34 +7087,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
           ${(calc.dimWarnings || []).map((msg) => `<div class="field-error cc-dim-warn">${escapeHtml(msg)}</div>`).join("")}
           ${row.rawMaterialId ? `
-            <div class="cc-layer-facts">
-              <div><span>Dimension</span><strong>${autoDims ? renderLengthWidthArea(autoDims.L, autoDims.W) : "—"}</strong></div>
-              <div><span>Covered Area</span><strong>${!calc.error ? formatQty(calc.coveredArea) + " sq.inch" : "—"}</strong></div>
-            </div>
-            <div class="table-wrap cc-layer-metrics-wrap">
-              <table class="data-table cc-grid-table cc-layer-metrics">
+            <div class="table-wrap">
+              <table class="data-table step-grid-table">
                 <thead>
                   <tr>
-                    <th>Calculation</th>
-                    <th>Net Qty</th>
-                    <th>Wastage %</th>
-                    <th>Gross Qty</th>
+                    <th>#</th>
+                    <th>Dimension</th>
                     <th>Required Qty</th>
                     <th>Rate</th>
-                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                    <th>Total Cost</th>
+                    <th>Cost / Piece</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Formula</td>
-                    <td class="cc-layer-num">${calc.error ? "—" : formatQty(calc.netQty)}</td>
-                    <td class="cc-layer-num">${calc.error ? "—" : formatDecimal(calc.wastagePercent, 2, false)}</td>
-                    <td class="cc-layer-num">${calc.error ? "—" : formatQty(calc.grossQty)}</td>
-                    <td class="cc-layer-num cc-layer-emphasis">${formatCostCalculatorRequiredQty()}</td>
-                    <td class="cc-layer-num">${material && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM)) : "—"}</td>
-                    <td class="cc-layer-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
-                    <td class="cc-layer-num cc-layer-emphasis">${formatCostCalculatorLineTotal(calc.cost, calc.error)}</td>
+                    <td>1</td>
+                    <td>${renderStepTableDimCell(autoDims, null, null)}</td>
+                    <td class="step-num">${calc.error ? "—" : formatQty(calc.netQty)}</td>
+                    <td class="step-num">${material && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM)) : "—"}</td>
+                    <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -10658,11 +10603,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const index = options.index;
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
       const missingMaterialId = line && line.rawMaterialId && !material ? line.rawMaterialId : null;
-      const formula = line
-        ? (line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId))
-        : null;
-      const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
-      const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
       const materials = extra
         ? getBomExtraMaterialOptions(line && line.rawMaterialId)
         : getBomSlotMaterialOptions(ply, line && line.rawMaterialId);
@@ -10671,28 +10611,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? `data-bom-extra-material="${line.id}"`
         : `data-bom-layer-material="${escapeHtml(layer)}"`;
       const autoDims = line ? getAutoQuantityLW(getSelectedFinishedGood(), line.dimensionId) : null;
-      const customDims = line && isUseCustomDimensions(line)
-        ? renderLengthWidthArea(line.customLength, line.customWidth)
-        : "—";
+      const materialTitle = material
+        ? `${material.name}${material.code ? ` (${material.code})` : ""}`
+        : (missingMaterialId ? `Missing material (ID: ${missingMaterialId})` : "Select material");
       return `
-        <div class="cc-layer">
-          <div class="cc-layer-head">
-            <div class="cc-layer-title">${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
-            ${line ? `
-              <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
-                  <i data-lucide="calculator"></i>
-                </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit calculation details">
-                  <i data-lucide="pencil"></i>
-                </button>
-                ${extra ? `
-                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
-                    <i data-lucide="trash-2"></i>
-                  </button>
-                ` : ""}
-              </div>
-            ` : ""}
+        <div class="cc-layer step-liner-block">
+          <div class="step-liner-head">
+            <div class="step-liner-title">${escapeHtml(layer)} Material${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
+            <div class="step-liner-material">${escapeHtml(materialTitle)}</div>
           </div>
           <label class="form-label" for="${selectId}">Material</label>
           <select id="${selectId}" class="full-select" ${selectAttr} aria-label="${escapeHtml(layer)} material">
@@ -10705,36 +10631,40 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
-            <div class="cc-layer-facts">
-              <div><span>Dimension</span><strong>${autoDims ? renderLengthWidthArea(autoDims.L, autoDims.W) : "—"}</strong></div>
-              <div><span>Manual Dimension</span><strong>${customDims}</strong></div>
-            </div>
-            <div class="table-wrap cc-layer-metrics-wrap">
-              <table class="data-table cc-grid-table cc-layer-metrics">
+            <div class="table-wrap">
+              <table class="data-table step-grid-table">
                 <thead>
                   <tr>
-                    <th>Calculation</th>
-                    <th>Net Qty</th>
-                    <th>Wastage %</th>
-                    <th>Gross Qty</th>
+                    <th>#</th>
+                    <th>Dimension</th>
                     <th>Required Qty</th>
                     <th>Rate</th>
-                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                    <th>Total Cost</th>
+                    <th>Cost / Piece</th>
+                    <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>${escapeHtml(methodLabel)}</td>
-                    <td class="cc-layer-num">${line.error ? "—" : formatQty(line.netQty)}</td>
+                    <td>1</td>
+                    <td>${renderStepTableDimCell(autoDims, line.customLength, line.customWidth)}</td>
+                    <td class="step-num">${line.error ? "—" : formatQty(line.netQty)}</td>
+                    <td class="step-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+                    <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                     <td>
-                      <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
+                      <div class="row-actions">
+                        <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                          <i data-lucide="calculator"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit calculation details">
+                          <i data-lucide="pencil"></i>
+                        </button>
+                        ${extra ? `
+                          <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
+                            <i data-lucide="trash-2"></i>
+                          </button>
+                        ` : ""}
+                      </div>
                     </td>
-                    <td class="cc-layer-num">${line.error ? "—" : formatQty(line.grossQty)}</td>
-                    <td class="cc-layer-num cc-layer-emphasis">${formatBomRequiredQtyFromOrder()}</td>
-                    <td class="cc-layer-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
-                    <td class="cc-layer-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
-                    <td class="cc-layer-num cc-layer-emphasis">${formatBomLineOrderTotal(line.costPerPiece, line.error)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -10915,32 +10845,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         || additionalRows.some((line) => line.error);
       const extraBody = extraRows.map((line, index) => {
         const material = getRawMaterial(line.rawMaterialId);
-        const formula = line.calculationMethod === "formula"
-          ? getMaterialQtyFormula(material)
-          : getFormula(line.formulaId);
-        const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
-        const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
         return `
           <tr>
             <td>${index + 1}</td>
             <td>
               <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
-              <div class="stat-hint">${escapeHtml(material ? material.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
             </td>
-            <td>${escapeHtml(methodLabel)}</td>
-            <td>
-              <span class="formula-cell">
-                ${escapeHtml(formulaLabel)}
-                ${formulaHelpButton("material", line.id, "Explain quantity")}
-              </span>
-            </td>
-            <td>${formatQty(line.netQty)}</td>
-            <td>
-              ${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}
-              <div class="stat-hint">Material Rates</div>
-            </td>
-            <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num">${formatQty(line.netQty)}</td>
+            <td class="step-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
@@ -10959,32 +10873,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }).join("");
       const serviceBody = additionalRows.map((line, index) => {
         const service = getService(line.serviceId);
-        const formula = line.calculationMethod === "formula"
-          ? getFormula(getServiceDefaultFormulaId(service && service.id))
-          : getFormula(line.formulaId);
-        const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
-        const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
         return `
           <tr>
             <td>${extraRows.length + index + 1}</td>
             <td>
               <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
-              <div class="stat-hint">${escapeHtml(service ? service.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
             </td>
-            <td>${escapeHtml(methodLabel)}</td>
-            <td>
-              <span class="formula-cell">
-                ${escapeHtml(formulaLabel)}
-                ${formulaHelpButton("service", line.id, "Explain quantity")}
-              </span>
-            </td>
-            <td>${formatQty(line.quantity)}</td>
-            <td>
-              ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
-              <div class="stat-hint">Material Rates</div>
-            </td>
-            <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num">${formatQty(line.quantity)}</td>
+            <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
@@ -11003,31 +10901,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }).join("");
       const additionalBody = (extraRows.length || additionalRows.length)
         ? extraBody + serviceBody
-        : emptyRow(8, "No materials added yet.");
+        : emptyRow(6, "No materials added yet.");
       root.innerHTML = `
         <section class="card cc-card">
           <div class="card-body">
-            <div class="cc-step">Step ${getBomVisibleStepNumbers().otherMaterials}: Additional materials</div>
             <div class="section-head" style="margin-top:0;">
               <div>
-                <div class="section-title">Additional materials</div>
-                <p class="stat-hint" style="margin:0;">Add Block, Film, Plate, and similar items here. New lines load from Raw Material Master. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().otherMaterials}: Additional materials</div>
+                <div class="section-title">Additional Materials</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-additional-service">
                 <i data-lucide="plus"></i> Add Material
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table" style="min-width:980px;">
+              <table class="data-table step-grid-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Material</th>
-                    <th>Calculation</th>
-                    <th>Formula</th>
-                    <th>Qty / Piece</th>
+                    <th>Additional Materials</th>
+                    <th>Required Qty</th>
                     <th>Rate</th>
-                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
+                    <th>Cost / Piece</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -11058,30 +10953,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const body = rows.length
           ? rows.map((line, index) => {
               const service = getService(line.serviceId);
-              const formula = line.calculationMethod === "formula"
-                ? getFormula(getServiceDefaultFormulaId(service && service.id))
-                : getFormula(line.formulaId);
-              const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
-              const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
               return `
                 <tr>
                   <td>${index + 1}</td>
                   <td>
                     <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
-                    <div class="stat-hint">${escapeHtml(service ? service.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
                   </td>
-                  <td>${escapeHtml(methodLabel)}</td>
-                  <td>
-                    ${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.quantity), formulaHelpButton("service", line.id, "Explain quantity"))}
-                  </td>
-                  <td>${formatStep6RequiredQty()}</td>
-                  <td>
-                    ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
-                    <div class="stat-hint">Service Rates</div>
-                  </td>
-                  <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
-                  <td>${formatStep6LineTotal(line.costPerPiece, line.error)}</td>
+                  <td class="step-num">${line.error ? "—" : formatQty(line.quantity)}</td>
+                  <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
+                  <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-service="${line.id}" title="Calculation breakdown">
@@ -11098,7 +10979,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </tr>
               `;
             }).join("")
-          : emptyRow(9, "No services added yet.");
+          : emptyRow(6, "No services added yet.");
 
       root.innerHTML = `
         <div class="card">
@@ -11106,31 +10987,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="section-head">
               <div>
                 <div class="cc-step">Step ${getBomVisibleStepNumbers().services}: Select Packaging Services</div>
-                <div class="section-title">Conversion steps</div>
+                <div class="section-title">Conversion Steps</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-service" ${hasFg ? "" : "disabled"}>
                 <i data-lucide="plus"></i> Add Services
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table cc-grid-table" style="min-width:1080px;">
+              <table class="data-table step-grid-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Service</th>
-                    <th>Calculation</th>
-                    <th>Formula</th>
+                    <th>Packaging Services</th>
                     <th>Required Qty</th>
                     <th>Rate</th>
-                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                    <th>Total Cost</th>
+                    <th>Cost / Piece</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>${body}</tbody>
-                ${rows.length ? renderStep6SubtotalFooter(state.totalServiceCost, hasServiceErrors) : ""}
               </table>
             </div>
+            ${rows.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${hasServiceErrors ? "Error" : formatRupees(state.totalServiceCost)}</strong></div>` : ""}
           </div>
         </div>
       `;
@@ -11150,30 +11028,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const body = rows.length
           ? rows.map((line, index) => {
               const service = getService(line.serviceId);
-              const formula = line.calculationMethod === "formula"
-                ? getFormula(getServiceDefaultFormulaId(service && service.id))
-                : getFormula(line.formulaId);
-              const methodLabel = line.calculationMethod === "manual" ? "Manual" : "Formula";
-              const formulaLabel = line.calculationMethod === "formula" && formula ? formula.name : "—";
               return `
                 <tr>
                   <td>${index + 1}</td>
                   <td>
                     <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
-                    <div class="stat-hint">${escapeHtml(service ? service.code : "")}${line.dimensionId ? " · " + escapeHtml(formatDimensionChipLabel(getDimension(line.dimensionId))) : ""}</div>
                   </td>
-                  <td>${escapeHtml(methodLabel)}</td>
-                  <td>
-                    ${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.quantity), formulaHelpButton("service", line.id, "Explain quantity"))}
-                  </td>
-                  <td>${formatBomRequiredQtyFromOrder()}</td>
-                  <td>
-                    ${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}
-                    <div class="stat-hint">Service Rates</div>
-                  </td>
-                  <td>${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
-                  <td>${formatBomLineOrderTotal(line.costPerPiece, line.error)}</td>
+                  <td class="step-num">${line.error ? "—" : formatQty(line.quantity)}</td>
+                  <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
+                  <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
@@ -11190,7 +11054,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </tr>
               `;
             }).join("")
-          : emptyRow(9, "No finishing services added yet.");
+          : emptyRow(6, "No finishing services added yet.");
 
       root.innerHTML = `
         <div class="card">
@@ -11198,31 +11062,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="section-head">
               <div>
                 <div class="cc-step">Step ${getBomVisibleStepNumbers().finishing}: Finishing Services</div>
-                <div class="section-title">Finishing steps</div>
+                <div class="section-title">Finishing Steps</div>
               </div>
               <button type="button" class="btn btn-primary" id="btn-add-finishing-service" ${hasFg ? "" : "disabled"}>
                 <i data-lucide="plus"></i> Add Finishing Service
               </button>
             </div>
             <div class="table-wrap">
-              <table class="data-table cc-grid-table" style="min-width:1080px;">
+              <table class="data-table step-grid-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Finishing Service</th>
-                    <th>Calculation</th>
-                    <th>Formula</th>
+                    <th>Finishing Services</th>
                     <th>Required Qty</th>
                     <th>Rate</th>
-                    <th title="${escapeHtml(FIXED_COST_FORMULAS.lineCost.description)}">Cost / Piece ${fixedFormulaMark(FIXED_COST_FORMULAS.lineCost.formula, FIXED_COST_FORMULAS.lineCost.description)}</th>
-                    <th>Total Cost</th>
+                    <th>Cost / Piece</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>${body}</tbody>
-                ${rows.length ? renderBomStepSubtotalFooter(state.totalFinishingServiceCost, hasFinishingErrors) : ""}
               </table>
             </div>
+            ${rows.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong>${hasFinishingErrors ? "Error" : formatRupees(state.totalFinishingServiceCost)}</strong></div>` : ""}
           </div>
         </div>
       `;
