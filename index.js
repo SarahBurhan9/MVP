@@ -462,12 +462,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         description: "Fixed. Color cost is colors × rate per color."
       },
       finalCost: {
-        formula: "Material Total + Service Total + Finishing Total",
-        description: "Fixed. Final Cost is Material Total Cost + Service Total Cost + Finishing Services Total Cost. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
+        formula: "(Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity)",
+        description: "Fixed. Final Cost is Material Per Piece × Order Quantity, plus Service Per Piece × 1,000 (Service Total), plus Finishing Per Piece × Order Quantity. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
       },
       finalCostCalculator: {
-        formula: "Material Total + Service Total + Finishing Total",
-        description: "Fixed. Final Cost is Material Total Cost + Service Total Cost + Finishing Services Total Cost. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
+        formula: "(Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity)",
+        description: "Fixed. Final Cost is Material Per Piece × Order Quantity, plus Service Per Piece × 1,000 (Service Total), plus Finishing Per Piece × Order Quantity. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
       },
       materialTotal: {
         formula: "Material Per Piece × Order Quantity",
@@ -628,6 +628,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       showCalculatedDimensions: false,
       showProductInformationDetails: false,
       showStyleFormulasDetails: false,
+      costBreakdownDrawer: null,
       ccStyleSelectorOpen: false,
       ccStyleSearch: "",
       fsSelectorOpen: false,
@@ -7381,30 +7382,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </select>
                 </div>
               </div>
-              <div class="cc-summary-line"><span>Material Per Piece Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Material Total Cost", FIXED_COST_FORMULAS.materialTotal.formula, FIXED_COST_FORMULAS.materialTotal.description)}<strong>${formatCostTimesQuantity(summary.materialCost, state.costCalculator.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
-              <div class="cc-summary-line"><span>Service Per Piece Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
-              <div class="cc-summary-line"><span>Service Total Cost</span><strong>${formatStep6LineTotal(summary.serviceCost, ccHasCalcErrors)}</strong></div>
-              <div class="cc-summary-line"><span>Finishing Services Per Piece Cost</span><strong>${formatRupees(summary.finishingCost)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Finishing Services Total Cost", FIXED_COST_FORMULAS.finishingTotal.formula, FIXED_COST_FORMULAS.finishingTotal.description)}<strong>${formatCostTimesQuantity(summary.finishingCost, state.costCalculator.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
-              ${summary.colorCost > 0 ? `<div class="cc-summary-line">${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}<strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
-              <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Final Cost", FIXED_COST_FORMULAS.finalCostCalculator.formula, FIXED_COST_FORMULAS.finalCostCalculator.description)}<strong>${formatRupees(summary.batchFinal)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost / 1 Piece", FIXED_COST_FORMULAS.per1.formula, FIXED_COST_FORMULAS.per1.description)}<strong>${formatRupees(summary.per1)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost / 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}<strong>${formatRupees(summary.per100)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost / 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}<strong>${formatRupees(summary.per500)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost / 1,000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}<strong>${formatRupees(summary.per1000)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Cost / Given Quantity", FIXED_COST_FORMULAS.givenQuantity.formula, FIXED_COST_FORMULAS.givenQuantity.description)}<strong>${formatPackGivenCost(summary.given, ccHasCalcErrors, formatRupees)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}<strong>${formatRupees(summary.otherMaterialCost)}</strong></div>
+              <div class="cc-summary-line cc-summary-total"><span>Final Cost</span><strong>${formatRupees(summary.batchFinal)}</strong></div>
+              ${summary.colorCost > 0 ? `<div class="cc-summary-line"><span>Color Printing Cost</span><strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
+              <div class="cost-summary-actions">
+                <button type="button" class="btn btn-primary" id="btn-view-cc-cost-breakdown">
+                  <i data-lucide="list"></i> View Cost Breakdown
+                </button>
+              </div>
               <div class="cc-actions">
                 <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
                 <button type="button" class="btn" id="btn-cc-export-pdf">Export PDF</button>
               </div>
+              <p class="stat-hint" style="margin-top:12px;">Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity).</p>
             </div>
           </aside>
         </div>
       `;
       bindCostCalculatorCostingExtras();
       renderCostCalculatorStylePicker();
+      if (state.costBreakdownDrawer === "cc") refreshOpenCostBreakdownDrawer();
     }
 
     function getBomMaterialSlotLayout(finishedGood, materials) {
@@ -8233,8 +8229,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         `<li>${escapeHtml(item.label)} (${escapeHtml(item.section)}): ${escapeHtml(item.error)}</li>`
       )).join("");
       return `
-        <div class="field-error cost-summary-errors">
-          <div>⚠ Error calculating cost — fix these first:</div>
+        <div class="cost-alert" role="alert">
+          <div class="cost-alert-title">Error calculating cost — fix these first</div>
           <ul>${items}</ul>
         </div>
       `;
@@ -9586,7 +9582,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td>
                 <div class="fm-name">${escapeHtml(item.name)}</div>
               </td>
-              <td>${escapeHtml(item.description || "—")}</td>
+              <td class="fm-desc-cell">${escapeHtml(item.description || "—")}</td>
               <td><span class="badge badge-info">${getStyleVariables(item.id).length} variables</span></td>
               <td><span class="badge badge-muted">${getStyleFormulaLinks(item.id).length} formulas</span></td>
               <td>${statusBadge(item.status)}</td>
@@ -9634,7 +9630,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <th class="fm-num">#</th>
                     <th>Style Name</th>
-                    <th>Description</th>
+                    <th class="fm-desc-cell">Description</th>
                     <th>Variables</th>
                     <th>Formulas</th>
                     <th>Status</th>
@@ -10106,7 +10102,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: "bom-materials-root", label: "Raw Materials" },
       { id: "bom-other-materials-root", label: "Additional materials" },
       { id: "bom-services-root", label: "Select Packaging Services" },
-      { id: "bom-finishing-root", label: "Finishing Services" }
+      { id: "bom-finishing-root", label: "Finishing Services" },
+      { id: "bom-cost-root", label: "Cost Summary" }
     ];
 
     function getBomVisibleStepNumbers() {
@@ -10120,6 +10117,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         steps.otherMaterials = n++;
         steps.services = n++;
         steps.finishing = n++;
+        steps.costSummary = n++;
       }
       return steps;
     }
@@ -10187,8 +10185,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div id="bom-other-materials-root"></div>
             <div id="bom-services-root"></div>
             <div id="bom-finishing-root"></div>
+            <div id="bom-cost-root"></div>
           </div>
-          <aside id="bom-cost-root"></aside>
         </div>
       `;
       renderFinishedGoodSelector();
@@ -11166,9 +11164,138 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function closeCostBreakdownDrawer() {
+      state.costBreakdownDrawer = null;
+      const backdrop = document.getElementById("cost-drawer-backdrop");
+      const drawer = document.getElementById("cost-drawer");
+      if (backdrop) {
+        backdrop.classList.remove("show");
+        backdrop.hidden = true;
+      }
+      if (drawer) drawer.innerHTML = "";
+    }
+
+    function renderCostBreakdownTableRows(rows) {
+      let currentGroup = null;
+      return rows.map((row) => {
+        const groupHtml = row.group && row.group !== currentGroup
+          ? ((currentGroup = row.group), `<div class="cost-receipt-group">${escapeHtml(row.group)}</div>`)
+          : "";
+        return `
+          ${groupHtml}
+          <div class="cost-receipt-row${row.tone ? " is-" + escapeHtml(row.tone) : ""}">
+            <span class="cost-receipt-label">${escapeHtml(row.label)}</span>
+            <span class="cost-receipt-amount">${row.valueHtml}</span>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function getBomCostBreakdownRows(hasCalcErrors) {
+      const money = (value) => hasCalcErrors
+        ? `<span class="calc-error-cost">Error</span>`
+        : formatCurrency(value);
+      return [
+        { group: "Materials", label: "Material Per Piece Cost", valueHtml: money(state.totalMaterialCost) },
+        { group: "Materials", label: "Material Total Cost", valueHtml: formatBomLineOrderTotal(state.totalMaterialCost, hasCalcErrors) },
+        { group: "Services", label: "Service Per Piece Cost", valueHtml: money(state.totalServiceCost) },
+        { group: "Services", label: "Service Total Cost", valueHtml: formatStep6LineTotal(state.totalServiceCost, hasCalcErrors) },
+        { group: "Finishing", label: "Finishing Services Cost", valueHtml: money(state.totalFinishingServiceCost) },
+        { group: "Finishing", label: "Finishing Services Total Cost", valueHtml: formatBomLineOrderTotal(state.totalFinishingServiceCost, hasCalcErrors) },
+        { group: "Unit costs", label: "Cost / 1 Piece", valueHtml: money(state.costPer1) },
+        { group: "Unit costs", label: "Cost / 100", valueHtml: money(state.costPer100) },
+        { group: "Unit costs", label: "Cost / 500", valueHtml: money(state.costPer500) },
+        { group: "Unit costs", label: "Cost / 1,000", valueHtml: money(state.costPer1000) },
+        { group: "Unit costs", label: "Cost / Quantity", valueHtml: formatPackGivenCost(state.costPerGivenQuantity, hasCalcErrors, formatCurrency) },
+        { group: "Other", label: "Additional Cost", valueHtml: money(calculateTotalConsumableMaterialCost()) }
+      ];
+    }
+
+    function getCostCalculatorBreakdownRows(summary, hasCalcErrors) {
+      const money = (value) => hasCalcErrors
+        ? `<span class="calc-error-cost">Error</span>`
+        : formatRupees(value);
+      const cc = state.costCalculator || {};
+      return [
+        { group: "Materials", label: "Material Per Piece Cost", valueHtml: money(summary.materialCost) },
+        { group: "Materials", label: "Material Total Cost", valueHtml: formatCostTimesQuantity(summary.materialCost, cc.ccOrderQuantity, hasCalcErrors) },
+        { group: "Services", label: "Service Per Piece Cost", valueHtml: money(summary.serviceCost) },
+        { group: "Services", label: "Service Total Cost", valueHtml: formatStep6LineTotal(summary.serviceCost, hasCalcErrors) },
+        { group: "Finishing", label: "Finishing Services Cost", valueHtml: money(summary.finishingCost) },
+        { group: "Finishing", label: "Finishing Services Total Cost", valueHtml: formatCostTimesQuantity(summary.finishingCost, cc.ccOrderQuantity, hasCalcErrors) },
+        { group: "Unit costs", label: "Cost / 1 Piece", valueHtml: money(summary.per1) },
+        { group: "Unit costs", label: "Cost / 100", valueHtml: money(summary.per100) },
+        { group: "Unit costs", label: "Cost / 500", valueHtml: money(summary.per500) },
+        { group: "Unit costs", label: "Cost / 1,000", valueHtml: money(summary.per1000) },
+        { group: "Unit costs", label: "Cost / Quantity", valueHtml: formatPackGivenCost(summary.given, hasCalcErrors, formatRupees) },
+        { group: "Other", label: "Additional Cost", valueHtml: money(summary.otherMaterialCost) }
+      ];
+    }
+
+    function openCostBreakdownDrawer(source) {
+      const backdrop = document.getElementById("cost-drawer-backdrop");
+      const drawer = document.getElementById("cost-drawer");
+      if (!backdrop || !drawer) return;
+      state.costBreakdownDrawer = source;
+      let title = "Cost Breakdown";
+      let rows = [];
+      let hasCalcErrors = false;
+      if (source === "bom") {
+        try {
+          recalculateBOMCosts();
+        } catch (error) {
+          console.error("Could not refresh BOM costs for breakdown", error);
+        }
+        hasCalcErrors = collectBomCalculationErrors().length > 0;
+        rows = getBomCostBreakdownRows(hasCalcErrors);
+      } else {
+        const summary = updateCostCalculatorSummary();
+        hasCalcErrors = summary.layers.some((row) => row.calc.error)
+          || summary.otherLayers.some((row) => row.calc.error)
+          || (summary.additionalMaterials || []).some((row) => row.calc.error)
+          || summary.services.some((row) => row.calc.error)
+          || summary.finishingServices.some((row) => row.calc.error)
+          || (summary.additionalServices || []).some((row) => row.calc.error);
+        rows = getCostCalculatorBreakdownRows(summary, hasCalcErrors);
+      }
+      drawer.innerHTML = `
+        <div class="cost-drawer-accent" aria-hidden="true"></div>
+        <div class="cost-drawer-header">
+          <div>
+            <strong id="cost-drawer-title">${escapeHtml(title)}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-icon" id="btn-close-cost-drawer" aria-label="Close cost breakdown">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
+        <div class="cost-drawer-body">
+          ${hasCalcErrors ? `<p class="cost-drawer-note">Fix rate issues in Steps 4–7 to see amounts.</p>` : ""}
+          <div class="cost-receipt">
+            ${renderCostBreakdownTableRows(rows)}
+          </div>
+        </div>
+        <div class="cost-drawer-footer">
+          <p class="stat-hint">Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity).</p>
+        </div>
+      `;
+      backdrop.hidden = false;
+      requestAnimationFrame(() => backdrop.classList.add("show"));
+      refreshIcons();
+    }
+
+    function refreshOpenCostBreakdownDrawer() {
+      if (!state.costBreakdownDrawer) return;
+      openCostBreakdownDrawer(state.costBreakdownDrawer);
+    }
+
     function renderCostSummary() {
       const root = document.getElementById("bom-cost-root");
       if (!root) return;
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
+        root.innerHTML = "";
+        return;
+      }
       const calcErrors = collectBomCalculationErrors();
       const hasCalcErrors = calcErrors.length > 0;
       const showColorCost = hasBomColorCost();
@@ -11186,124 +11313,123 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const orderQtyValue = state.bomOrderQuantity == null || state.bomOrderQuantity === ""
         ? ""
         : formatDecimal(state.bomOrderQuantity, 4, false);
+      const finalCostDisplay = hasCalcErrors
+        ? `<span class="cost-metric-error">Error calculating cost</span>`
+        : formatCurrency(state.batchFinalCost);
+      const saleCostDisplay = hasCalcErrors
+        ? `<span class="cost-metric-error">Error calculating cost</span>`
+        : formatCurrency(state.saleCost);
+      const showCostMix = !hasCalcErrors && total > 0;
       root.innerHTML = `
         <div class="card cost-summary">
           <div class="card-body">
-            <div class="section-kicker">Cost Summary (PKR)</div>
-            <div class="section-title" style="margin-bottom:12px;">Per piece roll-up</div>
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().costSummary}: Cost Summary</div>
+            <div class="section-title cost-summary-title">Per piece roll-up</div>
             ${renderBomCalculationErrorBanner(calcErrors)}
-            <div class="cost-optional-row">
-              <div class="cost-optional-field">
-                <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
-                <input class="wastage-input" type="text" inputmode="numeric" id="bom-number-of-colors" value="${escapeHtml(colorsValue)}" placeholder="Optional" aria-label="Number of colors" />
+            <div class="cost-summary-layout">
+              <div class="cost-summary-main">
+                <section class="cost-summary-zone" aria-label="Order inputs">
+                  <div class="cost-zone-label">Order</div>
+                  <div class="cost-order-panel">
+                    <div class="cost-optional-rows">
+                      <div class="cost-optional-row">
+                        <div class="cost-optional-field">
+                          <label class="form-label" for="bom-number-of-colors">Number of Colors</label>
+                          <input class="wastage-input" type="text" inputmode="numeric" id="bom-number-of-colors" value="${escapeHtml(colorsValue)}" placeholder="Optional" aria-label="Number of colors" />
+                        </div>
+                        <div class="cost-optional-field">
+                          <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
+                          <input class="wastage-input" type="number" min="0.01" max="999999.99" step="0.01" id="bom-color-rate" value="${escapeHtml(colorRateValue)}" placeholder="Optional" aria-label="Rate per color in rupees" />
+                        </div>
+                      </div>
+                      <div class="cost-optional-row">
+                        <div class="cost-optional-field">
+                          <label class="form-label" for="bom-order-quantity">Order Quantity</label>
+                          <input class="wastage-input" type="number" min="0.0001" max="999999" step="0.0001" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" placeholder="Optional" aria-label="Order quantity" />
+                        </div>
+                        <div class="cost-optional-field">
+                          <label class="form-label" for="bom-order-quantity-uom">UOM</label>
+                          <select id="bom-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
+                            ${finishedGoodUomOptions(state.bomOrderQuantityUOM || "pieces")}
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    ${showColorCost ? `
+                    <div class="cost-color-line">
+                      <span>Color Printing Cost</span>
+                      <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalColorCost)}</strong>
+                    </div>
+                    ` : ""}
+                  </div>
+                </section>
+
+                <section class="cost-summary-zone" aria-label="Pricing">
+                  <div class="cost-zone-label">Pricing</div>
+                  <div class="cost-metric cost-metric-final">
+                    <span class="cost-metric-label">Final Cost</span>
+                    <strong class="cost-metric-value">${finalCostDisplay}</strong>
+                  </div>
+                  <div class="cost-margin-row">
+                    <div class="cost-margin-field">
+                      <label class="form-label" for="bom-profit-percent">Profit %</label>
+                      <div class="cost-input-suffix">
+                        <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" aria-label="Profit percent" />
+                        <span aria-hidden="true">%</span>
+                      </div>
+                    </div>
+                    <div class="cost-margin-field">
+                      <label class="form-label" for="bom-overhead-percent">Overhead %</label>
+                      <div class="cost-input-suffix">
+                        <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-overhead-percent" value="${escapeHtml(formatDecimal(state.bomOverheadPercent, 2, false))}" aria-label="Overhead percent" />
+                        <span aria-hidden="true">%</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="cost-metric cost-metric-sale">
+                    <span class="cost-metric-label">Sale Cost</span>
+                    <strong class="cost-metric-value">${saleCostDisplay}</strong>
+                  </div>
+                </section>
               </div>
-              <div class="cost-optional-field">
-                <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
-                <input class="wastage-input" type="number" min="0.01" max="999999.99" step="0.01" id="bom-color-rate" value="${escapeHtml(colorRateValue)}" placeholder="Optional" aria-label="Rate per color in rupees" />
-              </div>
+
+              <aside class="cost-summary-aside" aria-label="Cost mix and actions">
+                <div class="cost-zone-label">Breakdown</div>
+                <p class="cost-aside-blurb">Open the full material, service, and finishing roll-up.</p>
+                ${showCostMix ? `
+                <div class="cost-bars">
+                  <div class="cost-zone-label">Cost mix</div>
+                  <div class="cost-bar">
+                    <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
+                    <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
+                    <div class="cost-bar-finishing" style="width:${escapeHtml(finishingPct)}%;"></div>
+                    ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(colorPct)}%;"></div>` : ""}
+                  </div>
+                  <div class="cost-legend cost-legend-wide">
+                    <span><i class="cost-dot cost-dot-mat" aria-hidden="true"></i>Material ${formatNumber(materialPct, 1)}%</span>
+                    <span><i class="cost-dot cost-dot-svc" aria-hidden="true"></i>Service ${formatNumber(servicePct, 1)}%</span>
+                    <span><i class="cost-dot cost-dot-finishing" aria-hidden="true"></i>Finishing ${formatNumber(finishingPct, 1)}%</span>
+                    ${showColorCost ? `<span><i class="cost-dot cost-dot-color" aria-hidden="true"></i>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
+                  </div>
+                </div>
+                ` : `
+                <p class="cost-mix-empty">Cost mix appears when rates are set and costs calculate.</p>
+                `}
+                <div class="cost-summary-actions">
+                  <button type="button" class="btn btn-primary" id="btn-view-bom-cost-breakdown">
+                    <i data-lucide="list"></i> View Cost Breakdown
+                  </button>
+                </div>
+                <p class="stat-hint cost-summary-hint" title="Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity). Consumable materials are Additional Cost. Sale Cost uses per-piece cost after overhead and profit.">
+                  Final Cost = (Mat × Qty) + (Svc × 1,000) + (Fin × Qty)
+                  <button type="button" class="cost-hint-help" title="Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity). Consumable materials are Additional Cost. Sale Cost uses per-piece cost after overhead and profit." aria-label="Show full Final Cost formula">?</button>
+                </p>
+              </aside>
             </div>
-            <div class="cost-optional-row">
-              <div class="cost-optional-field">
-                <label class="form-label" for="bom-order-quantity">Order Quantity</label>
-                <input class="wastage-input" type="number" min="0.0001" max="999999" step="0.0001" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" placeholder="Optional" aria-label="Order quantity" />
-              </div>
-              <div class="cost-optional-field">
-                <label class="form-label" for="bom-order-quantity-uom">UOM</label>
-                <select id="bom-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
-                  ${finishedGoodUomOptions(state.bomOrderQuantityUOM || "pieces")}
-                </select>
-              </div>
-            </div>
-            <div class="cost-row">
-              <span>Material Per Piece Cost</span>
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalMaterialCost)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Material Total Cost", FIXED_COST_FORMULAS.materialTotal.formula, FIXED_COST_FORMULAS.materialTotal.description)}
-              <strong>${formatBomLineOrderTotal(state.totalMaterialCost, hasCalcErrors)}</strong>
-            </div>
-            <div class="cost-row">
-              <span>Service Per Piece Cost</span>
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalServiceCost)}</strong>
-            </div>
-            <div class="cost-row">
-              <span>Service Total Cost</span>
-              <strong>${formatStep6LineTotal(state.totalServiceCost, hasCalcErrors)}</strong>
-            </div>
-            <div class="cost-row">
-              <span>Finishing Services Per Piece Cost</span>
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalFinishingServiceCost)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Finishing Services Total Cost", FIXED_COST_FORMULAS.finishingTotal.formula, FIXED_COST_FORMULAS.finishingTotal.description)}
-              <strong>${formatBomLineOrderTotal(state.totalFinishingServiceCost, hasCalcErrors)}</strong>
-            </div>
-            ${showColorCost ? `
-            <div class="cost-row">
-              ${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalColorCost)}</strong>
-            </div>
-            ` : ""}
-            <div class="cost-row cost-final">
-              ${labeledFixedFormula("Final Cost", FIXED_COST_FORMULAS.finalCost.formula, FIXED_COST_FORMULAS.finalCost.description)}
-              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.batchFinalCost)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Cost / 1 Piece", FIXED_COST_FORMULAS.per1.formula, FIXED_COST_FORMULAS.per1.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Cost / 100", FIXED_COST_FORMULAS.per100.formula, FIXED_COST_FORMULAS.per100.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer100)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Cost / 500", FIXED_COST_FORMULAS.per500.formula, FIXED_COST_FORMULAS.per500.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer500)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Cost / 1,000", FIXED_COST_FORMULAS.per1000.formula, FIXED_COST_FORMULAS.per1000.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(state.costPer1000)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Cost / Given Quantity", FIXED_COST_FORMULAS.givenQuantity.formula, FIXED_COST_FORMULAS.givenQuantity.description)}
-              <strong>${formatPackGivenCost(state.costPerGivenQuantity, hasCalcErrors, formatCurrency)}</strong>
-            </div>
-            <div class="cost-row">
-              ${labeledFixedFormula("Additional Cost", FIXED_COST_FORMULAS.additionalCost.formula, FIXED_COST_FORMULAS.additionalCost.description)}
-              <strong>${hasCalcErrors ? "Error" : formatCurrency(calculateTotalConsumableMaterialCost())}</strong>
-            </div>
-            <div class="cost-row">
-              <span>Profit %</span>
-              <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-profit-percent" value="${escapeHtml(formatDecimal(state.bomProfitPercent, 2, false))}" />
-            </div>
-            <div class="cost-row">
-              <span>Overhead %</span>
-              <input class="wastage-input" type="number" min="0" max="100" step="0.01" id="bom-overhead-percent" value="${escapeHtml(formatDecimal(state.bomOverheadPercent, 2, false))}" />
-            </div>
-            <div class="cost-row cost-final">
-              ${labeledFixedFormula("Sale Cost", FIXED_COST_FORMULAS.saleCost.formula, FIXED_COST_FORMULAS.saleCost.description)}
-              <strong>${hasCalcErrors ? "Error calculating cost" : formatCurrency(state.saleCost)}</strong>
-            </div>
-            ${hasCalcErrors ? "" : `
-            <div class="cost-bars">
-              <div class="cost-bar">
-                <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
-                <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
-                <div class="cost-bar-finishing" style="width:${escapeHtml(finishingPct)}%;"></div>
-                ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(colorPct)}%;"></div>` : ""}
-              </div>
-              <div class="cost-legend cost-legend-wide">
-                <span>Material ${formatNumber(materialPct, 1)}%</span>
-                <span>Service ${formatNumber(servicePct, 1)}%</span>
-                <span>Finishing ${formatNumber(finishingPct, 1)}%</span>
-                ${showColorCost ? `<span>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
-              </div>
-            </div>
-            `}
-            <p class="stat-hint">Final Cost is Material Total + Service Total + Finishing Total (each per-piece × 1,000). Cost / 1 Piece is Material + Service + Finishing per piece. Consumable materials are Additional Cost and are not included. Sale Cost still uses per-piece cost. Rates come from master data after unit conversion.</p>
           </div>
         </div>
       `;
+      if (state.costBreakdownDrawer === "bom") refreshOpenCostBreakdownDrawer();
     }
 
     function defaultFormulaDraft(formula) {
@@ -18207,6 +18333,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshIcons();
           return;
         }
+        if (event.target.closest("#btn-view-bom-cost-breakdown")) {
+          openCostBreakdownDrawer("bom");
+          refreshIcons();
+          return;
+        }
+        if (event.target.closest("#btn-view-cc-cost-breakdown")) {
+          openCostBreakdownDrawer("cc");
+          refreshIcons();
+          return;
+        }
         if (event.target.closest("#btn-toggle-style-formulas")) {
           state.showStyleFormulasDetails = !state.showStyleFormulasDetails;
           renderStyleFormulasSection();
@@ -18323,7 +18459,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
       });
 
+      document.getElementById("cost-drawer-backdrop").addEventListener("click", (event) => {
+        if (event.target.id === "cost-drawer-backdrop" || event.target.closest("#btn-close-cost-drawer")) {
+          closeCostBreakdownDrawer();
+        }
+      });
+
       document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && state.costBreakdownDrawer) {
+          closeCostBreakdownDrawer();
+          return;
+        }
         if (event.key === "Escape" && state.modal && state.modal.type) {
           closeModal();
         }
