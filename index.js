@@ -626,6 +626,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       saleCost: 0,
       fgSelectorOpen: false,
       showCalculatedDimensions: false,
+      showProductInformationDetails: false,
       showStyleFormulasDetails: false,
       ccStyleSelectorOpen: false,
       ccStyleSearch: "",
@@ -10481,12 +10482,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderProductInformationCard(item, options) {
       const opts = options || {};
       const kicker = opts.kicker || "Finished Good";
+      const detailsVisible = Boolean(opts.detailsVisible);
       return `
-        <div class="pi-grid">
+        <div class="section-kicker">${escapeHtml(kicker)}</div>
+        <div class="product-name">${escapeHtml(item?.product ?? "missing data")}</div>
+        ${detailsVisible ? `
+        <div class="pi-grid" style="margin-top:12px;">
           <div>
-            <div class="section-kicker">${escapeHtml(kicker)}</div>
             <div class="pi-fields">
-              <div class="product-name">${escapeHtml(item?.product ?? "missing data")}</div>
               <div>
                 <div class="field-label">Variant</div>
                 <div class="field-value">${escapeHtml(item?.variant ?? "—")}</div>
@@ -10514,11 +10517,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ${renderPlyVisualization(item?.ply)}
           </div>
         </div>
-        ${renderCalculatedDimensionsSection(item, {
-          title: opts.calculatedTitle,
-          sectionId: opts.sectionId,
-          gridId: opts.gridId
-        })}
+        ` : ""}
       `;
     }
 
@@ -10539,6 +10538,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
 
+      const detailsVisible = Boolean(state.showProductInformationDetails);
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
@@ -10547,12 +10547,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="cc-step">Step ${getBomVisibleStepNumbers().product}: Product Information</div>
               </div>
               <div class="row-actions" style="align-items:center;gap:8px;">
-                <button type="button" class="formula-help-btn" id="btn-toggle-calc-dims" title="${state.showCalculatedDimensions ? "Hide variable values" : "Show variable values"}" aria-label="${state.showCalculatedDimensions ? "Hide calculated dimensions" : "Show calculated dimensions"}" aria-expanded="${Boolean(state.showCalculatedDimensions)}">?</button>
+                <button type="button" class="formula-help-btn" id="btn-toggle-product-info" title="${detailsVisible ? "Hide product details" : "Show product details"}" aria-label="${detailsVisible ? "Hide product details" : "Show product details"}" aria-expanded="${detailsVisible}">?</button>
               </div>
             </div>
             ${renderProductInformationCard(fg, {
               kicker: "Finished Good",
-              calculatedTitle: "Variable values for this finished good"
+              detailsVisible
             })}
           </div>
         </div>
@@ -18219,8 +18219,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        if (event.target.closest("#btn-toggle-calc-dims")) {
-          state.showCalculatedDimensions = !state.showCalculatedDimensions;
+        if (event.target.closest("#btn-toggle-product-info")) {
+          state.showProductInformationDetails = !state.showProductInformationDetails;
           renderProductInformation();
           refreshIcons();
           return;
