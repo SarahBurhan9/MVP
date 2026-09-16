@@ -7159,7 +7159,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <thead>
                   <tr>
                     <th>Calculation</th>
-                    <th>Formula</th>
                     <th>Net Qty</th>
                     <th>Wastage %</th>
                     <th>Gross Qty</th>
@@ -7172,7 +7171,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>
                   <tr>
                     <td>Formula</td>
-                    <td>${renderFormulaNameWithQty(formulaLabel, calc.error ? "—" : formatQty(calc.grossQty), formulaHelpButton("cc-material", row.layer, "Explain quantity"))}</td>
                     <td class="cc-layer-num">${calc.error ? "—" : formatQty(calc.netQty)}</td>
                     <td class="cc-layer-num">${calc.error ? "—" : formatDecimal(calc.wastagePercent, 2, false)}</td>
                     <td class="cc-layer-num">${calc.error ? "—" : formatQty(calc.grossQty)}</td>
@@ -10669,7 +10667,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <thead>
                   <tr>
                     <th>Calculation</th>
-                    <th>Formula</th>
                     <th>Net Qty</th>
                     <th>Wastage %</th>
                     <th>Gross Qty</th>
@@ -10682,7 +10679,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>
                   <tr>
                     <td>${escapeHtml(methodLabel)}</td>
-                    <td>${renderFormulaNameWithQty(formulaLabel, line.error ? "—" : formatQty(line.grossQty), formulaHelpButton("material", line.id, "Explain quantity"))}</td>
                     <td class="cc-layer-num">${line.error ? "—" : formatQty(line.netQty)}</td>
                     <td>
                       <input class="wastage-input" type="number" min="0" max="100" step="0.01" data-wastage-line="${line.id}" value="${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}" aria-label="${escapeHtml(layer)} wastage percent" />
