@@ -625,6 +625,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       bomOrderQuantityUOM: "pieces",
       saleCost: 0,
       fgSelectorOpen: false,
+      showCalculatedDimensions: false,
       ccStyleSelectorOpen: false,
       ccStyleSearch: "",
       fsSelectorOpen: false,
@@ -2427,7 +2428,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function plyLayerMappingHint() {
-      return `<p class="stat-hint" style="margin:8px 0 0;">Fixed ply mapping: 1 Ply → Single Layer · 2 Ply → Top Liner / Bottom Liner · 3 Ply → Top Liner / Inner Liner / Bottom Liner</p>`;
+      return `<p class="stat-hint" style="margin:8px 0 0;">Fixed ply mapping: 1 Ply → Single Layer · 2 Ply → Top Liner / Bottom Liner · 3 Ply → Top Liner / Bottom Liner / Inner Liner</p>`;
     }
 
     function renderFixedVariableChip(item) {
@@ -3374,11 +3375,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const title = (options && options.title) || "Variable values for this finished good";
       const sectionId = (options && options.sectionId) || "calculatedDimensionsSection";
       const gridId = (options && options.gridId) || "dimensionsGrid";
+      const visible = Boolean(state.showCalculatedDimensions);
+      const toggleButton = `<button type="button" class="formula-help-btn" id="btn-toggle-calc-dims" title="${visible ? "Hide variable values" : "Show variable values"}" aria-label="${visible ? "Hide calculated dimensions" : "Show calculated dimensions"}" aria-expanded="${visible}">?</button>`;
+      if (!visible) {
+        return `
+          <div id="${escapeHtml(sectionId)}" class="calc-dims">
+            <div class="calc-dims-head">
+              <div>
+                <div class="section-kicker">Calculated dimensions ${toggleButton}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
       return `
         <div id="${escapeHtml(sectionId)}" class="calc-dims">
           <div class="calc-dims-head">
             <div>
-              <div class="section-kicker">Calculated dimensions</div>
+              <div class="section-kicker">Calculated dimensions ${toggleButton}</div>
               <div class="section-title">${escapeHtml(title)}</div>
             </div>
             <span class="badge badge-muted">Live</span>
@@ -7206,7 +7220,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         `
         : emptyRow(6, "Select a style from the list to continue.");
 
-      const layerRows = summary.layers
+      const plyDisplayOrder = ["Top Liner", "Bottom Liner", "Inner Liner"];
+      const orderedLayers = Number(steps.ply) === 3
+        ? plyDisplayOrder
+            .map((name) => summary.layers.find((row) => row.layer === name))
+            .filter(Boolean)
+            .concat(summary.layers.filter((row) => !plyDisplayOrder.includes(row.layer)))
+        : summary.layers;
+      const layerRows = orderedLayers
         .map((row, index) => renderCostCalculatorLayerCard(row, index, materials, steps))
         .join("");
 
@@ -10332,7 +10353,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderPlyVisualization(ply) {
-      const layers = getStructuralLayers(ply);
+      let layers = getStructuralLayers(ply);
+      if (Number(ply) === 3) {
+        const displayOrder = ["Top Liner", "Bottom Liner", "Inner Liner"];
+        layers = displayOrder.filter((layer) => layers.includes(layer))
+          .concat(layers.filter((layer) => !displayOrder.includes(layer)));
+      }
       const blocks = layers.map((layer, index) => {
         const name = layerMaterialName(layer);
         const arrow = index < layers.length - 1 ? `<div class="ply-arrow">↓</div>` : "";
@@ -18200,6 +18226,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
+        if (event.target.closest("#btn-toggle-calc-dims")) {
+          state.showCalculatedDimensions = !state.showCalculatedDimensions;
+          renderBOMHeader();
+          refreshIcons();
+          return;
+        }
         const explainBtn = event.target.closest("[data-explain-kind]");
         if (explainBtn) {
           openFormulaExplainerModal(explainBtn.dataset.explainKind, explainBtn.dataset.explainLine);
