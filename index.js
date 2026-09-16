@@ -375,6 +375,77 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
     ];
 
+    const CONVERSION_FACTOR_CODE = "CONVERSION_FACTOR";
+    const CONVERSION_FACTOR_FORMULA = "1 / (SQ_IN_TO_SQ_M × GRAM_TO_KG)";
+
+    function builtInFixedVariableRows() {
+      return FIXED_IMPLEMENTATION_VARIABLES.map((item, index) => ({
+        id: index + 1,
+        code: item.code,
+        value: item.value,
+        description: item.description,
+        builtIn: true
+      }));
+    }
+
+    const fixedVariables = builtInFixedVariableRows();
+    SEED_DATA.fixedVariables = snapshotData(fixedVariables);
+
+    function getFixedVariableByCode(code) {
+      const target = String(code || "").toUpperCase();
+      return fixedVariables.find((item) => String(item.code || "").toUpperCase() === target) || null;
+    }
+
+    function isDerivedFixedVariable(item) {
+      return Boolean(item && String(item.code || "").toUpperCase() === CONVERSION_FACTOR_CODE);
+    }
+
+    function syncEngineConstantsFromFixedVariables() {
+      const sqInRow = getFixedVariableByCode("SQ_IN_TO_SQ_M");
+      const gramRow = getFixedVariableByCode("GRAM_TO_KG");
+      const sqIn = sqInRow && Number.isFinite(Number(sqInRow.value)) && Number(sqInRow.value) > 0
+        ? Number(sqInRow.value)
+        : SQ_IN_TO_SQ_M;
+      const gram = gramRow && Number.isFinite(Number(gramRow.value)) && Number(gramRow.value) > 0
+        ? Number(gramRow.value)
+        : GRAM_TO_KG;
+      const conversionFactor = 1 / (sqIn * gram);
+      const cfRow = getFixedVariableByCode(CONVERSION_FACTOR_CODE);
+      if (cfRow) cfRow.value = conversionFactor;
+      Object.keys(ENGINE_CONSTANTS).forEach((key) => delete ENGINE_CONSTANTS[key]);
+      fixedVariables.forEach((item) => {
+        const code = String(item.code || "").toUpperCase();
+        if (!code || code === "ORDER_QTY") return;
+        const value = Number(item.value);
+        if (Number.isFinite(value)) ENGINE_CONSTANTS[code] = value;
+      });
+      ENGINE_CONSTANTS.SQ_IN_TO_SQ_M = sqIn;
+      ENGINE_CONSTANTS.GRAM_TO_KG = gram;
+      ENGINE_CONSTANTS[CONVERSION_FACTOR_CODE] = conversionFactor;
+    }
+
+    function ensureFixedVariables() {
+      FIXED_IMPLEMENTATION_VARIABLES.forEach((seed) => {
+        if (!getFixedVariableByCode(seed.code)) {
+          fixedVariables.push({
+            id: nextMasterId(fixedVariables),
+            code: seed.code,
+            value: seed.value,
+            description: seed.description,
+            builtIn: true
+          });
+        }
+      });
+      fixedVariables.forEach((item) => {
+        if (FIXED_IMPLEMENTATION_VARIABLES.some((seed) => seed.code === String(item.code || "").toUpperCase())) {
+          item.builtIn = true;
+        }
+      });
+      syncEngineConstantsFromFixedVariables();
+    }
+
+    syncEngineConstantsFromFixedVariables();
+
     const FIXED_SHEET_AREA = {
       code: "SHEET_AREA",
       formula: "SHEET_WIDTH × SHEET_LENGTH",
@@ -594,7 +665,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        ================================================== */
 
     const IDB_NAME = "packaging-erp-db";
-    const IDB_VERSION = 8;
+    const IDB_VERSION = 9;
     const IDB_COLLECTION_STORES = [
       "finishedGoods",
       "finishingServices",
@@ -613,7 +684,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "styleFormulas",
       "serviceDimensions",
       "materialDimensions",
-      "otherMaterialDimensions"
+      "otherMaterialDimensions",
+      "fixedVariables"
     ];
 
     let idb = null;
@@ -690,6 +762,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (storeName === "serviceDimensions") return serviceDimensions;
       if (storeName === "materialDimensions") return materialDimensions;
       if (storeName === "otherMaterialDimensions") return otherMaterialDimensions;
+      if (storeName === "fixedVariables") return fixedVariables;
       return null;
     }
 
@@ -977,6 +1050,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         serviceDimensions,
         materialDimensions,
         otherMaterialDimensions,
+        fixedVariables,
         dimensions,
         boms,
         sequences: {
@@ -1177,6 +1251,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(serviceDimensions, cloudData.serviceDimensions || []);
       replaceArrayContents(materialDimensions, cloudData.materialDimensions || []);
       replaceArrayContents(otherMaterialDimensions, cloudData.otherMaterialDimensions || []);
+      replaceArrayContents(fixedVariables, cloudData.fixedVariables || []);
       replaceArrayContents(dimensions, cloudData.dimensions || []);
       replaceArrayContents(boms, cloudData.boms || []);
       if (cloudData.migrations) {
@@ -2011,6 +2086,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       replaceArrayContents(serviceDimensions, snapshotData(SEED_DATA.serviceDimensions));
       replaceArrayContents(materialDimensions, snapshotData(SEED_DATA.materialDimensions));
       replaceArrayContents(otherMaterialDimensions, snapshotData(SEED_DATA.otherMaterialDimensions));
+      replaceArrayContents(fixedVariables, snapshotData(SEED_DATA.fixedVariables));
       sanitizeNumericMasters();
       migrateQtyFormulaFromMaterialDimensions({ notify: false });
       migrateServiceFormulaFromServiceDimensions({ notify: false });
@@ -2355,7 +2431,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderFixedVariableChip(item) {
-      return `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" title="${escapeHtml(item.description)}">${escapeHtml(item.code)} <span class="formula-src">Fixed</span></button>`;
+      return `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" title="${escapeHtml(item.description || item.code)}">${escapeHtml(item.code)} <span class="formula-src">Fixed</span></button>`;
     }
 
     const DECIMAL_RULES = {
@@ -2756,6 +2832,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (Number.isFinite(n)) item.defaultValue = roundTo(n, 8);
         }
       });
+      ensureFixedVariables();
     }
 
     function migrateQtyFormulaFromMaterialDimensions(options) {
@@ -3795,7 +3872,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const meta = extras || {};
       const gsm = meta.gsm != null && meta.gsm !== "" ? Number(meta.gsm) : null;
       const sheetAreaSqIn = Number(meta.sheetArea != null ? meta.sheetArea : getSheetDimensions(getSelectedFinishedGood()).area);
-      const sheetAreaSqM = sheetAreaSqIn * SQ_IN_TO_SQ_M;
+      const sheetAreaSqM = sheetAreaSqIn * ENGINE_CONSTANTS.SQ_IN_TO_SQ_M;
 
       function requireGsm(unitLabel) {
         if (!Number.isFinite(gsm) || gsm <= 0) {
@@ -3839,9 +3916,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       if (from === "piece" && to === "1000piece") return roundTo(n / 1000, 8);
       if (from === "1000piece" && to === "piece") return roundTo(n * 1000, 8);
-      if (from === "sqin" && to === "sqm") return roundTo(n * SQ_IN_TO_SQ_M, 8);
-      if (from === "sqm" && to === "sqin") return roundTo(n / SQ_IN_TO_SQ_M, 8);
-      if (from === "sqin" && to === "m") return roundTo(n * SQ_IN_TO_SQ_M, 8);
+      if (from === "sqin" && to === "sqm") return roundTo(n * ENGINE_CONSTANTS.SQ_IN_TO_SQ_M, 8);
+      if (from === "sqm" && to === "sqin") return roundTo(n / ENGINE_CONSTANTS.SQ_IN_TO_SQ_M, 8);
+      if (from === "sqin" && to === "m") return roundTo(n * ENGINE_CONSTANTS.SQ_IN_TO_SQ_M, 8);
 
       throw new Error("Unsupported unit conversion: " + fromLabel + " to " + toLabel);
     }
@@ -5034,9 +5111,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         SHEET_WIDTH: sheet.width,
         SHEET_AREA: sheet.area,
         PIECE_AREA: pieceArea,
-        SQ_IN_TO_SQ_M,
-        GRAM_TO_KG,
-        CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
+        ...ENGINE_CONSTANTS
       };
       injectStyleFormulaResults(finishedGood, vars);
       return vars;
@@ -5079,9 +5154,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         SHEET_WIDTH: sheet.width,
         SHEET_AREA: sheet.area,
         PIECE_AREA: pieceArea,
-        SQ_IN_TO_SQ_M,
-        GRAM_TO_KG,
-        CONVERSION_FACTOR: ENGINE_CONSTANTS.CONVERSION_FACTOR
+        ...ENGINE_CONSTANTS
       };
       injectStyleFormulaResults(finishedGood, vars);
       return vars;
@@ -9744,14 +9817,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         `;
       }).join("");
 
-      const fixedRows = FIXED_IMPLEMENTATION_VARIABLES.map((item, index) => `
+      const fixedRows = fixedVariables.map((item, index) => `
         <tr>
           <td class="fm-num">${index + 1}</td>
           <td class="mono fm-code">${escapeHtml(item.code)} <span class="badge badge-muted">Fixed</span></td>
-          <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(item.formula)}</code></td>
-          <td>${escapeHtml(item.description)}</td>
-          <td class="fm-name">${escapeHtml(item.code === "CONVERSION_FACTOR" ? formatDecimal(item.value, 8, false) : String(item.value))}</td>
-          <td><span class="formula-src">Read only</span></td>
+          <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(isDerivedFixedVariable(item) ? CONVERSION_FACTOR_FORMULA : String(item.value))}</code></td>
+          <td>${escapeHtml(item.description || "—")}</td>
+          <td class="fm-name">${escapeHtml(isDerivedFixedVariable(item) ? formatDecimal(item.value, 8, false) : String(item.value))}</td>
+          <td>
+            <div class="row-actions">
+              <button type="button" class="btn btn-sm btn-icon" data-edit-fixed-variable="${item.id}" title="Edit">
+                <i data-lucide="pencil"></i>
+              </button>
+            </div>
+          </td>
         </tr>
       `).join("");
 
@@ -9786,9 +9865,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">System</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${FIXED_IMPLEMENTATION_VARIABLES.length}</span>
+              <div class="row-actions" style="align-items:center;gap:8px;">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-add-fixed-variable">
+                  <i data-lucide="plus"></i> Add Fixed Variable
+                </button>
+                <span class="badge badge-muted">${fixedVariables.length}</span>
+              </div>
             </div>
-            <p class="fm-group-hint">These values are part of the calculation engine. They cannot be edited or deleted.</p>
+            <p class="fm-group-hint">These values are part of the calculation engine. Values can be edited but fixed variables cannot be deleted.</p>
             <div class="table-wrap">
               <table class="data-table fm-table">
                 <thead>
@@ -11363,7 +11447,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="section-kicker" style="margin-top:12px;">Fixed</div>
               <p class="stat-hint" style="margin:6px 0 8px;">System implementation values. Click to insert. Not editable.</p>
               <div class="chip-wrap">
-                ${FIXED_IMPLEMENTATION_VARIABLES.map((item) => renderFixedVariableChip(item)).join("")}
+                ${fixedVariables.map((item) => renderFixedVariableChip(item)).join("")}
               </div>
             </div>
           </div>
@@ -14393,6 +14477,155 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return true;
     }
 
+    function defaultFixedVariableDraft() {
+      return { code: "", value: "", description: "" };
+    }
+
+    function validateFixedVariableDraft(draft) {
+      const errors = {};
+      const editingItem = state.modal.mode === "edit" && draft.id
+        ? fixedVariables.find((row) => row.id === draft.id)
+        : null;
+      const code = String(draft.code || "").trim().toUpperCase();
+      if (!editingItem || !editingItem.builtIn) {
+        if (!code) errors.code = "Code is required.";
+        else if (!/^[A-Z][A-Z0-9_]*$/.test(code)) errors.code = "Code can contain only A-Z, 0-9 and underscores.";
+        else if (fixedVariables.some((item) => String(item.code || "").toUpperCase() === code && item.id !== draft.id)) {
+          errors.code = "Code must be unique.";
+        } else if (BASE_VARIABLES.includes(code) || isFixedSheetAreaCode(code)) {
+          errors.code = "This code is a reserved base variable.";
+        } else if (formulaVariables.some((item) => String(item.code || "").toUpperCase() === code)) {
+          errors.code = "Code is already used by a formula variable.";
+        } else if (getFormulaByCode(code)) {
+          errors.code = "Code is already used by a formula.";
+        }
+      }
+      if (!isDerivedFixedVariable(editingItem)) {
+        if (draft.value === "" || draft.value == null) {
+          errors.value = "Value is required.";
+        } else {
+          const parsed = parseNumeric(draft.value, 8, { ...DECIMAL_RULES.variable, decimals: 8, decimalError: "Value must have maximum 8 decimal places" });
+          if (!parsed.ok) errors.value = parsed.error;
+        }
+      }
+      return errors;
+    }
+
+    function renderFixedVariableFormModal() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const editing = state.modal.mode === "edit";
+      const item = editing && draft.id ? fixedVariables.find((row) => row.id === draft.id) : null;
+      const builtIn = Boolean(item && item.builtIn);
+      const derived = isDerivedFixedVariable(item);
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">Fixed variable</div>
+            <strong>${editing ? "Edit Fixed Variable" : "Add New Fixed Variable"}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid two">
+            <div>
+              <label class="form-label" for="fixedvar-code">Code</label>
+              <input id="fixedvar-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="MY_CONSTANT" ${builtIn ? "disabled" : ""} />
+              ${builtIn
+                ? `<p class="stat-hint">System code. It cannot be changed.</p>`
+                : (errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : "")}
+            </div>
+            <div>
+              <label class="form-label" for="fixedvar-value">Value</label>
+              <input id="fixedvar-value" class="full-search ${errors.value ? "input-invalid" : ""}" type="number" step="any" value="${escapeHtml(draft.value == null ? "" : String(draft.value))}" placeholder="0.001" ${derived ? "disabled" : ""} />
+              ${derived
+                ? `<p class="stat-hint">Calculated as ${escapeHtml(CONVERSION_FACTOR_FORMULA)}.</p>`
+                : (errors.value ? `<div class="field-error">${escapeHtml(errors.value)}</div>` : "")}
+            </div>
+            <div class="form-span-2">
+              <label class="form-label" for="fixedvar-description">Description</label>
+              <textarea id="fixedvar-description" class="full-search">${escapeHtml(draft.description)}</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="btn-save-fixed-variable">${editing ? "Update Fixed Variable" : "Add Fixed Variable"}</button>
+        </div>
+      `;
+    }
+
+    function openFixedVariableModal(id) {
+      const item = id ? fixedVariables.find((row) => row.id === Number(id)) : null;
+      state.modal = {
+        type: "fixed-variable",
+        selectedId: item ? item.id : null,
+        mode: item ? "edit" : "add",
+        lineId: null,
+        draft: item
+          ? { id: item.id, code: item.code, value: item.value == null ? "" : String(item.value), description: item.description || "" }
+          : defaultFixedVariableDraft(),
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function saveFixedVariableFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateFixedVariableDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const code = String(draft.code || "").trim().toUpperCase();
+      const description = String(draft.description || "").trim();
+      const parsedValue = parseNumeric(draft.value, 8, { ...DECIMAL_RULES.variable, decimals: 8 });
+      if (state.modal.mode === "edit" && draft.id) {
+        const item = fixedVariables.find((row) => row.id === draft.id);
+        if (!item) {
+          closeModal();
+          return;
+        }
+        if (!item.builtIn) item.code = code;
+        if (!isDerivedFixedVariable(item) && parsedValue.ok) item.value = parsedValue.value;
+        item.description = description;
+        showNotification("Fixed variable updated successfully");
+      } else {
+        fixedVariables.push({
+          id: nextMasterId(fixedVariables),
+          code,
+          value: parsedValue.ok ? parsedValue.value : Number(draft.value),
+          description,
+          builtIn: false
+        });
+        showNotification("Fixed variable added successfully");
+      }
+      syncEngineConstantsFromFixedVariables();
+      if (state.selectedFinishedGoodId && getSelectedFinishedGood()) {
+        try {
+          recalculateBOMCosts();
+        } catch (error) {
+          console.error("Could not recalculate BOM after fixed variable change", error);
+        }
+      }
+      closeModal();
+      renderFormulaVariables();
+      refreshIcons();
+      afterDataChange("fixedVariables");
+    }
+
+    function updateFixedVariableDraftFromEvent(target) {
+      if (!state.modal.draft || state.modal.type !== "fixed-variable") return false;
+      const draft = state.modal.draft;
+      if (target.id === "fixedvar-code") draft.code = target.value.toUpperCase();
+      else if (target.id === "fixedvar-value") draft.value = target.value;
+      else if (target.id === "fixedvar-description") draft.description = target.value;
+      else return false;
+      return true;
+    }
+
     function openMasterDeleteModal(entity, id, label) {
       state.modal = {
         type: "confirm-delete-master",
@@ -16066,6 +16299,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.innerHTML = renderDimensionFormModal();
       } else if (state.modal.type === "formula-variable") {
         dialog.innerHTML = renderFormulaVariableFormModal();
+      } else if (state.modal.type === "fixed-variable") {
+        dialog.innerHTML = renderFixedVariableFormModal();
       } else if (state.modal.type === "confirm-delete-master") {
         dialog.innerHTML = renderMasterDeleteModal();
       } else if (state.modal.type === "material") {
@@ -17761,6 +17996,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           openFormulaVariableModal();
           return;
         }
+        if (event.target.closest("#btn-add-fixed-variable")) {
+          openFixedVariableModal();
+          return;
+        }
         if (event.target.closest("#btn-add-dimension")) {
           openDimensionModal();
           return;
@@ -17874,6 +18113,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const editFvar = event.target.closest("[data-edit-fvar]");
         if (editFvar) {
           openFormulaVariableModal(editFvar.dataset.editFvar);
+          return;
+        }
+        const editFixedVar = event.target.closest("[data-edit-fixed-variable]");
+        if (editFixedVar) {
+          openFixedVariableModal(editFixedVar.dataset.editFixedVariable);
           return;
         }
         const deleteFvar = event.target.closest("[data-delete-fvar]");
@@ -18198,6 +18442,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
         if (updateFormulaVariableDraftFromEvent(event.target)) return;
+        if (updateFixedVariableDraftFromEvent(event.target)) return;
         if (updateDimensionDraftFromEvent(event.target)) {
           if (event.target.id === "dim-l") normalizeDraftNumber(event.target, "L", "dimension");
           else if (event.target.id === "dim-w") normalizeDraftNumber(event.target, "W", "dimension");
@@ -18273,6 +18518,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (updateStyleVariableDraftFromEvent(event.target)) return;
         if (updateFormulaVariableDraftFromEvent(event.target)) {
           if (event.target.id === "fvar-code") applyUppercasePreservingCaret(event.target);
+          return;
+        }
+        if (updateFixedVariableDraftFromEvent(event.target)) {
+          if (event.target.id === "fixedvar-code") applyUppercasePreservingCaret(event.target);
           return;
         }
         if (updateDimensionDraftFromEvent(event.target)) {
@@ -18534,6 +18783,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-save-formula-variable")) {
           saveFormulaVariableFromModal();
+          return;
+        }
+        if (event.target.closest("#btn-save-fixed-variable")) {
+          saveFixedVariableFromModal();
           return;
         }
         if (event.target.closest("#btn-confirm-master-delete")) {
