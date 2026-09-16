@@ -7215,6 +7215,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const additionalRows = renderCostCalculatorAdditionalMaterials(summary);
       const serviceRows = renderCostCalculatorServices(summary, steps);
       const finishingRows = renderCostCalculatorFinishingServices(summary);
+      const ccMixBase = Number(summary.materialCost) + Number(summary.serviceCost) + Number(summary.finishingCost);
+      const ccShowColorCost = summary.colorCost > 0;
+      const ccMixTotal = ccMixBase + (ccShowColorCost ? Number(summary.colorCost) : 0);
+      const ccShowCostMix = !ccHasCalcErrors && ccMixBase > 0;
+      const ccMaterialPct = ccMixTotal > 0 ? roundTo((Number(summary.materialCost) / ccMixTotal) * 100, 1) : 0;
+      const ccServicePct = ccMixTotal > 0 ? roundTo((Number(summary.serviceCost) / ccMixTotal) * 100, 1) : 0;
+      const ccFinishingPct = ccMixTotal > 0 ? roundTo((Number(summary.finishingCost) / ccMixTotal) * 100, 1) : 0;
+      const ccColorPct = ccShowColorCost && ccMixTotal > 0
+        ? roundTo((Number(summary.colorCost) / ccMixTotal) * 100, 1)
+        : 0;
+      const ccFinalCostDisplay = ccHasCalcErrors
+        ? `<span class="cost-metric-error">Error calculating cost</span>`
+        : formatRupees(summary.batchFinal);
 
       page.innerHTML = `
         <div class="toolbar">
@@ -7354,48 +7367,99 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </section>
           </div>
 
-          <aside class="card cc-card cost-calc-summary" id="cost-calc-print">
+          <section class="card cost-summary cost-calc-summary" id="cost-calc-print">
             <div class="card-body">
-              <div class="section-title" style="margin-bottom:12px;">Final Cost Summary</div>
+              <div class="cc-step">Step 8: Final Cost Summary</div>
+              <div class="section-title cost-summary-title">Per piece roll-up</div>
               ${ccHasCalcErrors
-                ? `<div class="field-error" style="margin-bottom:8px;">⚠ Error calculating cost</div>`
+                ? `<div class="cost-alert" role="alert"><div class="cost-alert-title">Error calculating cost — fix rates and inputs first</div></div>`
                 : ""}
-              <div class="form-grid two cost-optional-row">
-                <div class="cost-optional-field">
-                  <label class="form-label" for="cc-number-of-colors">Number of Colors</label>
-                  <input class="wastage-input" type="text" inputmode="numeric" id="cc-number-of-colors" value="${escapeHtml(cc.ccNumberOfColors == null || cc.ccNumberOfColors === "" ? "" : String(cc.ccNumberOfColors))}" placeholder="Optional" aria-label="Number of colors" />
+              <div class="cost-summary-layout">
+                <div class="cost-summary-main">
+                  <section class="cost-summary-zone" aria-label="Order inputs">
+                    <div class="cost-zone-label">Order</div>
+                    <div class="cost-order-panel">
+                      <div class="cost-optional-rows">
+                        <div class="cost-optional-row">
+                          <div class="cost-optional-field">
+                            <label class="form-label" for="cc-number-of-colors">Number of Colors</label>
+                            <input class="wastage-input" type="text" inputmode="numeric" id="cc-number-of-colors" value="${escapeHtml(cc.ccNumberOfColors == null || cc.ccNumberOfColors === "" ? "" : String(cc.ccNumberOfColors))}" placeholder="Optional" aria-label="Number of colors" />
+                          </div>
+                          <div class="cost-optional-field">
+                            <label class="form-label" for="cc-color-rate">Rate per Color (Rs.)</label>
+                            <input class="wastage-input" type="number" min="0" max="999999.99" step="0.01" id="cc-color-rate" value="${escapeHtml(cc.ccColorRate == null || cc.ccColorRate === "" ? "" : formatDecimal(cc.ccColorRate, 2, false))}" placeholder="Optional" aria-label="Rate per color in rupees" />
+                          </div>
+                        </div>
+                        <div class="cost-optional-row">
+                          <div class="cost-optional-field">
+                            <label class="form-label" for="cc-order-quantity">Order Quantity</label>
+                            <input class="wastage-input" type="number" min="0" max="999999" step="1" id="cc-order-quantity" value="${escapeHtml(cc.ccOrderQuantity == null || cc.ccOrderQuantity === "" ? "" : formatDecimal(cc.ccOrderQuantity, 4, false))}" placeholder="Optional" aria-label="Order quantity" />
+                          </div>
+                          <div class="cost-optional-field">
+                            <label class="form-label" for="cc-order-quantity-uom">Unit</label>
+                            <select id="cc-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
+                              ${finishedGoodUomOptions(cc.ccOrderQuantityUOM || "pieces")}
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+                      ${ccShowColorCost ? `
+                      <div class="cost-color-line">
+                        <span>Color Printing Cost</span>
+                        <strong>${ccHasCalcErrors ? "Error" : formatRupees(summary.colorCost)}</strong>
+                      </div>
+                      ` : ""}
+                    </div>
+                  </section>
+
+                  <section class="cost-summary-zone" aria-label="Pricing">
+                    <div class="cost-zone-label">Pricing</div>
+                    <div class="cost-metric cost-metric-final">
+                      <span class="cost-metric-label">Final Cost</span>
+                      <strong class="cost-metric-value">${ccFinalCostDisplay}</strong>
+                    </div>
+                  </section>
                 </div>
-                <div class="cost-optional-field">
-                  <label class="form-label" for="cc-color-rate">Rate per Color (Rs.)</label>
-                  <input class="wastage-input" type="number" min="0" max="999999.99" step="0.01" id="cc-color-rate" value="${escapeHtml(cc.ccColorRate == null || cc.ccColorRate === "" ? "" : formatDecimal(cc.ccColorRate, 2, false))}" placeholder="Optional" aria-label="Rate per color in rupees" />
-                </div>
+
+                <aside class="cost-summary-aside" aria-label="Cost mix and actions">
+                  <div class="cost-zone-label">Breakdown</div>
+                  <p class="cost-aside-blurb">Open the full material, service, and finishing roll-up.</p>
+                  ${ccShowCostMix ? `
+                  <div class="cost-bars">
+                    <div class="cost-zone-label">Cost mix</div>
+                    <div class="cost-bar">
+                      <div class="cost-bar-mat" style="width:${escapeHtml(ccMaterialPct)}%;"></div>
+                      <div class="cost-bar-svc" style="width:${escapeHtml(ccServicePct)}%;"></div>
+                      <div class="cost-bar-finishing" style="width:${escapeHtml(ccFinishingPct)}%;"></div>
+                      ${ccShowColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(ccColorPct)}%;"></div>` : ""}
+                    </div>
+                    <div class="cost-legend cost-legend-wide">
+                      <span><i class="cost-dot cost-dot-mat" aria-hidden="true"></i>Material ${formatNumber(ccMaterialPct, 1)}%</span>
+                      <span><i class="cost-dot cost-dot-svc" aria-hidden="true"></i>Service ${formatNumber(ccServicePct, 1)}%</span>
+                      <span><i class="cost-dot cost-dot-finishing" aria-hidden="true"></i>Finishing ${formatNumber(ccFinishingPct, 1)}%</span>
+                      ${ccShowColorCost ? `<span><i class="cost-dot cost-dot-color" aria-hidden="true"></i>Color ${formatNumber(ccColorPct, 1)}%</span>` : ""}
+                    </div>
+                  </div>
+                  ` : `
+                  <p class="cost-mix-empty">Cost mix appears when rates are set and costs calculate.</p>
+                  `}
+                  <div class="cost-summary-actions">
+                    <button type="button" class="btn btn-primary" id="btn-view-cc-cost-breakdown">
+                      <i data-lucide="list"></i> View Cost Breakdown
+                    </button>
+                  </div>
+                  <div class="cc-actions">
+                    <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
+                    <button type="button" class="btn" id="btn-cc-export-pdf">Export PDF</button>
+                  </div>
+                  <p class="stat-hint cost-summary-hint" title="Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity).">
+                    Final Cost = (Mat × Qty) + (Svc × 1,000) + (Fin × Qty)
+                    <button type="button" class="cost-hint-help" title="Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity)." aria-label="Show full Final Cost formula">?</button>
+                  </p>
+                </aside>
               </div>
-              <div class="form-grid two cost-optional-row">
-                <div class="cost-optional-field">
-                  <label class="form-label" for="cc-order-quantity">Order Quantity</label>
-                  <input class="wastage-input" type="number" min="0" max="999999" step="1" id="cc-order-quantity" value="${escapeHtml(cc.ccOrderQuantity == null || cc.ccOrderQuantity === "" ? "" : formatDecimal(cc.ccOrderQuantity, 4, false))}" placeholder="Optional" aria-label="Order quantity" />
-                </div>
-                <div class="cost-optional-field">
-                  <label class="form-label" for="cc-order-quantity-uom">Unit</label>
-                  <select id="cc-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
-                    ${finishedGoodUomOptions(cc.ccOrderQuantityUOM || "pieces")}
-                  </select>
-                </div>
-              </div>
-              <div class="cc-summary-line cc-summary-total"><span>Final Cost</span><strong>${formatRupees(summary.batchFinal)}</strong></div>
-              ${summary.colorCost > 0 ? `<div class="cc-summary-line"><span>Color Printing Cost</span><strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
-              <div class="cost-summary-actions">
-                <button type="button" class="btn btn-primary" id="btn-view-cc-cost-breakdown">
-                  <i data-lucide="list"></i> View Cost Breakdown
-                </button>
-              </div>
-              <div class="cc-actions">
-                <button type="button" class="btn btn-primary" id="btn-cc-save-bom" ${summary.canSave ? "" : "disabled"}>Save as BOM</button>
-                <button type="button" class="btn" id="btn-cc-export-pdf">Export PDF</button>
-              </div>
-              <p class="stat-hint" style="margin-top:12px;">Final Cost = (Material Per Piece × Order Quantity) + (Service Per Piece × 1,000) + (Finishing Per Piece × Order Quantity).</p>
             </div>
-          </aside>
+          </section>
         </div>
       `;
       bindCostCalculatorCostingExtras();
