@@ -11260,11 +11260,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? `<span class="calc-error-cost">Error</span>`
         : formatCurrency(value);
       return [
-        { group: "Materials", label: "Material Per Piece Cost", valueHtml: money(state.totalMaterialCost) },
+        { group: "Materials", label: "Material Per Piece Cost", valueHtml: money(state.totalMaterialCost), tone: "emphasis" },
         { group: "Materials", label: "Material Total Cost", valueHtml: formatBomLineOrderTotal(state.totalMaterialCost, hasCalcErrors) },
-        { group: "Services", label: "Service Per Piece Cost", valueHtml: money(state.totalServiceCost) },
+        { group: "Services", label: "Service Per Piece Cost", valueHtml: money(state.totalServiceCost), tone: "emphasis" },
         { group: "Services", label: "Service Total Cost", valueHtml: formatStep6LineTotal(state.totalServiceCost, hasCalcErrors) },
-        { group: "Finishing", label: "Finishing Services Cost", valueHtml: money(state.totalFinishingServiceCost) },
+        { group: "Finishing", label: "Finishing Services Cost", valueHtml: money(state.totalFinishingServiceCost), tone: "emphasis" },
         { group: "Finishing", label: "Finishing Services Total Cost", valueHtml: formatBomLineOrderTotal(state.totalFinishingServiceCost, hasCalcErrors) },
         { group: "Unit costs", label: "Cost / 1 Piece", valueHtml: money(state.costPer1) },
         { group: "Unit costs", label: "Cost / 100", valueHtml: money(state.costPer100) },
@@ -11281,11 +11281,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : formatRupees(value);
       const cc = state.costCalculator || {};
       return [
-        { group: "Materials", label: "Material Per Piece Cost", valueHtml: money(summary.materialCost) },
+        { group: "Materials", label: "Material Per Piece Cost", valueHtml: money(summary.materialCost), tone: "emphasis" },
         { group: "Materials", label: "Material Total Cost", valueHtml: formatCostTimesQuantity(summary.materialCost, cc.ccOrderQuantity, hasCalcErrors) },
-        { group: "Services", label: "Service Per Piece Cost", valueHtml: money(summary.serviceCost) },
+        { group: "Services", label: "Service Per Piece Cost", valueHtml: money(summary.serviceCost), tone: "emphasis" },
         { group: "Services", label: "Service Total Cost", valueHtml: formatStep6LineTotal(summary.serviceCost, hasCalcErrors) },
-        { group: "Finishing", label: "Finishing Services Cost", valueHtml: money(summary.finishingCost) },
+        { group: "Finishing", label: "Finishing Services Cost", valueHtml: money(summary.finishingCost), tone: "emphasis" },
         { group: "Finishing", label: "Finishing Services Total Cost", valueHtml: formatCostTimesQuantity(summary.finishingCost, cc.ccOrderQuantity, hasCalcErrors) },
         { group: "Unit costs", label: "Cost / 1 Piece", valueHtml: money(summary.per1) },
         { group: "Unit costs", label: "Cost / 100", valueHtml: money(summary.per100) },

@@ -1833,6 +1833,15 @@
       color: var(--text);
     }
 
+    .cost-receipt-row.is-emphasis {
+      background: #f0fdfa;
+    }
+
+    .cost-receipt-row.is-emphasis .cost-receipt-label,
+    .cost-receipt-row.is-emphasis .cost-receipt-amount {
+      font-weight: 700;
+    }
+
     .cost-receipt-row.is-final {
       background: #f0fdfa;
       border-bottom-color: #ccfbf1;
