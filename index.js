@@ -9057,12 +9057,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <td class="fm-expr-cell"><code class="fm-expr">${item.gsm === null ? "—" : escapeHtml(formatDecimal(item.gsm, 1, false))}</code></td>
               <td><span class="badge badge-muted">${escapeHtml(item.uom)}</span></td>
               <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formatBoundFormulaCode(item.qtyFormulaId))}</code></td>
-              <td>${escapeHtml(formatMaterialDimensionSummary(item))}</td>
               <td>${statusBadge(item.status)}</td>
               ${masterRowActions("data-edit-rm", item.id, "data-delete-rm", item.id)}
             </tr>
           `).join("")
-        : emptyRow(10, "No raw materials match this search.");
+        : emptyRow(9, "No raw materials match this search.");
 
       document.getElementById("page-raw-materials").innerHTML = `
         <div class="toolbar fm-hero">
@@ -9108,7 +9107,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <th>GSM</th>
                     <th>UOM</th>
                     <th>Qty Formula</th>
-                    <th>Dimensions</th>
                     <th>Status</th>
                     <th>Actions</th>
                   </tr>
