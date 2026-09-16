@@ -16210,7 +16210,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : stored;
       const material = getRawMaterial(line.rawMaterialId);
       const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId);
-      const variables = material ? buildFormulaVariables(fg, material, line.wastagePercent, line.dimensionId, formula, line) : {};
       return `
         <div class="modal-header">
           <div>
@@ -16244,12 +16243,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 })()}</strong></div>`
               : ""}
             <div><span>Material Cost</span><strong>${formatCurrency(line.costPerPiece)}</strong></div>
-          </div>
-          <div class="section-kicker" style="margin-top:14px;">Variables</div>
-          <div class="var-grid">
-            ${Object.entries(variables).map(([key, value]) => `
-              <div><span class="mono">${escapeHtml(key)}</span> = <strong>${value === null || value === undefined ? "—" : escapeHtml(formatFormulaResult(value))}</strong></div>
-            `).join("")}
           </div>
         </div>
         <div class="modal-footer">
@@ -17158,7 +17151,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = live.calculationMethod === "formula"
         ? getFormula(getServiceDefaultFormulaId(service && service.id))
         : getFormula(live.formulaId);
-      const variables = service ? buildServiceFormulaVariables(fg, service, live.dimensionId, live, formula) : {};
       return `
         <div class="modal-header">
           <div>
@@ -17180,12 +17172,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(getServiceDefaultFormulaId(service && service.id)))}</strong></div>
             <div><span>Applied Rate</span><strong>${formatRatePkr(live.rate, getServiceRate(live.serviceId)?.rateUOM || "")} (${live.rateSource === "manual" ? "manual" : "master"})</strong></div>
             <div><span>Service Cost / Piece</span><strong>${formatRupees(live.costPerPiece)}</strong></div>
-          </div>
-          <div class="section-kicker" style="margin-top:14px;">Variables</div>
-          <div class="var-grid">
-            ${Object.entries(variables).map(([key, value]) => `
-              <div><span class="mono">${escapeHtml(key)}</span> = <strong>${value === null || value === undefined ? "—" : escapeHtml(formatFormulaResult(value))}</strong></div>
-            `).join("")}
           </div>
         </div>
         <div class="modal-footer">
