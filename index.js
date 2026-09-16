@@ -619,9 +619,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       totalOrderCost: null,
       bomProfitPercent: 0,
       bomOverheadPercent: 0,
-      bomNumberOfColors: null,
+      bomNumberOfColors: 1,
       bomColorRate: null,
-      bomOrderQuantity: null,
+      bomOrderQuantity: 1,
       bomOrderQuantityUOM: "pieces",
       saleCost: 0,
       fgSelectorOpen: false,
@@ -656,9 +656,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         removedServices: [],
         nextServiceKey: 1,
         styleFormulasOpen: false,
-        ccNumberOfColors: null,
+        ccNumberOfColors: 1,
         ccColorRate: null,
-        ccOrderQuantity: null,
+        ccOrderQuantity: 1,
         ccOrderQuantityUOM: "pieces"
       }
     };
@@ -2542,9 +2542,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function applyBomCostingExtras(source) {
       const src = source || {};
-      state.bomNumberOfColors = storedBomColorCount(src.bomNumberOfColors);
+      state.bomNumberOfColors = storedBomColorCount(src.bomNumberOfColors) ?? 1;
       state.bomColorRate = storedBomOptionalNumber(src.bomColorRate);
-      state.bomOrderQuantity = storedBomOptionalNumber(src.bomOrderQuantity, { places: 4 });
+      state.bomOrderQuantity = storedBomOptionalNumber(src.bomOrderQuantity, { places: 4 }) ?? 1;
       state.bomOrderQuantityUOM = storedBomOrderQuantityUom(src.bomOrderQuantityUOM);
     }
 
@@ -5699,9 +5699,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         removedServices: [],
         nextServiceKey: 1,
         styleFormulasOpen: false,
-        ccNumberOfColors: null,
+        ccNumberOfColors: 1,
         ccColorRate: null,
-        ccOrderQuantity: null,
+        ccOrderQuantity: 1,
         ccOrderQuantityUOM: "pieces"
       };
     }
@@ -5778,9 +5778,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         .map(Number)
         .filter((id) => Number.isFinite(id) && id > 0);
       merged.styleFormulasOpen = Boolean(merged.styleFormulasOpen);
-      merged.ccNumberOfColors = storedBomColorCount(merged.ccNumberOfColors);
+      merged.ccNumberOfColors = storedBomColorCount(merged.ccNumberOfColors) ?? 1;
       merged.ccColorRate = storedBomOptionalNumber(merged.ccColorRate);
-      merged.ccOrderQuantity = storedBomOptionalNumber(merged.ccOrderQuantity, { places: 4 });
+      merged.ccOrderQuantity = storedBomOptionalNumber(merged.ccOrderQuantity, { places: 4 }) ?? 1;
       merged.ccOrderQuantityUOM = storedBomOrderQuantityUom(merged.ccOrderQuantityUOM);
       state.costCalculator = merged;
     }
@@ -7010,9 +7010,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const uomEl = document.getElementById("cc-order-quantity-uom");
       if (!colorsEl && !rateEl && !qtyEl && !uomEl) return;
       if (colorsEl) {
-        state.costCalculator.ccNumberOfColors = colorsEl.value
-          ? storedBomColorCount(colorsEl.value)
-          : null;
+        state.costCalculator.ccNumberOfColors = storedBomColorCount(colorsEl.value) ?? 1;
       }
       if (rateEl) {
         state.costCalculator.ccColorRate = rateEl.value === ""
@@ -7020,9 +7018,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           : storedBomOptionalNumber(rateEl.value);
       }
       if (qtyEl) {
-        state.costCalculator.ccOrderQuantity = qtyEl.value === ""
-          ? null
-          : storedBomOptionalNumber(qtyEl.value, { places: 4 });
+        state.costCalculator.ccOrderQuantity = storedBomOptionalNumber(qtyEl.value, { places: 4 }) ?? 1;
       }
       if (uomEl) {
         state.costCalculator.ccOrderQuantityUOM = storedBomOrderQuantityUom(uomEl.value || "pieces");
@@ -7934,9 +7930,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           rate: 0,
           costPerPiece: 0
         }));
-      state.bomNumberOfColors = storedBomColorCount(state.costCalculator.ccNumberOfColors);
+      state.bomNumberOfColors = storedBomColorCount(state.costCalculator.ccNumberOfColors) ?? 1;
       state.bomColorRate = storedBomOptionalNumber(state.costCalculator.ccColorRate);
-      state.bomOrderQuantity = storedBomOptionalNumber(state.costCalculator.ccOrderQuantity, { places: 4 });
+      state.bomOrderQuantity = storedBomOptionalNumber(state.costCalculator.ccOrderQuantity, { places: 4 }) ?? 1;
       state.bomOrderQuantityUOM = storedBomOrderQuantityUom(state.costCalculator.ccOrderQuantityUOM);
       recalculateBOMCosts();
       const record = persistNewDraftFromEditor(getBomNoForFinishedGood(fg), fg.id);
@@ -16795,7 +16791,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function updateBomNumberOfColors(value) {
-      state.bomNumberOfColors = storedBomColorCount(value);
+      state.bomNumberOfColors = storedBomColorCount(value) ?? 1;
       recalculateBOMCosts();
       refreshBomViews();
       persistEditorState();
@@ -16820,7 +16816,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function updateBomOrderQuantity(value) {
       if (value === "") {
-        state.bomOrderQuantity = null;
+        state.bomOrderQuantity = 1;
       } else {
         const parsed = parseByRule(value, "quantity");
         if (!parsed.ok) {
@@ -16828,7 +16824,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           refreshBomViews();
           return;
         }
-        state.bomOrderQuantity = parsed.value;
+        state.bomOrderQuantity = parsed.value > 0 ? parsed.value : 1;
       }
       recalculateBOMCosts();
       refreshBomViews();
