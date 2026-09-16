@@ -626,6 +626,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       saleCost: 0,
       fgSelectorOpen: false,
       showCalculatedDimensions: false,
+      showStyleFormulasDetails: false,
       ccStyleSelectorOpen: false,
       ccStyleSearch: "",
       fsSelectorOpen: false,
@@ -10580,6 +10581,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const rows = Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [];
+      const visible = Boolean(state.showStyleFormulasDetails);
+      const toggleButton = `<button type="button" class="formula-help-btn" id="btn-toggle-style-formulas" title="${visible ? "Hide style formulas" : "Show style formulas"}" aria-label="${visible ? "Hide style formulas" : "Show style formulas"}" aria-expanded="${visible}">?</button>`;
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
@@ -10588,10 +10591,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="cc-step">Step ${getBomVisibleStepNumbers().style}: Style Formulas</div>
                 <div class="section-title">Style Formulas (Auto-calculated)</div>
               </div>
-              <span class="badge badge-muted">Read-only</span>
+              <div class="row-actions" style="align-items:center;gap:8px;">
+                ${toggleButton}
+                <span class="badge badge-muted">Read-only</span>
+              </div>
             </div>
+            ${visible ? `
             <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
             ${renderStyleFormulaResultRows(rows)}
+            ` : ""}
           </div>
         </div>
       `;
@@ -18229,6 +18237,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.closest("#btn-toggle-calc-dims")) {
           state.showCalculatedDimensions = !state.showCalculatedDimensions;
           renderBOMHeader();
+          refreshIcons();
+          return;
+        }
+        if (event.target.closest("#btn-toggle-style-formulas")) {
+          state.showStyleFormulasDetails = !state.showStyleFormulasDetails;
+          renderStyleFormulasSection();
           refreshIcons();
           return;
         }
