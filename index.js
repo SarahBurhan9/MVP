@@ -2428,10 +2428,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `<span>${escapeHtml(label)} ${fixedFormulaMark(formula, description)}</span>`;
     }
 
-    function plyLayerMappingHint() {
-      return `<p class="stat-hint" style="margin:8px 0 0;">Fixed ply mapping: 1 Ply → Single Layer · 2 Ply → Top Liner / Bottom Liner · 3 Ply → Top Liner / Bottom Liner / Inner Liner</p>`;
-    }
-
     function renderFixedVariableChip(item) {
       return `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" title="${escapeHtml(item.description || item.code)}">${escapeHtml(item.code)} <span class="formula-src">Fixed</span></button>`;
     }
@@ -3373,27 +3369,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCalculatedDimensionsSection(finishedGood, options) {
       const rows = calculateBomDimensions(finishedGood);
       if (!rows.length) return "";
+      if (!state.showCalculatedDimensions) return "";
       const title = (options && options.title) || "Variable values for this finished good";
       const sectionId = (options && options.sectionId) || "calculatedDimensionsSection";
       const gridId = (options && options.gridId) || "dimensionsGrid";
-      const visible = Boolean(state.showCalculatedDimensions);
-      const toggleButton = `<button type="button" class="formula-help-btn" id="btn-toggle-calc-dims" title="${visible ? "Hide variable values" : "Show variable values"}" aria-label="${visible ? "Hide calculated dimensions" : "Show calculated dimensions"}" aria-expanded="${visible}">?</button>`;
-      if (!visible) {
-        return `
-          <div id="${escapeHtml(sectionId)}" class="calc-dims">
-            <div class="calc-dims-head">
-              <div>
-                <div class="section-kicker">Calculated dimensions ${toggleButton}</div>
-              </div>
-            </div>
-          </div>
-        `;
-      }
       return `
         <div id="${escapeHtml(sectionId)}" class="calc-dims">
           <div class="calc-dims-head">
             <div>
-              <div class="section-kicker">Calculated dimensions ${toggleButton}</div>
+              <div class="section-kicker">Calculated dimensions</div>
               <div class="section-title">${escapeHtml(title)}</div>
             </div>
             <span class="badge badge-muted">Live</span>
@@ -7310,7 +7294,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <button type="button" class="cc-ply-btn ${Number(cc.ply) === ply ? "active" : ""}" role="radio" aria-checked="${Number(cc.ply) === ply ? "true" : "false"}" data-cc-ply="${ply}" ${steps.hasDims ? "" : "disabled"}>${ply}-Ply</button>
                   `).join("")}
                 </div>
-                ${plyLayerMappingHint()}
               </div>
             </section>
 
@@ -10529,7 +10512,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div>
             <div class="section-kicker" style="margin-bottom:8px;">${escapeHtml(item?.ply ?? "—")} Ply Structure</div>
             ${renderPlyVisualization(item?.ply)}
-            ${plyLayerMappingHint()}
           </div>
         </div>
         ${renderCalculatedDimensionsSection(item, {
@@ -10560,7 +10542,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
-            <div class="cc-step">Step ${getBomVisibleStepNumbers().product}: Product Information</div>
+            <div class="section-head">
+              <div>
+                <div class="cc-step">Step ${getBomVisibleStepNumbers().product}: Product Information</div>
+              </div>
+              <div class="row-actions" style="align-items:center;gap:8px;">
+                <button type="button" class="formula-help-btn" id="btn-toggle-calc-dims" title="${state.showCalculatedDimensions ? "Hide variable values" : "Show variable values"}" aria-label="${state.showCalculatedDimensions ? "Hide calculated dimensions" : "Show calculated dimensions"}" aria-expanded="${Boolean(state.showCalculatedDimensions)}">?</button>
+              </div>
+            </div>
             ${renderProductInformationCard(fg, {
               kicker: "Finished Good",
               calculatedTitle: "Variable values for this finished good"
@@ -18232,7 +18221,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
         if (event.target.closest("#btn-toggle-calc-dims")) {
           state.showCalculatedDimensions = !state.showCalculatedDimensions;
-          renderBOMHeader();
+          renderProductInformation();
           refreshIcons();
           return;
         }
