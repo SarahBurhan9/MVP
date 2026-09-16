@@ -392,11 +392,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       },
       finalCost: {
         formula: "Material Total + Service Total + Finishing Total",
-        description: "Fixed. Each total is per-piece cost × 1,000. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
+        description: "Fixed. Final Cost is Material Total Cost + Service Total Cost + Finishing Services Total Cost. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
       },
       finalCostCalculator: {
         formula: "Material Total + Service Total + Finishing Total",
-        description: "Fixed. Each total is per-piece cost × 1,000. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
+        description: "Fixed. Final Cost is Material Total Cost + Service Total Cost + Finishing Services Total Cost. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
       },
       materialTotal: {
         formula: "Material Per Piece × Order Quantity",
@@ -2439,14 +2439,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return roundTo(n, places);
     }
 
-    function resolveNumberOfColors(finishedGood, fallback) {
-      const typed = storedBomColorCount(state.bomNumberOfColors)
-        ?? storedBomColorCount(state.costCalculator && state.costCalculator.ccNumberOfColors);
-      if (typed != null) return typed;
-      const resolved = numericOrNull(resolveVariableValue("NO_OF_COLOR", finishedGood, fallback));
-      if (resolved !== null && resolved >= 0) return Math.round(resolved);
-      const fallbackNumber = numericOrNull(fallback);
-      return fallbackNumber !== null ? Math.round(fallbackNumber) : 1;
+    function isCostEstimateFinishedGood(finishedGood) {
+      return Boolean(finishedGood) && Number(finishedGood.id) === 0 && finishedGood.product === "Cost Estimate";
+    }
+
+    function resolveNumberOfColors(finishedGood) {
+      // Number of Colors comes ONLY from the field on the screen being used:
+      // Cost Calculator estimates read the calculator's own field; BOM costing reads the BOM field.
+      // No cross-screen fallback and no style/Variable Master defaults.
+      // Returns null when the field is empty ("value not entered").
+      return isCostEstimateFinishedGood(finishedGood)
+        ? storedBomColorCount(state.costCalculator && state.costCalculator.ccNumberOfColors)
+        : storedBomColorCount(state.bomNumberOfColors);
     }
 
     function storedBomColorCount(value) {
@@ -2509,14 +2513,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const serviceTotal = svc * STEP6_REQUIRED_QTY;
       const costN = (n) => roundTo((mat * n + serviceTotal + fin * n) / n, 2);
       const qty = Number(orderQuantity);
-      const given = Number.isFinite(qty) && qty > 0 ? costN(qty) : null;
+      const hasQty = Number.isFinite(qty) && qty > 0;
+      const given = hasQty ? costN(qty) : null;
       return {
         per1: roundTo(mat + svc + fin, 2),
         per100: costN(100),
         per500: costN(500),
         per1000: costN(1000),
         given,
-        batchFinal: roundTo((mat + svc + fin) * STEP6_REQUIRED_QTY, 2)
+        batchFinal: hasQty
+          ? roundTo(mat * qty + serviceTotal + fin * qty, 2)
+          : roundTo((mat + svc + fin) * STEP6_REQUIRED_QTY, 2)
       };
     }
 
@@ -4854,6 +4861,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { success: true, value: getSheetDimensions(getSelectedFinishedGood()).area };
       }
 
+      if (id === "NO_OF_COLOR" && provided && Object.prototype.hasOwnProperty.call(provided, "NO_OF_COLOR")) {
+        // Number of Colors must come from the user's entry on the current screen.
+        // A null here means the field is empty — fail instead of using any default.
+        const typedColors = numericOrNull(provided.NO_OF_COLOR);
+        if (typedColors !== null) return { success: true, value: typedColors };
+        return { success: false, error: "Number of Colors not entered" };
+      }
+
       const providedValue = numericOrNull(provided ? provided[id] : null);
       if (providedValue !== null) return { success: true, value: providedValue };
 
@@ -5014,7 +5029,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         MATERIAL_RATE: material ? roundTo((getMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
-        NO_OF_COLOR: resolveNumberOfColors(finishedGood, defaults.NO_OF_COLOR ?? 1),
+        NO_OF_COLOR: resolveNumberOfColors(finishedGood),
         SHEET_LENGTH: sheet.length,
         SHEET_WIDTH: sheet.width,
         SHEET_AREA: sheet.area,
@@ -5059,7 +5074,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         MATERIAL_RATE: material ? roundTo((getOtherMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
-        NO_OF_COLOR: resolveNumberOfColors(finishedGood, defaults.NO_OF_COLOR ?? 1),
+        NO_OF_COLOR: resolveNumberOfColors(finishedGood),
         SHEET_LENGTH: sheet.length,
         SHEET_WIDTH: sheet.width,
         SHEET_AREA: sheet.area,
@@ -5433,7 +5448,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         PLY: Number(finishedGood?.ply ?? defaults.PLY),
         GLUE_FLAP: glueFlap,
         ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
-        NO_OF_COLOR: resolveNumberOfColors(finishedGood, defaults.NO_OF_COLOR ?? 1),
+        NO_OF_COLOR: resolveNumberOfColors(finishedGood),
         SERVICE_RATE: roundTo((getServiceRate(service && service.id)?.rate) ?? 0, 2),
         PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, defaults.PRINT_AREA),
         MATERIAL_COST: Number(state.totalMaterialCost || 0),
