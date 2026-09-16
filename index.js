@@ -399,8 +399,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         description: "Fixed. Each total is per-piece cost × 1,000. Consumable materials are Additional Cost and are not included. Color printing is shown separately when entered."
       },
       materialTotal: {
-        formula: "Material Per Piece × 1,000",
-        description: "Fixed. Material total is per-piece material × 1,000. Not Order Quantity."
+        formula: "Material Per Piece × Order Quantity",
+        description: "Fixed. Material total is per-piece material × Order Quantity."
       },
       additionalCost: {
         formula: "Sum of Consumable materials",
@@ -411,8 +411,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         description: "Fixed. Each finishing service line is converted quantity × master rate."
       },
       finishingTotal: {
-        formula: "Finishing Per Piece × 1,000",
-        description: "Fixed. Finishing total is per-piece finishing × 1,000. Not Order Quantity."
+        formula: "Finishing Per Piece × Order Quantity",
+        description: "Fixed. Finishing total is per-piece finishing × Order Quantity."
       },
       per1: {
         formula: "Material Per Piece + Service Per Piece + Finishing Per Piece",
@@ -7294,11 +7294,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </div>
               </div>
               <div class="cc-summary-line"><span>Material Per Piece Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Material Total Cost", FIXED_COST_FORMULAS.materialTotal.formula, FIXED_COST_FORMULAS.materialTotal.description)}<strong>${formatStep6LineTotal(summary.materialCost, ccHasCalcErrors)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Material Total Cost", FIXED_COST_FORMULAS.materialTotal.formula, FIXED_COST_FORMULAS.materialTotal.description)}<strong>${formatCostTimesQuantity(summary.materialCost, state.costCalculator.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
               <div class="cc-summary-line"><span>Service Per Piece Cost</span><strong>${formatRupees(summary.serviceCost)}</strong></div>
               <div class="cc-summary-line"><span>Service Total Cost</span><strong>${formatStep6LineTotal(summary.serviceCost, ccHasCalcErrors)}</strong></div>
               <div class="cc-summary-line"><span>Finishing Services Per Piece Cost</span><strong>${formatRupees(summary.finishingCost)}</strong></div>
-              <div class="cc-summary-line">${labeledFixedFormula("Finishing Services Total Cost", FIXED_COST_FORMULAS.finishingTotal.formula, FIXED_COST_FORMULAS.finishingTotal.description)}<strong>${formatStep6LineTotal(summary.finishingCost, ccHasCalcErrors)}</strong></div>
+              <div class="cc-summary-line">${labeledFixedFormula("Finishing Services Total Cost", FIXED_COST_FORMULAS.finishingTotal.formula, FIXED_COST_FORMULAS.finishingTotal.description)}<strong>${formatCostTimesQuantity(summary.finishingCost, state.costCalculator.ccOrderQuantity, ccHasCalcErrors)}</strong></div>
               ${summary.colorCost > 0 ? `<div class="cc-summary-line">${labeledFixedFormula("Color Printing Cost", FIXED_COST_FORMULAS.colorCost.formula, FIXED_COST_FORMULAS.colorCost.description)}<strong>${formatRupees(summary.colorCost)}</strong></div>` : ""}
               <div class="cc-summary-line cc-summary-total">${labeledFixedFormula("Final Cost", FIXED_COST_FORMULAS.finalCostCalculator.formula, FIXED_COST_FORMULAS.finalCostCalculator.description)}<strong>${formatRupees(summary.batchFinal)}</strong></div>
               <div class="cc-summary-line">${labeledFixedFormula("Cost / 1 Piece", FIXED_COST_FORMULAS.per1.formula, FIXED_COST_FORMULAS.per1.description)}<strong>${formatRupees(summary.per1)}</strong></div>
@@ -8000,11 +8000,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <table class="cc-pdf-totals">
             <tbody>
               <tr><td>Material Per Piece Cost</td><td class="num">${escapeHtml(formatRupees(summary.materialCost))}</td></tr>
-              <tr><td>Material Total Cost</td><td class="num">${escapeHtml(formatRupees(roundTo((Number(summary.materialCost) || 0) * STEP6_REQUIRED_QTY, 2)))}</td></tr>
+              <tr><td>Material Total Cost</td><td class="num">${formatCostTimesQuantity(summary.materialCost, state.costCalculator.ccOrderQuantity, false)}</td></tr>
               <tr><td>Service Per Piece Cost</td><td class="num">${escapeHtml(formatRupees(summary.serviceCost))}</td></tr>
               <tr><td>Service Total Cost</td><td class="num">${escapeHtml(formatRupees(roundTo((Number(summary.serviceCost) || 0) * STEP6_REQUIRED_QTY, 2)))}</td></tr>
               <tr><td>Finishing Services Per Piece Cost</td><td class="num">${escapeHtml(formatRupees(summary.finishingCost))}</td></tr>
-              <tr><td>Finishing Services Total Cost</td><td class="num">${escapeHtml(formatRupees(roundTo((Number(summary.finishingCost) || 0) * STEP6_REQUIRED_QTY, 2)))}</td></tr>
+              <tr><td>Finishing Services Total Cost</td><td class="num">${formatCostTimesQuantity(summary.finishingCost, state.costCalculator.ccOrderQuantity, false)}</td></tr>
               ${summary.colorCost > 0 ? `<tr><td>Color Printing Cost</td><td class="num">${escapeHtml(formatRupees(summary.colorCost))}</td></tr>` : ""}
               <tr><td>Final Cost</td><td class="num">${escapeHtml(formatRupees(summary.batchFinal))}</td></tr>
               <tr><td>Cost / 1 Piece</td><td class="num">${escapeHtml(formatRupees(summary.per1))}</td></tr>
@@ -11108,7 +11108,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div class="cost-row">
               ${labeledFixedFormula("Material Total Cost", FIXED_COST_FORMULAS.materialTotal.formula, FIXED_COST_FORMULAS.materialTotal.description)}
-              <strong>${formatStep6LineTotal(state.totalMaterialCost, hasCalcErrors)}</strong>
+              <strong>${formatBomLineOrderTotal(state.totalMaterialCost, hasCalcErrors)}</strong>
             </div>
             <div class="cost-row">
               <span>Service Per Piece Cost</span>
@@ -11124,7 +11124,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
             <div class="cost-row">
               ${labeledFixedFormula("Finishing Services Total Cost", FIXED_COST_FORMULAS.finishingTotal.formula, FIXED_COST_FORMULAS.finishingTotal.description)}
-              <strong>${formatStep6LineTotal(state.totalFinishingServiceCost, hasCalcErrors)}</strong>
+              <strong>${formatBomLineOrderTotal(state.totalFinishingServiceCost, hasCalcErrors)}</strong>
             </div>
             ${showColorCost ? `
             <div class="cost-row">
