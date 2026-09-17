@@ -3779,9 +3779,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function fillCustomDimensionsFromAuto(draft) {
-      const auto = getAutoQuantityLW(getServiceModalFinishedGood(), draft && draft.dimensionId);
+      const fg = state.modal && state.modal.type === "material"
+        ? getMaterialModalFinishedGood()
+        : getServiceModalFinishedGood();
+      const auto = getAutoQuantityLW(fg, draft && draft.dimensionId);
       if (draft.customLength === "" || draft.customLength == null) draft.customLength = auto.L;
       if (draft.customWidth === "" || draft.customWidth == null) draft.customWidth = auto.W;
+    }
+
+    function getBomLineModalPanel() {
+      return (state.modal && state.modal.panel) || "full";
+    }
+
+    function renderStepValueWithEdit(valueHtml, dataAttr, dataValue, title, icon, tone) {
+      const toneClass = tone ? ` btn-icon-${escapeHtml(tone)}` : "";
+      return `
+        <div class="step-inline-edit">
+          <span class="step-inline-edit-value">${valueHtml}</span>
+          <button type="button" class="btn btn-sm btn-icon${toneClass}" ${dataAttr}="${escapeHtml(String(dataValue))}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}">
+            <i data-lucide="${escapeHtml(icon || "pencil")}"></i>
+          </button>
+        </div>
+      `;
     }
 
     function validateCustomDimensionDraft(draft, errors) {
@@ -10648,7 +10667,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const selectAttr = extra
         ? `data-bom-extra-material="${line.id}"`
         : `data-bom-layer-material="${escapeHtml(layer)}"`;
-      const autoDims = line ? getAutoQuantityLW(getSelectedFinishedGood(), line.dimensionId) : null;
       const materialTitle = material
         ? `${material.name}${material.code ? ` (${material.code})` : ""}`
         : (missingMaterialId ? `Missing material (ID: ${missingMaterialId})` : "Select material");
@@ -10684,16 +10702,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>
                   <tr>
                     <td>1</td>
-                    <td>${renderStepTableDimCell(autoDims, line.customLength, line.customWidth)}</td>
+                    <td>${renderStepValueWithEdit(
+                      formatBreakdownMaterialDimensions(getSelectedFinishedGood(), line),
+                      "data-edit-material-dims",
+                      line.id,
+                      "Edit dimensions",
+                      "ruler",
+                      "dims"
+                    )}</td>
                     <td class="step-num">${extra ? (line.error ? "—" : formatQty(line.netQty)) : formatBomRequiredQtyFromOrder()}</td>
-                    <td class="step-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+                    <td class="step-num">${renderStepValueWithEdit(
+                      material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—",
+                      "data-edit-material-rate",
+                      line.id,
+                      "Edit rate",
+                      "coins",
+                      "rate"
+                    )}</td>
                     <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                     <td>
                       <div class="row-actions">
-                        <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
                           <i data-lucide="calculator"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit calculation details">
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="Edit calculation details">
                           <i data-lucide="pencil"></i>
                         </button>
                         ${extra ? `
@@ -10766,7 +10798,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-layer-title">${escapeHtml(title)} <span class="badge badge-muted">Extra</span></div>
             ${line ? `
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-additional-service="${line.id}" title="Delete">
@@ -10828,10 +10860,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-layer-title">${escapeHtml(layer)}${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
             ${line ? `
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-other-line="${line.id}" title="Calculation breakdown">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-other-line="${line.id}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-other-line="${line.id}" title="Edit calculation details">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-other-line="${line.id}" title="Edit calculation details">
                   <i data-lucide="pencil"></i>
                 </button>
                 ${extra ? `
@@ -10902,10 +10934,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-line="${line.id}" title="Edit">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="Edit">
                   <i data-lucide="pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
@@ -10930,10 +10962,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-additional-service="${line.id}" title="Edit">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-additional-service="${line.id}" title="Edit">
                   <i data-lucide="pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-additional-service="${line.id}" title="Delete">
@@ -11010,10 +11042,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
-                      <button type="button" class="btn btn-sm btn-icon" data-breakdown-service="${line.id}" title="Calculation breakdown">
+                      <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-service="${line.id}" title="Calculation breakdown">
                         <i data-lucide="calculator"></i>
                       </button>
-                      <button type="button" class="btn btn-sm btn-icon" data-edit-service="${line.id}" title="Edit">
+                      <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-service="${line.id}" title="Edit">
                         <i data-lucide="pencil"></i>
                       </button>
                       <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-service="${line.id}" title="Delete">
@@ -11081,14 +11113,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
                   </td>
                   <td class="step-num">${formatBomRequiredQtyFromOrder()}</td>
-                  <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
+                  <td class="step-num">${renderStepValueWithEdit(
+                    service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—",
+                    "data-edit-finishing-rate",
+                    line.id,
+                    "Edit rate",
+                    "coins",
+                    "rate"
+                  )}</td>
                   <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
-                      <button type="button" class="btn btn-sm btn-icon" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
+                      <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
                         <i data-lucide="calculator"></i>
                       </button>
-                      <button type="button" class="btn btn-sm btn-icon" data-edit-finishing-service="${line.id}" title="Edit">
+                      <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-finishing-service="${line.id}" title="Edit">
                         <i data-lucide="pencil"></i>
                       </button>
                       <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-finishing-service="${line.id}" title="Delete">
@@ -11781,6 +11820,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.classList.remove("wide-form");
         dialog.classList.remove("formula-explainer");
         dialog.classList.remove("split-form");
+        dialog.classList.remove("compact-line");
         dialog.innerHTML = "";
       }
     }
@@ -16017,6 +16057,137 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderCompactLineModal(title, bodyHtml, saveId, kicker) {
+      return `
+        <div class="modal-header">
+          <div>
+            <div class="section-kicker">${escapeHtml(kicker || "BOM line")}</div>
+            <strong>${escapeHtml(title)}</strong>
+          </div>
+          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+        </div>
+        <div class="modal-body compact-line-body">${bodyHtml}</div>
+        <div class="modal-footer">
+          <button type="button" class="btn" data-modal-close>Cancel</button>
+          <button type="button" class="btn btn-primary" id="${escapeHtml(saveId)}">Save</button>
+        </div>
+      `;
+    }
+
+    function renderMaterialDimsPopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const auto = getAutoQuantityLW(getMaterialModalFinishedGood(), draft.dimensionId);
+      const autoLabel = (auto && renderCompactLW(auto.L, auto.W)) || "—";
+      const checked = isUseCustomDimensions(draft);
+      const lengthValue = draft.customLength == null || draft.customLength === "" ? "" : String(draft.customLength);
+      const widthValue = draft.customWidth == null || draft.customWidth === "" ? "" : String(draft.customWidth);
+      const body = `
+        <p class="stat-hint" style="margin:0 0 12px;">${material ? escapeHtml(material.name) + " — override length and width used in quantity formulas." : "Override length and width used in quantity formulas."}</p>
+        <div class="dim-popup-card">
+          <div class="dim-popup-current">
+            <span>Current dimensions</span>
+            <strong>${autoLabel}</strong>
+          </div>
+          <label class="custom-dim-flag dim-popup-toggle">
+            <input id="modal-material-use-custom-dim" type="checkbox" ${checked ? "checked" : ""} />
+            <span>
+              <strong>Use Custom Dimensions</strong>
+              <span class="stat-hint">Replace the current length and width for this material line</span>
+            </span>
+          </label>
+          ${checked ? `
+            <div class="dim-input-row two dim-popup-fields">
+              <div>
+                <label class="form-label" for="modal-material-custom-length">Length (L)</label>
+                <div class="input-with-unit ${errors.customLength ? "is-invalid" : ""}">
+                  <input id="modal-material-custom-length" type="number" step="any" min="0.0001" value="${escapeHtml(lengthValue)}" aria-invalid="${errors.customLength ? "true" : "false"}" />
+                  <span>in.</span>
+                </div>
+                ${errors.customLength ? `<div class="field-error">${escapeHtml(errors.customLength)}</div>` : ""}
+              </div>
+              <div>
+                <label class="form-label" for="modal-material-custom-width">Width (W)</label>
+                <div class="input-with-unit ${errors.customWidth ? "is-invalid" : ""}">
+                  <input id="modal-material-custom-width" type="number" step="any" min="0.0001" value="${escapeHtml(widthValue)}" aria-invalid="${errors.customWidth ? "true" : "false"}" />
+                  <span>in.</span>
+                </div>
+                ${errors.customWidth ? `<div class="field-error">${escapeHtml(errors.customWidth)}</div>` : ""}
+              </div>
+            </div>
+          ` : ""}
+        </div>
+        ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+      `;
+      return renderCompactLineModal("Edit Dimensions", body, "btn-save-material");
+    }
+
+    function renderMaterialRatePopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
+      const body = `
+        <div class="form-grid">
+          <div>
+            <label class="form-label" for="modal-method-select">Calculation Method</label>
+            <select id="modal-method-select" class="full-select">
+              <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
+              <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
+            </select>
+          </div>
+          ${draft.calculationMethod === "formula" ? `
+            <div>
+              <div class="field-label">Quantity Formula</div>
+              <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
+              <p class="stat-hint" style="margin-top:8px;">Rate comes from Raw Material Rates. Switch to Manual to enter quantity and rate.</p>
+            </div>
+          ` : renderManualQtyAndRateFields("modal-manual-qty", "modal-manual-rate", draft, errors, "Quantity / Piece")}
+        </div>
+        ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
+        ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+        ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
+      `;
+      return renderCompactLineModal("Edit Rate", body, "btn-save-material");
+    }
+
+    function renderServiceRatePopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const formula = getFormula(draft.formulaId);
+      const finishing = isFinishingServiceCollection(state.modal.collection);
+      const body = `
+        <div class="form-grid">
+          <div>
+            <label class="form-label" for="modal-service-method">Calculation Method</label>
+            <select id="modal-service-method" class="full-select">
+              <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
+              <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
+            </select>
+          </div>
+          ${draft.calculationMethod === "formula" ? `
+            <div>
+              <label class="form-label" for="modal-service-formula">Quantity Formula</label>
+              <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
+                <option value="">Select a formula...</option>
+                ${getServiceFormulas("Quantity").map((item) => `
+                  <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
+                    ${escapeHtml(item.name)} (${escapeHtml(item.code)})
+                  </option>
+                `).join("")}
+              </select>
+              ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
+              ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
+              ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
+            </div>
+          ` : renderManualQtyAndRateFields("modal-service-qty", "modal-service-rate", draft, errors, "Quantity / Piece")}
+        </div>
+        ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
+      `;
+      return renderCompactLineModal("Edit Rate", body, "btn-save-service", finishing ? "Finishing Service" : "BOM line");
+    }
+
     function renderMaterialModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
@@ -16075,11 +16246,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             ${draft.calculationMethod === "formula" ? `
-              ${renderUseCustomDimensionBlock(draft, errors, {
-                checkId: "modal-material-use-custom-dim",
-                lengthId: "modal-material-custom-length",
-                widthId: "modal-material-custom-width"
-              })}
               <div>
                 <div class="field-label">Quantity Formula</div>
                 <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
@@ -16178,6 +16344,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderMaterialFormModal() {
+      const panel = getBomLineModalPanel();
+      if (panel === "dims") return renderMaterialDimsPopup();
+      if (panel === "rate") return renderMaterialRatePopup();
       const fromAdditional = Boolean(state.modal.fromAdditional);
       const title = fromAdditional
         ? (state.modal.mode === "edit" ? "Edit Material" : "Add Material")
@@ -16388,7 +16557,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "finishing-service" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
-      dialog.classList.toggle("split-form", state.modal.type === "material" || state.modal.type === "other-material" || state.modal.type === "service");
+      dialog.classList.toggle("split-form", (state.modal.type === "material" && getBomLineModalPanel() === "full") || state.modal.type === "other-material" || (state.modal.type === "service" && getBomLineModalPanel() === "full"));
+      dialog.classList.toggle("compact-line", (state.modal.type === "material" || state.modal.type === "service") && getBomLineModalPanel() !== "full");
 
       if (state.modal.type === "finished-good" || state.modal.type === "finishing-service") {
         dialog.innerHTML = renderFinishedGoodFormModal();
@@ -16500,6 +16670,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       backdrop.hidden = false;
       backdrop.classList.add("show");
+      refreshIcons();
     }
 
     function openAddAdditionalMaterialModal() {
@@ -16524,13 +16695,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         lineId: null,
         slotLocked: false,
         fromAdditional: true,
+        panel: "full",
         draft,
         errors: {}
       };
       renderModal();
     }
 
-    function openMaterialModal(lineId) {
+    function openMaterialModal(lineId, panel) {
+      const viewPanel = panel || "full";
       const ccLine = findCostCalculatorAdditionalMaterialById(lineId);
       if (ccLine) {
         const draft = defaultMaterialDraft(ccLine);
@@ -16543,10 +16716,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           lineId: Number(ccLine.id || ccLine.key),
           slotLocked: false,
           fromAdditional: true,
+          panel: viewPanel,
           draft,
           errors: {}
         };
         renderModal();
+        refreshIcons();
         return;
       }
       if (!getSelectedFinishedGood() || !lineId) return;
@@ -16564,10 +16739,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         lineId: line.id,
         slotLocked,
         fromAdditional,
+        panel: viewPanel,
         draft,
         errors: {}
       };
       renderModal();
+      refreshIcons();
     }
 
     function openBreakdownModal(lineId) {
@@ -17246,6 +17423,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceFormModal() {
+      if (getBomLineModalPanel() === "rate") return renderServiceRatePopup();
       const finishing = isFinishingServiceCollection(state.modal.collection);
       const title = state.modal.mode === "edit"
         ? (finishing ? "Edit Finishing Service" : "Edit Service")
@@ -17322,7 +17500,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return null;
     }
 
-    function openServiceModal(lineId, collection) {
+    function openServiceModal(lineId, collection, panel) {
       const resolved = collection || getBomServiceCollection(lineId) || "services";
       if (resolved === "cost-calculator" || resolved === "cc-finishing" || resolved === "cc-additional-service") {
         if (!getCostCalculatorStepState().hasPly) return;
@@ -17337,10 +17515,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedId: line ? line.serviceId : null,
         mode: line ? "edit" : "add",
         lineId: line ? Number(line.id || line.key) : null,
+        panel: panel || "full",
         draft: defaultServiceDraft(line),
         errors: {}
       };
       renderModal();
+      refreshIcons();
     }
 
     function openServiceBreakdownModal(lineId, collection) {
@@ -18307,6 +18487,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
+        const editDimsBtn = event.target.closest("[data-edit-material-dims]");
+        if (editDimsBtn) {
+          openMaterialModal(editDimsBtn.dataset.editMaterialDims, "dims");
+          return;
+        }
+
+        const editRateBtn = event.target.closest("[data-edit-material-rate]");
+        if (editRateBtn) {
+          openMaterialModal(editRateBtn.dataset.editMaterialRate, "rate");
+          return;
+        }
+
         const editBtn = event.target.closest("[data-edit-line]");
         if (editBtn) {
           openMaterialModal(editBtn.dataset.editLine);
@@ -18400,6 +18592,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteAdditional = event.target.closest("[data-delete-additional-service]");
         if (deleteAdditional) {
           openDeleteServiceModal(deleteAdditional.dataset.deleteAdditionalService);
+          return;
+        }
+
+        const editFinishingRate = event.target.closest("[data-edit-finishing-rate]");
+        if (editFinishingRate) {
+          openServiceModal(editFinishingRate.dataset.editFinishingRate, "finishing", "rate");
           return;
         }
 
