@@ -10711,14 +10711,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "dims"
                     )}</td>
                     <td class="step-num">${extra ? (line.error ? "—" : formatQty(line.netQty)) : formatBomRequiredQtyFromOrder()}</td>
-                    <td class="step-num">${renderStepValueWithEdit(
-                      material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—",
-                      "data-edit-material-rate",
-                      line.id,
-                      "Edit rate",
-                      "coins",
-                      "rate"
-                    )}</td>
+                    <td class="step-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
                     <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                     <td>
                       <div class="row-actions">
@@ -11113,14 +11106,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
                   </td>
                   <td class="step-num">${formatBomRequiredQtyFromOrder()}</td>
-                  <td class="step-num">${renderStepValueWithEdit(
-                    service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—",
-                    "data-edit-finishing-rate",
-                    line.id,
-                    "Edit rate",
-                    "coins",
-                    "rate"
-                  )}</td>
+                  <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
                   <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
@@ -16123,71 +16109,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return renderCompactLineModal("Edit Dimensions", body, "btn-save-material");
     }
 
-    function renderMaterialRatePopup() {
-      const draft = state.modal.draft;
-      const errors = state.modal.errors || {};
-      const material = getRawMaterial(draft.rawMaterialId);
-      const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
-      const body = `
-        <div class="form-grid">
-          <div>
-            <label class="form-label" for="modal-method-select">Calculation Method</label>
-            <select id="modal-method-select" class="full-select">
-              <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
-              <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
-            </select>
-          </div>
-          ${draft.calculationMethod === "formula" ? `
-            <div>
-              <div class="field-label">Quantity Formula</div>
-              <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
-              <p class="stat-hint" style="margin-top:8px;">Rate comes from Raw Material Rates. Switch to Manual to enter quantity and rate.</p>
-            </div>
-          ` : renderManualQtyAndRateFields("modal-manual-qty", "modal-manual-rate", draft, errors, "Quantity / Piece")}
-        </div>
-        ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
-        ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
-        ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
-      `;
-      return renderCompactLineModal("Edit Rate", body, "btn-save-material");
-    }
-
-    function renderServiceRatePopup() {
-      const draft = state.modal.draft;
-      const errors = state.modal.errors || {};
-      const formula = getFormula(draft.formulaId);
-      const finishing = isFinishingServiceCollection(state.modal.collection);
-      const body = `
-        <div class="form-grid">
-          <div>
-            <label class="form-label" for="modal-service-method">Calculation Method</label>
-            <select id="modal-service-method" class="full-select">
-              <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
-              <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
-            </select>
-          </div>
-          ${draft.calculationMethod === "formula" ? `
-            <div>
-              <label class="form-label" for="modal-service-formula">Quantity Formula</label>
-              <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
-                <option value="">Select a formula...</option>
-                ${getServiceFormulas("Quantity").map((item) => `
-                  <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
-                    ${escapeHtml(item.name)} (${escapeHtml(item.code)})
-                  </option>
-                `).join("")}
-              </select>
-              ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-              ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
-              ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
-            </div>
-          ` : renderManualQtyAndRateFields("modal-service-qty", "modal-service-rate", draft, errors, "Quantity / Piece")}
-        </div>
-        ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
-      `;
-      return renderCompactLineModal("Edit Rate", body, "btn-save-service", finishing ? "Finishing Service" : "BOM line");
-    }
-
     function renderMaterialModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
@@ -16346,7 +16267,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialFormModal() {
       const panel = getBomLineModalPanel();
       if (panel === "dims") return renderMaterialDimsPopup();
-      if (panel === "rate") return renderMaterialRatePopup();
       const fromAdditional = Boolean(state.modal.fromAdditional);
       const title = fromAdditional
         ? (state.modal.mode === "edit" ? "Edit Material" : "Add Material")
@@ -17423,7 +17343,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceFormModal() {
-      if (getBomLineModalPanel() === "rate") return renderServiceRatePopup();
       const finishing = isFinishingServiceCollection(state.modal.collection);
       const title = state.modal.mode === "edit"
         ? (finishing ? "Edit Finishing Service" : "Edit Service")
@@ -18493,12 +18412,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        const editRateBtn = event.target.closest("[data-edit-material-rate]");
-        if (editRateBtn) {
-          openMaterialModal(editRateBtn.dataset.editMaterialRate, "rate");
-          return;
-        }
-
         const editBtn = event.target.closest("[data-edit-line]");
         if (editBtn) {
           openMaterialModal(editBtn.dataset.editLine);
@@ -18592,12 +18505,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const deleteAdditional = event.target.closest("[data-delete-additional-service]");
         if (deleteAdditional) {
           openDeleteServiceModal(deleteAdditional.dataset.deleteAdditionalService);
-          return;
-        }
-
-        const editFinishingRate = event.target.closest("[data-edit-finishing-rate]");
-        if (editFinishingRate) {
-          openServiceModal(editFinishingRate.dataset.editFinishingRate, "finishing", "rate");
           return;
         }
 
