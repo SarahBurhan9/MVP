@@ -10133,10 +10133,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     const BOM_FLOW_SECTIONS = [
-      { id: "fg-selector-root", label: "Select Finished Good" },
+      { id: "fg-selector-root", label: "Finished Good" },
       { id: "bom-materials-root", label: "Raw Materials" },
       { id: "bom-other-materials-root", label: "Additional materials" },
-      { id: "bom-services-root", label: "Select Packaging Services" },
+      { id: "bom-services-root", label: "Packaging Services" },
       { id: "bom-finishing-root", label: "Finishing Services" },
       { id: "bom-cost-root", label: "Cost Summary" }
     ];
@@ -10719,7 +10719,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const layout = getBomMaterialSlotLayout(fg, state.bomMaterials);
-      const slotCards = layout.slots.map((slot, index) => renderBomMaterialCard({
+      const plyDisplayOrder = ["Top Liner", "Bottom Liner", "Inner Liner"];
+      const orderedSlots = Number(layout.ply) === 3
+        ? plyDisplayOrder
+            .map((name) => layout.slots.find((slot) => slot.layer === name))
+            .filter(Boolean)
+            .concat(layout.slots.filter((slot) => !plyDisplayOrder.includes(slot.layer)))
+        : layout.slots;
+      const slotCards = orderedSlots.map((slot, index) => renderBomMaterialCard({
         layer: slot.layer,
         line: slot.line,
         ply: layout.ply,
