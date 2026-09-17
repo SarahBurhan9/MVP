@@ -1526,7 +1526,11 @@
     }
 
     .cost-summary-title {
-      margin: 0 0 14px;
+      margin: 0 0 8px;
+    }
+
+    .cost-summary .cc-step {
+      margin-bottom: 2px;
     }
 
     .cost-alert {
@@ -1555,23 +1559,22 @@
 
     .cost-summary-layout {
       display: grid;
-      gap: 18px;
+      gap: 12px;
       align-items: start;
     }
 
     @media (min-width: 960px) {
       .cost-summary-layout {
-        grid-template-columns: minmax(0, 1.45fr) minmax(220px, 0.7fr);
-        gap: 20px;
+        grid-template-columns: minmax(0, 1.55fr) minmax(240px, 0.7fr);
+        gap: 16px;
       }
     }
 
     .cost-summary-main {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 10px;
       min-width: 0;
-      max-width: 720px;
     }
 
     .cost-summary-zone {
@@ -1584,11 +1587,11 @@
       letter-spacing: 0.06em;
       text-transform: uppercase;
       color: var(--text-muted);
-      margin-bottom: 8px;
+      margin-bottom: 6px;
     }
 
     .cost-order-panel {
-      padding: 12px;
+      padding: 10px;
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 10px;
@@ -1596,7 +1599,7 @@
 
     .cost-summary .cost-optional-rows {
       display: grid;
-      gap: 10px;
+      gap: 8px;
     }
 
     .cost-summary .cost-optional-row {
@@ -1604,13 +1607,13 @@
       max-width: none;
       border-bottom: 0;
       padding: 0;
-      gap: 10px;
+      gap: 8px;
     }
 
     @media (min-width: 720px) {
       .cost-summary .cost-optional-rows {
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
+        gap: 8px;
       }
 
       .cost-summary .cost-optional-rows .cost-optional-row {
@@ -1645,10 +1648,12 @@
       display: flex;
       flex-direction: column;
       align-items: flex-start;
-      gap: 4px;
-      padding: 10px 14px;
+      justify-content: center;
+      gap: 2px;
+      padding: 8px 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
+      min-width: 0;
     }
 
     .cost-metric-final {
@@ -1667,7 +1672,7 @@
     }
 
     .cost-metric-value {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--text);
       letter-spacing: -0.02em;
@@ -1684,15 +1689,44 @@
       color: var(--danger);
     }
 
-    .cost-margin-row {
+    .cost-pricing-row {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-      margin: 10px 0;
+      gap: 8px 10px;
+      align-items: start;
+    }
+
+    @media (min-width: 720px) {
+      .cost-pricing-row {
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.75fr) minmax(0, 0.75fr) minmax(0, 1.2fr);
+      }
+
+      .cost-calc-summary .cost-pricing-row {
+        grid-template-columns: minmax(0, 1.2fr);
+        max-width: 240px;
+      }
+    }
+
+    .cost-pricing-row .cost-metric {
+      min-height: 62px;
+    }
+
+    .cost-pricing-row .cost-margin-field,
+    .cost-margin-field {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+
+    .cost-pricing-row .cost-margin-field {
+      padding-top: 8px;
     }
 
     .cost-margin-field .form-label {
       font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
       margin-bottom: 4px;
     }
 
@@ -1703,7 +1737,8 @@
       border-radius: 6px;
       background: #fff;
       overflow: hidden;
-      max-width: 140px;
+      width: 100%;
+      max-width: none;
     }
 
     .cost-input-suffix .wastage-input {
@@ -1728,13 +1763,13 @@
 
     .cost-summary-aside {
       min-width: 0;
-      padding: 16px;
+      padding: 12px;
       background: #f8fafc;
       border: 1px solid var(--border);
       border-radius: 10px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 8px;
     }
 
     .cost-aside-blurb {

@@ -7341,7 +7341,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
           <section class="card cost-summary cost-calc-summary" id="cost-calc-print">
             <div class="card-body">
-              <div class="cc-step">Step 8: Final Cost Summary</div>
+              <div class="cc-step">Final Cost Summary</div>
               <div class="section-title cost-summary-title">Per piece roll-up</div>
               ${ccHasCalcErrors
                 ? `<div class="cost-alert" role="alert"><div class="cost-alert-title">Error calculating cost — fix rates and inputs first</div></div>`
@@ -7386,9 +7386,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
                   <section class="cost-summary-zone" aria-label="Pricing">
                     <div class="cost-zone-label">Pricing</div>
-                    <div class="cost-metric cost-metric-final">
-                      <span class="cost-metric-label">Final Cost</span>
-                      <strong class="cost-metric-value">${ccFinalCostDisplay}</strong>
+                    <div class="cost-pricing-row">
+                      <div class="cost-metric cost-metric-final">
+                        <span class="cost-metric-label">Final Cost</span>
+                        <strong class="cost-metric-value">${ccFinalCostDisplay}</strong>
+                      </div>
                     </div>
                   </section>
                 </div>
@@ -11334,11 +11336,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
                 <section class="cost-summary-zone" aria-label="Pricing">
                   <div class="cost-zone-label">Pricing</div>
-                  <div class="cost-metric cost-metric-final">
-                    <span class="cost-metric-label">Final Cost</span>
-                    <strong class="cost-metric-value">${finalCostDisplay}</strong>
-                  </div>
-                  <div class="cost-margin-row">
+                  <div class="cost-pricing-row">
+                    <div class="cost-metric cost-metric-final">
+                      <span class="cost-metric-label">Final Cost</span>
+                      <strong class="cost-metric-value">${finalCostDisplay}</strong>
+                    </div>
                     <div class="cost-margin-field">
                       <label class="form-label" for="bom-profit-percent">Profit %</label>
                       <div class="cost-input-suffix">
@@ -11353,10 +11355,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         <span aria-hidden="true">%</span>
                       </div>
                     </div>
-                  </div>
-                  <div class="cost-metric cost-metric-sale">
-                    <span class="cost-metric-label">Sale Cost</span>
-                    <strong class="cost-metric-value">${saleCostDisplay}</strong>
+                    <div class="cost-metric cost-metric-sale">
+                      <span class="cost-metric-label">Sale Cost</span>
+                      <strong class="cost-metric-value">${saleCostDisplay}</strong>
+                    </div>
                   </div>
                 </section>
               </div>
