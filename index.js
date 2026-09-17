@@ -3731,6 +3731,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `L = ${escapeHtml(formatQty(length))}, W = ${escapeHtml(formatQty(width))}`;
     }
 
+    function formatBreakdownMaterialDimensions(finishedGood, line) {
+      if (isUseCustomDimensions(line)) {
+        const custom = renderCompactLW(line.customLength, line.customWidth);
+        if (custom) return custom;
+      }
+      const auto = getAutoQuantityLW(finishedGood, line && line.dimensionId);
+      return (auto && renderCompactLW(auto.L, auto.W)) || "—";
+    }
+
+    function formatBreakdownOrderRequiredQty(fromCalculator) {
+      return fromCalculator ? formatCostCalculatorRequiredQty() : formatBomRequiredQtyFromOrder();
+    }
+
     function renderStepTableDimCell(autoDims, customL, customW) {
       const autoLine = autoDims ? renderCompactLW(autoDims.L, autoDims.W) : "";
       const customLine = renderCompactLW(customL, customW);
@@ -16307,13 +16320,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>Finished Good</span><strong>${escapeHtml(fg?.product ?? "missing data")} — ${escapeHtml(fg?.variant ?? "")}</strong></div>
             <div><span>Dimensions</span><strong>L = ${escapeHtml(formatDecimal(fg?.dimensions?.L, 2, false))} &nbsp; W = ${escapeHtml(formatDecimal(fg?.dimensions?.W, 2, false))} &nbsp; H = ${escapeHtml(formatDecimal(fg?.dimensions?.H, 2, false))}</strong></div>
             <div><span>GSM</span><strong>${material && material.gsm != null ? escapeHtml(formatDecimal(material.gsm, 1, false)) : "—"}</strong></div>
+            <div><span>Material Dimensions</span><strong>${formatBreakdownMaterialDimensions(fg, line)}</strong></div>
             <div><span>Quantity Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "Manual"}</strong></div>
             <div><span>Quantity Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
-            <div><span>Required Qty</span><strong>${formatBomRequiredQtyFromOrder()}</strong></div>
             <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
             <div><span>Wastage</span><strong>${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}%</strong></div>
             <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
-            <div><span>Qty at rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(getMaterialRate(material.id)?.rateUOM) : "")}</strong></div>
+            <div><span>Qty at Rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(getMaterialRate(material.id)?.rateUOM) : "")}</strong></div>
+            <div><span>Required Qty</span><strong>${formatBreakdownOrderRequiredQty(fromCalculator)}</strong></div>
             <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(getMaterialRate(material.id)?.rate, getMaterialRate(material.id)?.rateUOM) : "—"}</strong></div>
             <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, getMaterialRate(material && material.id)?.rateUOM || "")} (${line.rateSource === "manual" ? "manual" : "master"})</strong></div>
             ${material && normalizeUnit(material.uom) !== normalizeUnit(getMaterialRate(material.id)?.rateUOM)
@@ -16837,20 +16851,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
       }
       const material = getOtherRawMaterial(line.otherRawMaterialId);
+      const formula = line.calculationMethod === "formula" ? getOtherMaterialQtyFormula(material) : getFormula(line.formulaId);
+      const rateRow = material ? getOtherMaterialRate(material.id) : null;
       return `
         <div class="modal-header">
           <div>
             <div class="section-kicker">Calculation</div>
-            <strong>Other Material Breakdown</strong>
+            <strong>Calculation Breakdown</strong>
           </div>
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
           <div class="detail-list">
             <div><span>Material</span><strong>${escapeHtml(material ? material.name : "—")}</strong></div>
+            <div><span>Finished Good</span><strong>${escapeHtml(fg?.product ?? "missing data")} — ${escapeHtml(fg?.variant ?? "")}</strong></div>
+            <div><span>Dimensions</span><strong>L = ${escapeHtml(formatDecimal(fg?.dimensions?.L, 2, false))} &nbsp; W = ${escapeHtml(formatDecimal(fg?.dimensions?.W, 2, false))} &nbsp; H = ${escapeHtml(formatDecimal(fg?.dimensions?.H, 2, false))}</strong></div>
+            <div><span>GSM</span><strong>${material && material.gsm != null ? escapeHtml(formatDecimal(material.gsm, 1, false)) : "—"}</strong></div>
+            <div><span>Material Dimensions</span><strong>${formatBreakdownMaterialDimensions(fg, line)}</strong></div>
+            <div><span>Quantity Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "Manual"}</strong></div>
+            <div><span>Quantity Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
             <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
+            <div><span>Wastage</span><strong>${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}%</strong></div>
             <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
-            <div><span>Cost / Piece</span><strong>${formatCurrency(line.costPerPiece)}</strong></div>
+            <div><span>Qty at Rate UOM</span><strong>${formatQty(line.qtyForRate)} ${escapeHtml(material ? formatRateUnit(rateRow?.rateUOM) : "")}</strong></div>
+            <div><span>Required Qty</span><strong>${formatBomRequiredQtyFromOrder()}</strong></div>
+            <div><span>Purchasing Rate</span><strong>${material ? formatRatePkr(rateRow?.rate, rateRow?.rateUOM) : "—"}</strong></div>
+            <div><span>Applied Rate</span><strong>${formatRatePkr(line.rate, rateRow?.rateUOM || "")} (${line.rateSource === "manual" ? "manual" : "master"})</strong></div>
+            <div><span>Material Cost</span><strong>${formatCurrency(line.costPerPiece)}</strong></div>
             ${line.error ? `<div><span>Error</span><strong>${escapeHtml(line.error)}</strong></div>` : ""}
           </div>
         </div>
@@ -17248,6 +17275,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>${isFinishingServiceCollection(getBomServiceCollection(state.modal.lineId) || state.modal.collection) ? "Finishing Service" : "Service"}</span><strong>${escapeHtml(service ? service.name : "—")}</strong></div>
             <div><span>${isCostCalculatorServiceModal() ? "Estimate" : "Finished Good"}</span><strong>${escapeHtml(fg?.product ?? "missing data")}${fg?.variant ? " — " + escapeHtml(fg.variant) : ""}${isCostCalculatorServiceModal() && fg?.style ? " · " + escapeHtml(fg.style) : ""}</strong></div>
             <div><span>Dimensions</span><strong>${escapeHtml(formatDimensions(fg))}</strong></div>
+            <div><span>Material Dimensions</span><strong>${formatBreakdownMaterialDimensions(fg, live)}</strong></div>
             <div><span>Calculation Method</span><strong>${escapeHtml(live.calculationMethod === "manual" ? "Manual" : "Formula")}</strong></div>
             <div><span>Formula</span><strong>${live.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "—"}</strong></div>
             <div><span>Formula Expression</span><strong class="mono">${live.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
@@ -17257,13 +17285,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               if (isPackagingServiceCollection(collection)) {
                 return `<div><span>Required Qty</span><strong>${formatStep6RequiredQty(live.quantity, live.error)}</strong></div>`;
               }
-              if (isFinishingServiceCollection(collection)) {
-                const required = isCostCalculatorServiceModal()
-                  ? formatCostCalculatorRequiredQty()
-                  : formatBomRequiredQtyFromOrder();
-                return `<div><span>Required Qty</span><strong>${required}</strong></div>`;
-              }
-              return "";
+              const required = isCostCalculatorServiceModal()
+                ? formatCostCalculatorRequiredQty()
+                : formatBomRequiredQtyFromOrder();
+              return `<div><span>Required Qty</span><strong>${required}</strong></div>`;
             })()}
             <div><span>Service Rate</span><strong>${service ? formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM) : "—"}</strong></div>
             <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(getServiceDefaultFormulaId(service && service.id)))}</strong></div>
