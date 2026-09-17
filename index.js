@@ -6482,7 +6482,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
                   ${!isActiveFinishingService(service) && service ? `<div class="stat-hint">Not an active Finishing service</div>` : ""}
                 </td>
-                <td class="step-num">${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td class="step-num">${formatCostCalculatorRequiredQty()}</td>
                 <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
                 <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                 <td>
@@ -7116,7 +7116,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <td>1</td>
                     <td>${renderStepTableDimCell(autoDims, null, null)}</td>
-                    <td class="step-num">${calc.error ? "—" : formatQty(calc.netQty)}</td>
+                    <td class="step-num">${formatCostCalculatorRequiredQty()}</td>
                     <td class="step-num">${material && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM)) : "—"}</td>
                     <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                   </tr>
@@ -7988,7 +7988,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <tr>
                 <td>${escapeHtml(row.layer)}</td>
                 <td>${escapeHtml(material ? material.name : (row.rawMaterialId ? "Missing material" : "—"))}</td>
-                <td class="num">${ok ? escapeHtml(formatQty(calc.qty) + (calc.uom ? " " + calc.uom : "")) : "—"}</td>
+                <td class="num">${row.rawMaterialId ? escapeHtml(formatCostCalculatorRequiredQty()) : "—"}</td>
                 <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material && material.id) && getMaterialRate(material && material.id).rateUOM))) : "—"}</td>
                 <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : (calc.error ? "Error" : "—")}</td>
               </tr>
@@ -8045,7 +8045,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             return `
               <tr>
                 <td>${escapeHtml(service ? service.name : "Finishing Service")}</td>
-                <td class="num">${ok ? escapeHtml(formatQty(calc.qty)) : "—"}</td>
+                <td class="num">${escapeHtml(formatCostCalculatorRequiredQty())}</td>
                 <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM))) : "—"}</td>
                 <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : "Error"}</td>
               </tr>
@@ -10670,7 +10670,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <td>1</td>
                     <td>${renderStepTableDimCell(autoDims, line.customLength, line.customWidth)}</td>
-                    <td class="step-num">${line.error ? "—" : formatQty(line.netQty)}</td>
+                    <td class="step-num">${extra ? (line.error ? "—" : formatQty(line.netQty)) : formatBomRequiredQtyFromOrder()}</td>
                     <td class="step-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
                     <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                     <td>
@@ -11058,7 +11058,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
                   </td>
-                  <td class="step-num">${line.error ? "—" : formatQty(line.quantity)}</td>
+                  <td class="step-num">${formatBomRequiredQtyFromOrder()}</td>
                   <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
                   <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
@@ -15501,9 +15501,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { error: line.error || "A valid formula is required." };
       }
       const scalePackagingQty = isService && getBomServiceCollection(lineId) === "services";
+      const scaleFinishingOrderQty = isService && getBomServiceCollection(lineId) === "finishing";
       const serviceQtyHtml = scalePackagingQty
         ? `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong> × ${STEP6_REQUIRED_QTY} = Required Qty: <strong>${escapeHtml(formatStep6RequiredQty(line.quantity, false))} ${escapeHtml(uom)}</strong>`
-        : `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong>`;
+        : scaleFinishingOrderQty
+          ? `Required Qty: <strong>${escapeHtml(formatBomRequiredQtyFromOrder())}</strong> <span class="formula-src">(Order Quantity)</span>`
+          : `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong>`;
       return buildFormulaExplainCore({
         formula: isManual ? null : formula,
         variables,
@@ -15589,7 +15592,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const scalePackagingQty = Boolean(findCostCalculatorServiceLineById(rowId)) && !finishingRow && !additionalServiceRow;
       const serviceQtyHtml = scalePackagingQty
         ? `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong> × ${STEP6_REQUIRED_QTY} = Required Qty: <strong>${escapeHtml(formatStep6RequiredQty(calc.qty, false))} ${escapeHtml(uom)}</strong>`
-        : `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong>`;
+        : finishingRow
+          ? `Required Qty: <strong>${escapeHtml(formatCostCalculatorRequiredQty())}</strong> <span class="formula-src">(Order Quantity)</span>`
+          : `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong>`;
       return buildFormulaExplainCore({
         formula,
         variables,
@@ -16304,6 +16309,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>GSM</span><strong>${material && material.gsm != null ? escapeHtml(formatDecimal(material.gsm, 1, false)) : "—"}</strong></div>
             <div><span>Quantity Formula</span><strong>${line.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "Manual"}</strong></div>
             <div><span>Quantity Expression</span><strong class="mono">${line.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
+            <div><span>Required Qty</span><strong>${formatBomRequiredQtyFromOrder()}</strong></div>
             <div><span>Net Quantity</span><strong>${formatQty(line.netQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
             <div><span>Wastage</span><strong>${escapeHtml(formatDecimal(line.wastagePercent, 2, false))}%</strong></div>
             <div><span>Gross Quantity</span><strong>${formatQty(line.grossQty)} ${escapeHtml(material ? material.uom : "")}</strong></div>
@@ -17246,9 +17252,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>Formula</span><strong>${live.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "—"}</strong></div>
             <div><span>Formula Expression</span><strong class="mono">${live.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
             <div><span>Quantity / Piece</span><strong>${formatQty(live.quantity)}</strong></div>
-            ${isPackagingServiceCollection(getBomServiceCollection(state.modal.lineId) || state.modal.collection)
-              ? `<div><span>Required Qty</span><strong>${formatStep6RequiredQty(live.quantity, live.error)}</strong></div>`
-              : ""}
+            ${(() => {
+              const collection = getBomServiceCollection(state.modal.lineId) || state.modal.collection;
+              if (isPackagingServiceCollection(collection)) {
+                return `<div><span>Required Qty</span><strong>${formatStep6RequiredQty(live.quantity, live.error)}</strong></div>`;
+              }
+              if (isFinishingServiceCollection(collection)) {
+                const required = isCostCalculatorServiceModal()
+                  ? formatCostCalculatorRequiredQty()
+                  : formatBomRequiredQtyFromOrder();
+                return `<div><span>Required Qty</span><strong>${required}</strong></div>`;
+              }
+              return "";
+            })()}
             <div><span>Service Rate</span><strong>${service ? formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM) : "—"}</strong></div>
             <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(getServiceDefaultFormulaId(service && service.id)))}</strong></div>
             <div><span>Applied Rate</span><strong>${formatRatePkr(live.rate, getServiceRate(live.serviceId)?.rateUOM || "")} (${live.rateSource === "manual" ? "manual" : "master"})</strong></div>
