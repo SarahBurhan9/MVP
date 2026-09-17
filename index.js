@@ -10187,7 +10187,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div id="fg-selector-root"></div>
               </div>
             </div>
-            <div id="bom-header-root"></div>
             <div id="bom-product-root"></div>
             <div id="bom-style-formulas-root"></div>
             <div id="bom-materials-root"></div>
@@ -10195,6 +10194,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div id="bom-services-root"></div>
             <div id="bom-finishing-root"></div>
             <div id="bom-cost-root"></div>
+            <div id="bom-header-root"></div>
           </div>
         </div>
       `;
@@ -10371,7 +10371,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
-            <div class="section-kicker">BOM Header</div>
+            <div class="section-kicker">BOM Actions</div>
             <div class="bom-meta" style="margin-top:12px;">
               <div>
                 <div class="field-label">BOM No</div>
@@ -10534,7 +10534,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="card">
             <div class="placeholder-panel">
               <h2>Select a Finished Good to begin BOM configuration.</h2>
-              <p>Product details, ply structure, and BOM header will appear after you choose an item from the list above.</p>
+              <p>Product details, ply structure, and BOM actions will appear after you choose an item from the list above.</p>
             </div>
           </div>
         `;
