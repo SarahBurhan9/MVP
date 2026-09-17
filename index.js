@@ -628,6 +628,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       showCalculatedDimensions: false,
       showProductInformationDetails: false,
       showStyleFormulasDetails: false,
+      bomInfoPopup: null,
       costBreakdownDrawer: null,
       ccStyleSelectorOpen: false,
       ccStyleSearch: "",
@@ -2568,8 +2569,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const STEP6_REQUIRED_QTY = 1000;
 
-    function formatStep6RequiredQty() {
-      return formatQty(STEP6_REQUIRED_QTY);
+    function packagingServiceRequiredQty(perPieceQty) {
+      const qty = Number(perPieceQty);
+      if (!Number.isFinite(qty)) return null;
+      return roundTo(qty * STEP6_REQUIRED_QTY, 4);
+    }
+
+    function formatStep6RequiredQty(perPieceQty, hasError) {
+      if (hasError) return "—";
+      const qty = packagingServiceRequiredQty(perPieceQty);
+      if (qty == null) return "—";
+      return formatQty(qty);
     }
 
     function formatStep6LineTotal(costPerPiece, hasError) {
@@ -4300,6 +4310,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function isFinishingServiceCollection(collection) {
       return collection === "finishing" || collection === "cc-finishing";
+    }
+
+    function isPackagingServiceCollection(collection) {
+      return collection === "services" || collection === "cost-calculator";
     }
 
     function bomCollectionToServiceCategory(collection) {
@@ -6412,7 +6426,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
                   ${!isActiveGeneralService(service) && service ? `<div class="stat-hint">Not an active General service</div>` : ""}
                 </td>
-                <td class="step-num">${!calc.error ? formatQty(calc.qty) : "—"}</td>
+                <td class="step-num">${formatStep6RequiredQty(calc.qty, calc.error)}</td>
                 <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
                 <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                 <td>
@@ -8016,7 +8030,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             return `
               <tr>
                 <td>${escapeHtml(service ? service.name : "Service")}</td>
-                <td class="num">${ok ? escapeHtml(formatQty(calc.qty)) : "—"}</td>
+                <td class="num">${ok ? escapeHtml(formatStep6RequiredQty(calc.qty, false) + (calc.uom ? " " + calc.uom : "")) : "—"}</td>
                 <td class="num">${ok ? escapeHtml(formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM))) : "—"}</td>
                 <td class="num">${ok ? escapeHtml(formatRupees(calc.cost)) : "Error"}</td>
               </tr>
@@ -8622,6 +8636,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function refreshBomViews() {
+      renderBomStep1Actions();
       renderBOMHeader();
       renderProductInformation();
       renderStyleFormulasSection();
@@ -10106,8 +10121,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     const BOM_FLOW_SECTIONS = [
       { id: "fg-selector-root", label: "Select Finished Good" },
-      { id: "bom-product-root", label: "Product Information" },
-      { id: "bom-style-formulas-root", label: "Style Formulas" },
       { id: "bom-materials-root", label: "Raw Materials" },
       { id: "bom-other-materials-root", label: "Additional materials" },
       { id: "bom-services-root", label: "Select Packaging Services" },
@@ -10120,13 +10133,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       let n = 1;
       const steps = { selectFg: n++ };
       if (fg) {
-        steps.product = n++;
-        steps.style = n++;
         steps.materials = n++;
         steps.otherMaterials = n++;
         steps.services = n++;
         steps.finishing = n++;
-        steps.costSummary = n++;
       }
       return steps;
     }
@@ -10170,6 +10180,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBOMPage() {
+      if (!BOM_FLOW_SECTIONS.some((section) => section.id === state.bomFlowSection)) {
+        state.bomFlowSection = BOM_FLOW_SECTIONS[0].id;
+      }
       const chips = BOM_FLOW_SECTIONS.map((section) => {
         const active = (state.bomFlowSection || BOM_FLOW_SECTIONS[0].id) === section.id ? " active" : "";
         return `
@@ -10182,13 +10195,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <div class="bom-main">
             <div class="card">
               <div class="card-body">
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().selectFg}: Select Finished Good</div>
-                <div class="section-title" style="margin:4px 0 14px;">Select a finished good to configure its BOM</div>
+                <div class="section-head bom-step1-head">
+                  <div>
+                    <div class="cc-step">Step ${getBomVisibleStepNumbers().selectFg}: Select Finished Good</div>
+                    <div class="section-title">Select a finished good to configure its BOM</div>
+                  </div>
+                  <div id="bom-info-actions-root"></div>
+                </div>
                 <div id="fg-selector-root"></div>
               </div>
             </div>
-            <div id="bom-product-root"></div>
-            <div id="bom-style-formulas-root"></div>
             <div id="bom-materials-root"></div>
             <div id="bom-other-materials-root"></div>
             <div id="bom-services-root"></div>
@@ -10199,6 +10215,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
       `;
       renderFinishedGoodSelector();
+      renderBomStep1Actions();
       renderBOMHeader();
       renderProductInformation();
       renderStyleFormulasSection();
@@ -10289,6 +10306,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.fsSelectorOpen = false;
       state.workflowError = "";
       if (!opts.keepModal) closeModal();
+      closeBomInfoPopup();
       if (!opts.skipPersist) persistEditorState();
     }
 
@@ -10524,75 +10542,80 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderProductInformation() {
-      const root = document.getElementById("bom-product-root");
+    function renderBomStep1Actions() {
+      const root = document.getElementById("bom-info-actions-root");
       if (!root) return;
       const fg = getSelectedFinishedGood();
-
-      if (!fg) {
-        root.innerHTML = `
-          <div class="card">
-            <div class="placeholder-panel">
-              <h2>Select a Finished Good to begin BOM configuration.</h2>
-              <p>Product details, ply structure, and BOM actions will appear after you choose an item from the list above.</p>
-            </div>
-          </div>
-        `;
-        return;
-      }
-
-      const detailsVisible = Boolean(state.showProductInformationDetails);
+      const disabled = fg ? "" : "disabled";
+      const title = fg ? "" : " title=\"Select a finished good first\"";
       root.innerHTML = `
-        <div class="card">
-          <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().product}: Product Information</div>
-              </div>
-              <div class="row-actions" style="align-items:center;gap:8px;">
-                <button type="button" class="formula-help-btn" id="btn-toggle-product-info" title="${detailsVisible ? "Hide product details" : "Show product details"}" aria-label="${detailsVisible ? "Hide product details" : "Show product details"}" aria-expanded="${detailsVisible}">?</button>
-              </div>
-            </div>
-            ${renderProductInformationCard(fg, {
-              kicker: "Finished Good",
-              detailsVisible
-            })}
-          </div>
+        <div class="bom-info-actions">
+          <button type="button" class="btn btn-sm bom-info-btn" id="btn-open-product-info" ${disabled}${title}>Product Information</button>
+          <button type="button" class="btn btn-sm bom-info-btn" id="btn-open-style-formulas" ${disabled}${title}>Style Formulas</button>
         </div>
       `;
     }
 
-    function renderStyleFormulasSection() {
-      const root = document.getElementById("bom-style-formulas-root");
-      if (!root) return;
+    function openBomInfoPopup(kind) {
+      if ((kind !== "product" && kind !== "style") || !getSelectedFinishedGood()) return;
+      state.bomInfoPopup = kind;
+      renderBomInfoPopup();
+      refreshIcons();
+    }
+
+    function closeBomInfoPopup() {
+      state.bomInfoPopup = null;
+      const backdrop = document.getElementById("bom-info-backdrop");
+      const dialog = document.getElementById("bom-info-dialog");
+      if (backdrop) {
+        backdrop.classList.remove("show");
+        backdrop.hidden = true;
+      }
+      if (dialog) dialog.innerHTML = "";
+    }
+
+    function renderBomInfoPopup() {
+      const backdrop = document.getElementById("bom-info-backdrop");
+      const dialog = document.getElementById("bom-info-dialog");
+      if (!backdrop || !dialog) return;
       const fg = getSelectedFinishedGood();
-      if (!fg) {
-        root.innerHTML = "";
+      if (!state.bomInfoPopup || !fg) {
+        closeBomInfoPopup();
         return;
       }
-      const rows = Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [];
-      const visible = Boolean(state.showStyleFormulasDetails);
-      const toggleButton = `<button type="button" class="formula-help-btn" id="btn-toggle-style-formulas" title="${visible ? "Hide style formulas" : "Show style formulas"}" aria-label="${visible ? "Hide style formulas" : "Show style formulas"}" aria-expanded="${visible}">?</button>`;
-      root.innerHTML = `
-        <div class="card">
-          <div class="card-body">
-            <div class="section-head">
-              <div>
-                <div class="cc-step">Step ${getBomVisibleStepNumbers().style}: Style Formulas</div>
-                <div class="section-title">Style Formulas (Auto-calculated)</div>
-              </div>
-              <div class="row-actions" style="align-items:center;gap:8px;">
-                ${toggleButton}
-                <span class="badge badge-muted">Read-only</span>
-              </div>
-            </div>
-            ${visible ? `
-            <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
-            ${renderStyleFormulaResultRows(rows)}
-            ` : ""}
+      const isProduct = state.bomInfoPopup === "product";
+      const title = isProduct ? "Product Information" : "Style Formulas";
+      const kicker = isProduct ? "Finished Good" : "Auto-calculated";
+      const body = isProduct
+        ? renderProductInformationCard(fg, { kicker: "Finished Good", detailsVisible: true })
+        : `
+          <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
+          ${renderStyleFormulaResultRows(Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [])}
+        `;
+      dialog.innerHTML = `
+        <div class="bom-info-accent"></div>
+        <div class="bom-info-header">
+          <div>
+            <div class="section-kicker">${escapeHtml(kicker)}</div>
+            <strong id="bom-info-title">${escapeHtml(title)}</strong>
+          </div>
+          <div class="row-actions" style="align-items:center;gap:8px;">
+            ${isProduct ? "" : `<span class="badge badge-muted">Read-only</span>`}
+            <button type="button" class="btn btn-ghost btn-sm" data-bom-info-close aria-label="Close">Close</button>
           </div>
         </div>
+        <div class="bom-info-body">${body}</div>
       `;
+      backdrop.hidden = false;
+      requestAnimationFrame(() => backdrop.classList.add("show"));
+    }
+
+    function renderProductInformation() {
+      if (state.bomInfoPopup === "product") renderBomInfoPopup();
+    }
+
+    function renderStyleFormulasSection() {
+      if (state.bomInfoPopup === "style") renderBomInfoPopup();
     }
 
     function renderBomMaterialCard(options) {
@@ -10960,7 +10983,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
                   </td>
-                  <td class="step-num">${line.error ? "—" : formatQty(line.quantity)}</td>
+                  <td class="step-num">${formatStep6RequiredQty(line.quantity, line.error)}</td>
                   <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
                   <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
@@ -11248,7 +11271,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       root.innerHTML = `
         <div class="card cost-summary">
           <div class="card-body">
-            <div class="cc-step">Step ${getBomVisibleStepNumbers().costSummary}: Cost Summary</div>
+            <div class="cc-step">Cost Summary</div>
             <div class="section-title cost-summary-title">Per piece roll-up</div>
             ${renderBomCalculationErrorBanner(calcErrors)}
             <div class="cost-summary-layout">
@@ -15477,6 +15500,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!isManual && !formula) {
         return { error: line.error || "A valid formula is required." };
       }
+      const scalePackagingQty = isService && getBomServiceCollection(lineId) === "services";
+      const serviceQtyHtml = scalePackagingQty
+        ? `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong> × ${STEP6_REQUIRED_QTY} = Required Qty: <strong>${escapeHtml(formatStep6RequiredQty(line.quantity, false))} ${escapeHtml(uom)}</strong>`
+        : `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong>`;
       return buildFormulaExplainCore({
         formula: isManual ? null : formula,
         variables,
@@ -15493,7 +15520,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         includeGrossQty: !isService,
         tagHints: { WASTAGE: "manual" },
         finalHtml: isService
-          ? `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong>`
+          ? serviceQtyHtml
           : `Net Qty: <strong>${escapeHtml(formatQty(line.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(line.grossQty))} ${escapeHtml(uom)}</strong>`
       });
     }
@@ -15559,6 +15586,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = service
         ? buildServiceFormulaVariables(fg, service, null, row, formula)
         : {};
+      const scalePackagingQty = Boolean(findCostCalculatorServiceLineById(rowId)) && !finishingRow && !additionalServiceRow;
+      const serviceQtyHtml = scalePackagingQty
+        ? `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong> × ${STEP6_REQUIRED_QTY} = Required Qty: <strong>${escapeHtml(formatStep6RequiredQty(calc.qty, false))} ${escapeHtml(uom)}</strong>`
+        : `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong>`;
       return buildFormulaExplainCore({
         formula,
         variables,
@@ -15571,7 +15602,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         sourceType: inferExplainSourceType(formula),
         includeGrossQty: false,
         tagHints: { L: "manual", W: "manual", H: "manual" },
-        finalHtml: `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong>`
+        finalHtml: serviceQtyHtml
       });
     }
 
@@ -17215,6 +17246,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>Formula</span><strong>${live.calculationMethod === "formula" && formula ? escapeHtml(formula.code) : "—"}</strong></div>
             <div><span>Formula Expression</span><strong class="mono">${live.calculationMethod === "formula" && formula ? escapeHtml(formula.expression) : "—"}</strong></div>
             <div><span>Quantity / Piece</span><strong>${formatQty(live.quantity)}</strong></div>
+            ${isPackagingServiceCollection(getBomServiceCollection(state.modal.lineId) || state.modal.collection)
+              ? `<div><span>Required Qty</span><strong>${formatStep6RequiredQty(live.quantity, live.error)}</strong></div>`
+              : ""}
             <div><span>Service Rate</span><strong>${service ? formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM) : "—"}</strong></div>
             <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(getServiceDefaultFormulaId(service && service.id)))}</strong></div>
             <div><span>Applied Rate</span><strong>${formatRatePkr(live.rate, getServiceRate(live.serviceId)?.rateUOM || "")} (${live.rateSource === "manual" ? "manual" : "master"})</strong></div>
@@ -17522,6 +17556,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (page !== "bom-costing") {
         state.fgSelectorOpen = false;
         closeModal();
+        closeBomInfoPopup();
       }
       renderCurrentPage();
       persistPrefs();
@@ -18252,10 +18287,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return;
         }
 
-        if (event.target.closest("#btn-toggle-product-info")) {
-          state.showProductInformationDetails = !state.showProductInformationDetails;
-          renderProductInformation();
-          refreshIcons();
+        if (event.target.closest("#btn-open-product-info")) {
+          openBomInfoPopup("product");
+          return;
+        }
+        if (event.target.closest("#btn-open-style-formulas")) {
+          openBomInfoPopup("style");
           return;
         }
         if (event.target.closest("#btn-view-bom-cost-breakdown")) {
@@ -18265,12 +18302,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.target.closest("#btn-view-cc-cost-breakdown")) {
           openCostBreakdownDrawer("cc");
-          refreshIcons();
-          return;
-        }
-        if (event.target.closest("#btn-toggle-style-formulas")) {
-          state.showStyleFormulasDetails = !state.showStyleFormulasDetails;
-          renderStyleFormulasSection();
           refreshIcons();
           return;
         }
@@ -18390,6 +18421,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
       });
 
+      document.getElementById("bom-info-backdrop").addEventListener("click", (event) => {
+        if (event.target.id === "bom-info-backdrop" || event.target.closest("[data-bom-info-close]")) {
+          closeBomInfoPopup();
+        }
+      });
+
       document.addEventListener("keydown", (event) => {
         if (event.key === "Escape" && state.costBreakdownDrawer) {
           closeCostBreakdownDrawer();
@@ -18397,6 +18434,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         if (event.key === "Escape" && state.modal && state.modal.type) {
           closeModal();
+          return;
+        }
+        if (event.key === "Escape" && state.bomInfoPopup) {
+          closeBomInfoPopup();
         }
         if (event.key === "Enter" || event.key === " ") {
           const dashboardNav = event.target.closest("[data-dashboard-nav]");

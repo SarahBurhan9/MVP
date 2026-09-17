@@ -1120,9 +1120,97 @@
       color: #fff;
     }
 
+    .bom-step1-head {
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .bom-step1-head .cc-step {
+      margin-bottom: 4px;
+    }
+
+    .bom-info-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .bom-info-btn {
+      border-radius: 999px;
+      padding: 8px 14px;
+      font-weight: 600;
+      background: #e2e8f0;
+      color: #334155;
+      border-color: transparent;
+    }
+
+    .bom-info-btn:hover:not(:disabled) {
+      background: #cbd5e1;
+    }
+
+    .bom-info-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      z-index: 48;
+      padding: 16px;
+      overflow: auto;
+    }
+
+    .bom-info-backdrop.show {
+      display: grid;
+      place-items: center;
+    }
+
+    .bom-info-modal {
+      position: relative;
+      width: min(720px, 100%);
+      max-height: min(90vh, 780px);
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .bom-info-accent {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: var(--primary);
+    }
+
+    .bom-info-header {
+      padding: 20px 18px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+
+    .bom-info-header .section-kicker {
+      margin-bottom: 4px;
+    }
+
+    .bom-info-header strong {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .bom-info-body {
+      padding: 16px 18px 20px;
+      overflow: auto;
+    }
+
     #fg-selector-root,
-    #bom-product-root,
-    #bom-style-formulas-root,
     #bom-materials-root,
     #bom-other-materials-root,
     #bom-services-root,
@@ -2706,6 +2794,8 @@
       .toolbar-left, .toolbar-right { width: 100%; }
       .header { padding: 0 12px; }
       .pi-grid, .pi-fields, .dim-grid, .bom-meta, .calc-dims-grid { grid-template-columns: 1fr; }
+      .bom-step1-head { flex-direction: column; }
+      .bom-info-actions { width: 100%; }
       .fg-combo-control input { font-size: 14px; }
       .fb-layout, .fb-desc-row, .test-fields, .form-grid.two { grid-template-columns: 1fr; }
       .fb-service-flags { align-items: flex-start; }
