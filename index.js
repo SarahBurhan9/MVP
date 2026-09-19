@@ -11807,6 +11807,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dialog.classList.remove("formula-explainer");
         dialog.classList.remove("split-form");
         dialog.classList.remove("compact-line");
+        dialog.classList.remove("style-form-modal");
         dialog.innerHTML = "";
       }
     }
@@ -13785,7 +13786,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = state.modal.errors || {};
       const editing = state.modal.mode === "edit";
       const infoForm = `
-        <div class="form-grid">
+        <div class="style-form-fields">
           <div>
             <label class="form-label" for="style-name">Style Name</label>
             <input id="style-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" placeholder="WINDOW LID" />
@@ -13798,67 +13799,71 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="Inactive" ${draft.status === "Inactive" ? "selected" : ""}>Inactive</option>
             </select>
           </div>
-          <div class="form-span-2">
+          <div>
             <label class="form-label" for="style-description">Description</label>
-            <textarea id="style-description" class="full-search">${escapeHtml(draft.description)}</textarea>
+            <textarea id="style-description" class="full-search style-form-description">${escapeHtml(draft.description)}</textarea>
           </div>
         </div>
       `;
       const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
       const linkedIds = new Set(linkedFormulas.map((row) => Number(row.formulaId)));
       const availableFormulas = getStyleTypeFormulas().filter((item) => !linkedIds.has(item.id));
-      const formulaRows = linkedFormulas.length
+      const unusedOptions = [
+        { value: "", label: availableFormulas.length ? "Select a Style formula..." : "No unused Style formulas" },
+        ...availableFormulas.map((item) => ({
+          value: item.id,
+          label: `${item.name} (${item.code})`
+        }))
+      ];
+      const firstLinked = linkedFormulas[0] ? getFormula(linkedFormulas[0].formulaId) : null;
+      const triggerLabel = availableFormulas.length
+        ? unusedOptions[0].label
+        : (firstLinked ? `${firstLinked.name} (${firstLinked.code})` : unusedOptions[0].label);
+      const unusedMenu = unusedOptions.map((opt) => `
+        <button type="button" class="pretty-select-option${opt.value === "" ? " selected" : ""}" role="option" aria-selected="${opt.value === "" ? "true" : "false"}" data-pretty-select="style-formula-select" data-pretty-value="${escapeHtml(String(opt.value))}">${escapeHtml(opt.label)}</button>
+      `).join("");
+      const linkedMenu = linkedFormulas.length
         ? linkedFormulas.map((row) => {
             const formula = getFormula(row.formulaId);
             return `
-              <tr>
-                <td class="mono">${escapeHtml(formula ? formula.code : "—")}</td>
-                <td>${escapeHtml(formula ? formula.name : "Missing formula")}</td>
-                <td class="mono">${escapeHtml(formula ? formula.expression : "—")}</td>
-                <td>
-                  <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Remove formula">
-                    <i data-lucide="trash-2"></i>
-                  </button>
-                </td>
-              </tr>
+              <div class="style-form-formula-item">
+                <div>
+                  <div class="style-form-formula-name">${escapeHtml(formula ? formula.name : "Missing formula")}</div>
+                  <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}${formula && formula.expression ? ` · ${escapeHtml(formula.expression)}` : ""}</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Remove formula">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
             `;
           }).join("")
-        : emptyRow(4, "No formulas linked to this style yet.");
+        : `<div class="style-form-formula-empty">No formulas linked to this style yet.</div>`;
       const formulasForm = `
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">Style formulas</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Optional. Link Style-type formulas. They auto-calculate in the BOM when a finished good uses this style.</p>
-          </div>
-        </div>
-        <div class="form-grid two" style="margin-bottom:12px;">
-          <div>
-            <label class="form-label" for="style-formula-select">Add Formula</label>
-            <select id="style-formula-select" class="full-select" ${availableFormulas.length ? "" : "disabled"}>
-              <option value="">${availableFormulas.length ? "Select a Style formula..." : "No unused Style formulas"}</option>
-              ${availableFormulas.map((item) => `
-                <option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
-              `).join("")}
+        <div class="style-form-formulas">
+          <div class="form-label">Style Formulas</div>
+          <p class="stat-hint">Optional. Link Style-type formulas. They auto-calculate in the BOM when a finished good uses this style.</p>
+          <label class="form-label" for="style-formula-select-trigger">Formula</label>
+          <div class="pretty-select style-formula-pretty">
+            <button type="button" class="pretty-select-trigger" id="style-formula-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="style-formula-select-panel">
+              <span class="pretty-select-value">${escapeHtml(triggerLabel)}</span>
+              <span class="pretty-select-chevron" aria-hidden="true"></span>
+            </button>
+            <div class="pretty-select-panel" id="style-formula-select-panel" role="listbox">
+              ${availableFormulas.length ? unusedMenu : ""}
+              ${linkedFormulas.length ? `
+                <div class="style-formula-dd-linked">
+                  <div class="style-formula-dd-label">Linked to this style</div>
+                  ${linkedMenu}
+                </div>
+              ` : (!availableFormulas.length ? `<div class="style-form-formula-empty">No formulas linked to this style yet.</div>` : "")}
+            </div>
+            <select id="style-formula-select" class="pretty-select-native" tabindex="-1" aria-hidden="true" ${availableFormulas.length ? "" : "disabled"}>
+              ${unusedOptions.map((opt) => `<option value="${escapeHtml(String(opt.value))}">${escapeHtml(opt.label)}</option>`).join("")}
             </select>
           </div>
-          <div style="display:flex;align-items:flex-end;">
-            <button type="button" class="btn btn-primary" id="btn-add-style-formula" ${availableFormulas.length ? "" : "disabled"}>
-              <i data-lucide="plus"></i> Add Formula
-            </button>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table" style="min-width:640px;">
-            <thead>
-              <tr>
-                <th>Formula Code</th>
-                <th>Name</th>
-                <th>Expression</th>
-                <th>Delete</th>
-              </tr>
-            </thead>
-            <tbody>${formulaRows}</tbody>
-          </table>
+          <button type="button" class="btn btn-primary style-form-add" id="btn-add-style-formula" ${availableFormulas.length ? "" : "disabled"}>
+            <i data-lucide="plus"></i> Add Formula
+          </button>
         </div>
       `;
       return `
@@ -13867,7 +13872,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="section-kicker">Style master</div>
             <strong>${editing ? "Edit Style" : "Add New Style"}</strong>
           </div>
-          <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
+          <button type="button" class="btn btn-ghost btn-sm style-form-close" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
           ${editing ? `
@@ -13875,9 +13880,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <button type="button" class="section-tab active">Style Info</button>
             </div>
             ${infoForm}
-            <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
-              ${formulasForm}
-            </div>
+            ${formulasForm}
           ` : `${infoForm}`}
         </div>
         <div class="modal-footer">
@@ -16474,8 +16477,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
 
-      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit") || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
-      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "finishing-service" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate" || (state.modal.type === "style-master" && state.modal.mode === "add"));
+      const isStyleFormModal = state.modal.type === "style-master" && !(state.modal.sub && state.modal.sub.type === "style-variable");
+      dialog.classList.toggle("style-form-modal", isStyleFormModal);
+      dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit" && !isStyleFormModal) || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
+      dialog.classList.toggle("wide-form", state.modal.type === "finished-good" || state.modal.type === "finishing-service" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate");
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
       dialog.classList.toggle("split-form", (state.modal.type === "material" && getBomLineModalPanel() === "full") || state.modal.type === "other-material" || (state.modal.type === "service" && getBomLineModalPanel() === "full"));
       dialog.classList.toggle("compact-line", (state.modal.type === "material" || state.modal.type === "service") && getBomLineModalPanel() !== "full");
@@ -18865,11 +18870,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           }
           return;
         }
-        document.querySelectorAll(".pretty-select.open").forEach((el) => {
-          el.classList.remove("open");
-          const trigger = el.querySelector(".pretty-select-trigger");
-          if (trigger) trigger.setAttribute("aria-expanded", "false");
-        });
+        if (!event.target.closest(".style-formula-pretty")) {
+          document.querySelectorAll(".pretty-select.open").forEach((el) => {
+            el.classList.remove("open");
+            const trigger = el.querySelector(".pretty-select-trigger");
+            if (trigger) trigger.setAttribute("aria-expanded", "false");
+          });
+        }
         const removeLinkedDim = event.target.closest("[data-remove-linked-dim]");
         if (removeLinkedDim && state.modal.draft) {
           state.modal.draft.dimensionIds = removeLinkedDimensionId(state.modal.draft.dimensionIds, removeLinkedDim.dataset.removeLinkedDim);
