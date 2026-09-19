@@ -10591,13 +10591,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!root) return;
       const fg = getSelectedFinishedGood();
       const disabled = fg ? "" : "disabled";
-      const title = fg ? "" : " title=\"Select a finished good first\"";
+      const productTitle = fg ? "Product Information" : "Select a finished good first";
+      const styleTitle = fg ? "Style Formulas" : "Select a finished good first";
       root.innerHTML = `
         <div class="bom-info-actions">
-          <button type="button" class="btn btn-sm bom-info-btn" id="btn-open-product-info" ${disabled}${title}>Product Information</button>
-          <button type="button" class="btn btn-sm bom-info-btn" id="btn-open-style-formulas" ${disabled}${title}>Style Formulas</button>
+          <button type="button" class="btn btn-sm bom-info-btn bom-info-btn--product" id="btn-open-product-info" ${disabled} title="${escapeHtml(productTitle)}" aria-label="${escapeHtml(productTitle)}"><i data-lucide="id-card"></i></button>
+          <button type="button" class="btn btn-sm bom-info-btn bom-info-btn--style" id="btn-open-style-formulas" ${disabled} title="${escapeHtml(styleTitle)}" aria-label="${escapeHtml(styleTitle)}"><i data-lucide="square-function"></i></button>
         </div>
       `;
+      refreshIcons();
     }
 
     function openBomInfoPopup(kind) {

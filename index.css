@@ -1302,21 +1302,60 @@
     .bom-info-actions {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 10px;
       justify-content: flex-end;
     }
 
     .bom-info-btn {
       border-radius: 999px;
-      padding: 8px 14px;
-      font-weight: 600;
-      background: #e2e8f0;
-      color: #334155;
-      border-color: transparent;
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-width: 1px;
+      transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
     }
 
-    .bom-info-btn:hover:not(:disabled) {
-      background: #cbd5e1;
+    .bom-info-btn svg {
+      width: 22px;
+      height: 22px;
+    }
+
+    .bom-info-btn--product {
+      color: #0f766e;
+      background: #f0fdfa;
+      border-color: #99f6e4;
+    }
+
+    .bom-info-btn--style {
+      color: #6d28d9;
+      background: #f5f3ff;
+      border-color: #c4b5fd;
+    }
+
+    .bom-info-btn--product:hover:not(:disabled) {
+      color: #fff;
+      background: #0f766e;
+      border-color: #0f766e;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(15, 118, 110, 0.28);
+    }
+
+    .bom-info-btn--style:hover:not(:disabled) {
+      color: #fff;
+      background: #6d28d9;
+      border-color: #6d28d9;
+      transform: translateY(-1px);
+      box-shadow: 0 6px 14px rgba(109, 40, 217, 0.28);
+    }
+
+    .bom-info-btn:disabled {
+      color: #94a3b8;
+      background: #f1f5f9;
+      border-color: #e2e8f0;
+      opacity: 1;
     }
 
     .bom-info-backdrop {
