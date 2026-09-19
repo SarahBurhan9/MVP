@@ -742,50 +742,62 @@
     #page-bom-costing .btn-icon-dims,
     #page-bom-costing .btn-icon-rate,
     #page-bom-costing .btn-icon-calc,
-    #page-bom-costing .btn-icon-edit {
+    #page-bom-costing .btn-icon-edit,
+    #page-cost-calculator .btn-icon-dims,
+    #page-cost-calculator .btn-icon-rate,
+    #page-cost-calculator .btn-icon-calc,
+    #page-cost-calculator .btn-icon-edit {
       border-width: 1px;
     }
 
-    #page-bom-costing .btn-icon-dims {
+    #page-bom-costing .btn-icon-dims,
+    #page-cost-calculator .btn-icon-dims {
       color: #0f766e;
       background: #f0fdfa;
       border-color: #99f6e4;
     }
 
-    #page-bom-costing .btn-icon-dims:hover {
+    #page-bom-costing .btn-icon-dims:hover,
+    #page-cost-calculator .btn-icon-dims:hover {
       background: #ccfbf1;
       border-color: #2dd4bf;
     }
 
-    #page-bom-costing .btn-icon-rate {
+    #page-bom-costing .btn-icon-rate,
+    #page-cost-calculator .btn-icon-rate {
       color: #b45309;
       background: #fffbeb;
       border-color: #fcd34d;
     }
 
-    #page-bom-costing .btn-icon-rate:hover {
+    #page-bom-costing .btn-icon-rate:hover,
+    #page-cost-calculator .btn-icon-rate:hover {
       background: #fef3c7;
       border-color: #f59e0b;
     }
 
-    #page-bom-costing .btn-icon-calc {
+    #page-bom-costing .btn-icon-calc,
+    #page-cost-calculator .btn-icon-calc {
       color: #1d4ed8;
       background: #eff6ff;
       border-color: #93c5fd;
     }
 
-    #page-bom-costing .btn-icon-calc:hover {
+    #page-bom-costing .btn-icon-calc:hover,
+    #page-cost-calculator .btn-icon-calc:hover {
       background: #dbeafe;
       border-color: #60a5fa;
     }
 
-    #page-bom-costing .btn-icon-edit {
+    #page-bom-costing .btn-icon-edit,
+    #page-cost-calculator .btn-icon-edit {
       color: #6d28d9;
       background: #f5f3ff;
       border-color: #c4b5fd;
     }
 
-    #page-bom-costing .btn-icon-edit:hover {
+    #page-bom-costing .btn-icon-edit:hover,
+    #page-cost-calculator .btn-icon-edit:hover {
       background: #ede9fe;
       border-color: #a78bfa;
     }

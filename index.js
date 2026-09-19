@@ -3803,6 +3803,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderLineRateWithEdit(item, rateHtml, dataAttr, itemId) {
+      if (!item || itemId == null || itemId === "") return "—";
+      return renderStepValueWithEdit(rateHtml, dataAttr, itemId, "Edit rate", "pencil", "rate");
+    }
+
+    function renderRequiredQtyWithEdit(valueHtml, dataAttr, lineId) {
+      if (lineId == null || lineId === "") return valueHtml;
+      return renderStepValueWithEdit(valueHtml, dataAttr, lineId, "Edit required qty", "pencil", "edit");
+    }
+
     function validateCustomDimensionDraft(draft, errors) {
       if (!draft || draft.calculationMethod !== "formula" || !isUseCustomDimensions(draft)) return;
       const L = numericOrNull(draft.customLength);
@@ -6373,8 +6383,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${!calc.error ? formatQty(calc.netQty) : "—"}</td>
-            <td class="step-num">${material ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(!calc.error ? formatQty(calc.netQty) : "—", "data-edit-required-qty-line", lineId)}</td>
+            <td class="step-num">${renderLineRateWithEdit(material, material ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—", "data-bom-material-rate", material && material.id)}</td>
             <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
             <td>
               <div class="row-actions">
@@ -6403,8 +6413,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${!calc.error ? formatQty(calc.qty) : "—"}</td>
-            <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(!calc.error ? formatQty(calc.qty) : "—", "data-edit-required-qty-additional", lineId)}</td>
+            <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
             <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
             <td>
               <div class="row-actions">
@@ -6458,8 +6468,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
                   ${!isActiveGeneralService(service) && service ? `<div class="stat-hint">Not an active General service</div>` : ""}
                 </td>
-                <td class="step-num">${formatStep6RequiredQty(calc.qty, calc.error)}</td>
-                <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
+                <td class="step-num">${renderRequiredQtyWithEdit(formatStep6RequiredQty(calc.qty, calc.error), "data-edit-required-qty-service", lineId)}</td>
+                <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
                 <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                 <td>
                   <div class="row-actions">
@@ -10929,8 +10939,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
-            <td class="step-num">${formatQty(line.netQty)}</td>
-            <td class="step-num">${material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(formatQty(line.netQty), "data-edit-required-qty-line", line.id)}</td>
+            <td class="step-num">${renderLineRateWithEdit(material, material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—", "data-bom-material-rate", material && material.id)}</td>
             <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
@@ -10957,8 +10967,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
-            <td class="step-num">${formatQty(line.quantity)}</td>
-            <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(formatQty(line.quantity), "data-edit-required-qty-additional", line.id)}</td>
+            <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
             <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
@@ -11037,8 +11047,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
                     ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
                   </td>
-                  <td class="step-num">${formatStep6RequiredQty(line.quantity, line.error)}</td>
-                  <td class="step-num">${service ? formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || "") : "—"}</td>
+                  <td class="step-num">${renderRequiredQtyWithEdit(formatStep6RequiredQty(line.quantity, line.error), "data-edit-required-qty-service", line.id)}</td>
+                  <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
                   <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
@@ -13453,7 +13463,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return `
           <div class="modal-header">
             <div>
-              <div class="section-kicker">Finishing Service</div>
+              <div class="section-kicker">Service rate</div>
               <strong>Edit Rate</strong>
             </div>
             <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
@@ -16194,6 +16204,50 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return renderCompactLineModal("Edit Dimensions", body, "btn-save-material");
     }
 
+    function renderMaterialQtyMethodFields(draft, errors, qtyLabel) {
+      const material = getRawMaterial(draft.rawMaterialId);
+      const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
+      return `
+        <div>
+          <label class="form-label" for="modal-method-select">Calculation Method</label>
+          <select id="modal-method-select" class="full-select">
+            <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
+            <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
+          </select>
+        </div>
+        ${draft.calculationMethod === "formula" ? `
+          <div>
+            <div class="field-label">Quantity Formula</div>
+            <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
+            ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
+          </div>
+        ` : renderManualQtyAndRateFields("modal-manual-qty", "modal-manual-rate", draft, errors, qtyLabel || "Manual quantity")}
+      `;
+    }
+
+    function renderMaterialQtyPopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const body = `
+        <p class="stat-hint" style="margin:0 0 12px;">${material ? escapeHtml(material.name) + " (" + escapeHtml(material.code) + ")" : "Material not found"}</p>
+        <div class="form-grid">
+          ${renderMaterialQtyMethodFields(draft, errors, "Quantity / Piece")}
+        </div>
+        ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
+        ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+        ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
+        ${errors.customLength ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.customLength)}</div>` : ""}
+        ${errors.customWidth ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.customWidth)}</div>` : ""}
+      `;
+      return renderCompactLineModal(
+        "Edit Required Qty",
+        body,
+        "btn-save-material",
+        isCostCalculatorAdditionalModal() ? "Cost Calculator" : "BOM line"
+      );
+    }
+
     function renderMaterialModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
@@ -16202,7 +16256,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const slotLocked = Boolean(state.modal.slotLocked);
       const fromAdditional = Boolean(state.modal.fromAdditional);
       const material = getRawMaterial(draft.rawMaterialId);
-      const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
       const materialOptions = slotLocked
         ? getBomSlotMaterialOptions(ply, draft.rawMaterialId)
         : (fromAdditional
@@ -16244,20 +16297,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
               `}
             `}
-            <div>
-              <label class="form-label" for="modal-method-select">Calculation Method</label>
-              <select id="modal-method-select" class="full-select">
-                <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
-                <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
-              </select>
-            </div>
-            ${draft.calculationMethod === "formula" ? `
-              <div>
-                <div class="field-label">Quantity Formula</div>
-                <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
-                ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-              </div>
-            ` : renderManualQtyAndRateFields("modal-manual-qty", "modal-manual-rate", draft, errors, "Manual quantity")}
+            ${renderMaterialQtyMethodFields(draft, errors)}
             <div>
               <label class="form-label" for="modal-wastage">Wastage % <span class="stat-hint">(Optional)</span></label>
               <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${draft.wastagePercent == null || draft.wastagePercent === "" ? "" : escapeHtml(formatDecimal(draft.wastagePercent, 2, false))}" placeholder="0" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
@@ -16352,6 +16392,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialFormModal() {
       const panel = getBomLineModalPanel();
       if (panel === "dims") return renderMaterialDimsPopup();
+      if (panel === "qty") return renderMaterialQtyPopup();
       const fromAdditional = Boolean(state.modal.fromAdditional);
       const title = fromAdditional
         ? (state.modal.mode === "edit" ? "Edit Material" : "Add Material")
@@ -17300,11 +17341,61 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return errors;
     }
 
-    function renderServiceModalLeft() {
+    function renderServiceQtyMethodFields(draft, errors) {
+      const formula = getFormula(draft.formulaId);
+      return `
+        <div>
+          <label class="form-label" for="modal-service-method">Calculation Method</label>
+          <select id="modal-service-method" class="full-select">
+            <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
+            <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
+          </select>
+        </div>
+        ${draft.calculationMethod === "formula" ? `
+          <div>
+            <label class="form-label" for="modal-service-formula">Quantity Formula</label>
+            <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
+              <option value="">Select a formula...</option>
+              ${getServiceFormulas("Quantity").map((item) => `
+                <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
+                  ${escapeHtml(item.name)} (${escapeHtml(item.code)})
+                </option>
+              `).join("")}
+            </select>
+            ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
+            ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
+            ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
+          </div>
+        ` : renderManualQtyAndRateFields("modal-service-qty", "modal-service-rate", draft, errors, "Quantity / Piece")}
+      `;
+    }
+
+    function renderServiceQtyPopup() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const service = getService(draft.serviceId);
-      const formula = getFormula(draft.formulaId);
+      const body = `
+        <p class="stat-hint" style="margin:0 0 12px;">${service ? escapeHtml(service.name) + " (" + escapeHtml(service.code) + ")" : "Service not found"}</p>
+        <div class="form-grid">
+          ${renderServiceQtyMethodFields(draft, errors)}
+        </div>
+        ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
+        ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
+        ${errors.rate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.rate)}</div>` : ""}
+        ${errors.customLength ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.customLength)}</div>` : ""}
+        ${errors.customWidth ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.customWidth)}</div>` : ""}
+      `;
+      return renderCompactLineModal(
+        "Edit Required Qty",
+        body,
+        "btn-save-service",
+        isCostCalculatorServiceModal() ? "Cost Calculator" : "BOM line"
+      );
+    }
+
+    function renderServiceModalLeft() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
       const categoryId = bomCollectionToServiceCategory(state.modal.collection);
       const categoryOption = SERVICE_CATEGORY_OPTIONS.find((item) => item.id === categoryId);
       const categoryLabel = categoryOption ? categoryOption.label : "General";
@@ -17334,29 +17425,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               lengthId: "modal-service-custom-length",
               widthId: "modal-service-custom-width"
             })}
-            <div>
-              <label class="form-label" for="modal-service-method">Calculation Method</label>
-              <select id="modal-service-method" class="full-select">
-                <option value="formula" ${draft.calculationMethod === "formula" ? "selected" : ""}>Formula</option>
-                <option value="manual" ${draft.calculationMethod === "manual" ? "selected" : ""}>Manual</option>
-              </select>
-            </div>
-            ${draft.calculationMethod === "formula" ? `
-              <div>
-                <label class="form-label" for="modal-service-formula">Quantity Formula</label>
-                <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
-                  <option value="">Select a formula...</option>
-                  ${getServiceFormulas("Quantity").map((item) => `
-                    <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
-                      ${escapeHtml(item.name)} (${escapeHtml(item.code)})
-                    </option>
-                  `).join("")}
-                </select>
-                ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-                ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
-                ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
-              </div>
-            ` : renderManualQtyAndRateFields("modal-service-qty", "modal-service-rate", draft, errors, "Quantity / Piece")}
+            ${renderServiceQtyMethodFields(draft, errors)}
           </div>
           ${errors.duplicate ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.duplicate)}</div>` : ""}
           ${errors.finishedGood ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.finishedGood)}</div>` : ""}
@@ -17431,6 +17500,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceFormModal() {
+      if (getBomLineModalPanel() === "qty") return renderServiceQtyPopup();
       const finishing = isFinishingServiceCollection(state.modal.collection);
       const title = state.modal.mode === "edit"
         ? (finishing ? "Edit Finishing Service" : "Edit Service")
@@ -18196,6 +18266,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const editCcAdditionalMaterial = event.target.closest("[data-edit-cc-additional-material]");
         if (editCcAdditionalMaterial) {
           openMaterialModal(editCcAdditionalMaterial.dataset.editCcAdditionalMaterial);
+          return;
+        }
+        const editRequiredQtyLine = event.target.closest("[data-edit-required-qty-line]");
+        if (editRequiredQtyLine) {
+          openMaterialModal(editRequiredQtyLine.dataset.editRequiredQtyLine, "qty");
+          return;
+        }
+        const editRequiredQtyAdditional = event.target.closest("[data-edit-required-qty-additional]");
+        if (editRequiredQtyAdditional) {
+          const additionalId = editRequiredQtyAdditional.dataset.editRequiredQtyAdditional;
+          const additionalCollection = findCostCalculatorAdditionalServiceById(additionalId) ? "cc-additional-service" : "additional";
+          openServiceModal(additionalId, additionalCollection, "qty");
+          return;
+        }
+        const editRequiredQtyService = event.target.closest("[data-edit-required-qty-service]");
+        if (editRequiredQtyService) {
+          const serviceId = editRequiredQtyService.dataset.editRequiredQtyService;
+          const serviceCollection = findCostCalculatorServiceLineById(serviceId) ? "cost-calculator" : "services";
+          openServiceModal(serviceId, serviceCollection, "qty");
           return;
         }
         const deleteCcAdditionalMaterial = event.target.closest("[data-delete-cc-additional-material]");
