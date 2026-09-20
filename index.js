@@ -13,6 +13,7 @@ import { mountDimensionsTable, unmountDimensionsTable } from "./src/components/d
 import { mountFormulaVariablesTable, unmountFormulaVariablesTable } from "./src/components/formulaVariables/mountFormulaVariablesTable.jsx";
 import { mountFormulasTable, unmountFormulasTable } from "./src/components/formulas/mountFormulasTable.jsx";
 import { mountStylesTable, unmountStylesTable } from "./src/components/styles/mountStylesTable.jsx";
+import { mountRawMaterialsTable, unmountRawMaterialsTable } from "./src/components/rawMaterials/mountRawMaterialsTable.jsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -9218,8 +9219,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderRawMaterials() {
-      const rows = filterRawMaterials();
+    function vanillaRawMaterialsTableHtml(rows) {
       const body = rows.length
         ? rows.map((item, index) => `
             <tr>
@@ -9237,8 +9237,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(9, "No raw materials match this search.");
+      return `
+        <table class="data-table fm-table" style="min-width:1100px;">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Material</th>
+              <th>Code</th>
+              <th>Category</th>
+              <th>GSM</th>
+              <th>UOM</th>
+              <th>Qty Formula</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      document.getElementById("page-raw-materials").innerHTML = `
+    function rawMaterialTableDisplayRows(rows) {
+      return rows.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        name: item.name || "",
+        code: item.code || "",
+        category: item.category || "",
+        gsm: item.gsm === null ? "—" : formatDecimal(item.gsm, 1, false),
+        uom: item.uom || "",
+        qtyFormula: formatBoundFormulaCode(item.qtyFormulaId),
+        status: item.status || ""
+      }));
+    }
+
+    function renderRawMaterials() {
+      const rows = filterRawMaterials();
+      const page = document.getElementById("page-raw-materials");
+      if (!page) return;
+      let mount = document.getElementById("raw-materials-react-table");
+
+      if (!mount) {
+        unmountRawMaterialsTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9255,7 +9296,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${toolbarSearch("rm-search", state.searches.rawMaterials, "Search code, material, category...")}
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+              <span class="badge badge-muted" id="rm-visible-count">${rows.length} of ${rawMaterials.length}</span>
             </div>
           </div>
         </div>
@@ -9269,29 +9310,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Materials</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="rm-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table" style="min-width:1100px;">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Material</th>
-                    <th>Code</th>
-                    <th>Category</th>
-                    <th>GSM</th>
-                    <th>UOM</th>
-                    <th>Qty Formula</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="raw-materials-react-table">${vanillaRawMaterialsTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("raw-materials-react-table");
+      } else {
+        const toolbarCount = document.getElementById("rm-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + rawMaterials.length;
+        const groupCount = document.getElementById("rm-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("rm-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.rawMaterials;
+        }
+      }
+
+      mountRawMaterialsTable(mount, rawMaterialTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function renderRawMaterialRates() {
