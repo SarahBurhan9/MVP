@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { getFirestore, setDoc, doc, getDoc } from "firebase/firestore";
 import * as XLSX from "xlsx";
+import { mountDashboardStats, unmountDashboardStats } from "./src/components/dashboard/mountDashboardStats.jsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -8979,7 +8980,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const linked = isCloudLinked();
       const user = getCurrentUser();
       const lastSync = localStorage.getItem("lastSyncTime");
+      const dashboardStats = {
+        finishedGoodsCount: finishedGoods.length,
+        rawMaterialsCount: rawMaterials.length,
+        otherRawMaterialsCount: otherRawMaterials.length,
+        servicesCount: services.length,
+        formulasCount: formulas.length,
+        activeFormulas,
+        bomsCount: boms.length,
+        activeBoms,
+        formulaVariablesCount: formulaVariables.length,
+        dimensionsCount: dimensions.length,
+        stylesCount: styles.length,
+        materialRatesCount: materialRates.length,
+        otherMaterialRatesCount: otherMaterialRates.length,
+        serviceRatesCount: serviceRates.length
+      };
 
+      unmountDashboardStats();
       document.getElementById("page-dashboard").innerHTML = `
         <div class="card cloud-sync-card">
           <div class="card-body">
@@ -9017,70 +9035,70 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ${auth.currentUser ? "" : `<p class="stat-hint" style="margin-top:10px;">💾 Downloading local data only. Sign in with Google to sync your data to the cloud.</p>`}
           </div>
         </div>
-        <div class="stat-grid">
+        <div class="stat-grid" id="dashboard-react-stats">
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="finished-goods">
             <div class="stat-label">Total Finished Goods</div>
-            <div class="stat-value">${finishedGoods.length}</div>
+            <div class="stat-value">${dashboardStats.finishedGoodsCount}</div>
             <div class="stat-hint">Product / variant masters</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="raw-materials">
             <div class="stat-label">Total Raw Materials</div>
-            <div class="stat-value">${rawMaterials.length}</div>
+            <div class="stat-value">${dashboardStats.rawMaterialsCount}</div>
             <div class="stat-hint">Purchasing rate source</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="other-raw-materials">
             <div class="stat-label">Total Other Raw Materials</div>
-            <div class="stat-value">${otherRawMaterials.length}</div>
+            <div class="stat-value">${dashboardStats.otherRawMaterialsCount}</div>
             <div class="stat-hint">Purchasing rate source</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="services">
             <div class="stat-label">Total Services</div>
-            <div class="stat-value">${services.length}</div>
+            <div class="stat-value">${dashboardStats.servicesCount}</div>
             <div class="stat-hint">Process rate source</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="formulas">
             <div class="stat-label">Formula Definitions</div>
-            <div class="stat-value">${formulas.length}</div>
-            <div class="stat-hint">${activeFormulas} active</div>
+            <div class="stat-value">${dashboardStats.formulasCount}</div>
+            <div class="stat-hint">${dashboardStats.activeFormulas} active</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-list">
             <div class="stat-label">Saved BOMs</div>
-            <div class="stat-value">${boms.length}</div>
+            <div class="stat-value">${dashboardStats.bomsCount}</div>
             <div class="stat-hint">Draft and Active versions</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-list">
             <div class="stat-label">Active BOMs</div>
-            <div class="stat-value">${activeBoms}</div>
+            <div class="stat-value">${dashboardStats.activeBoms}</div>
             <div class="stat-hint">Only BOMs with Active status</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="formula-variables">
             <div class="stat-label">Variables</div>
-            <div class="stat-value">${formulaVariables.length}</div>
+            <div class="stat-value">${dashboardStats.formulaVariablesCount}</div>
             <div class="stat-hint">Shared formula variables</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="dimensions">
             <div class="stat-label">Dimension</div>
-            <div class="stat-value">${dimensions.length}</div>
+            <div class="stat-value">${dashboardStats.dimensionsCount}</div>
             <div class="stat-hint">Dimension master</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="style">
             <div class="stat-label">Style</div>
-            <div class="stat-value">${styles.length}</div>
+            <div class="stat-value">${dashboardStats.stylesCount}</div>
             <div class="stat-hint">Style master</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="raw-material-rates">
             <div class="stat-label">Raw Material Rates</div>
-            <div class="stat-value">${materialRates.length}</div>
+            <div class="stat-value">${dashboardStats.materialRatesCount}</div>
             <div class="stat-hint">Purchasing rates</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="other-raw-material-rates">
             <div class="stat-label">Other Raw Material Rates</div>
-            <div class="stat-value">${otherMaterialRates.length}</div>
+            <div class="stat-value">${dashboardStats.otherMaterialRatesCount}</div>
             <div class="stat-hint">Purchasing rates</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="service-rates">
             <div class="stat-label">Service Rates</div>
-            <div class="stat-value">${serviceRates.length}</div>
+            <div class="stat-value">${dashboardStats.serviceRatesCount}</div>
             <div class="stat-hint">Process pricing</div>
           </article>
           <article class="stat-card stat-card-nav" role="button" tabindex="0" data-dashboard-nav="bom-costing">
@@ -9117,6 +9135,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
         </div>
       `;
+      mountDashboardStats(document.getElementById("dashboard-react-stats"), dashboardStats);
     }
 
     function renderFinishedGoods() {
