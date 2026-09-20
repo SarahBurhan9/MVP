@@ -23,6 +23,7 @@ import { mountFinishedGoodsTable, unmountFinishedGoodsTable } from "./src/compon
 import { mountBomListTable, unmountBomListTable } from "./src/components/bomList/mountBomListTable.jsx";
 import { mountBomHeaderMeta, unmountBomHeaderMeta } from "./src/components/bomHeader/mountBomHeaderMeta.jsx";
 import { mountHeaderTitles } from "./src/components/header/mountHeaderTitles.jsx";
+import { mountSidebarNav } from "./src/components/sidebar/mountSidebarNav.jsx";
 import { mountBomCostSummary, unmountBomCostSummary } from "./src/components/bomCostSummary/mountBomCostSummary.jsx";
 import { mountBomInfoPopup, unmountBomInfoPopup } from "./src/components/bomInfo/mountBomInfoPopup.jsx";
 import {
@@ -588,6 +589,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       "bom-list": { title: "BOM List", subtitle: "Saved drafts and active versions" },
       "cost-calculator": { title: "Cost Calculator", subtitle: "Quick cost estimate by style, size, ply, and materials" }
     };
+
+    const SIDEBAR_NAV_ITEMS = [
+      { page: "dashboard", label: "Dashboard", icon: "layout-dashboard", sectionStart: false },
+      { page: "formula-variables", label: "Variables", icon: "variable", sectionStart: true },
+      { page: "formulas", label: "Formula", icon: "sigma", sectionStart: false },
+      { page: "dimensions", label: "Dimension", icon: "ruler", sectionStart: true },
+      { page: "style", label: "Style", icon: "shapes", sectionStart: false },
+      { page: "raw-materials", label: "Raw Material", icon: "layers", sectionStart: true },
+      { page: "raw-material-rates", label: "Raw Material Rates", icon: "banknote", sectionStart: false },
+      { page: "services", label: "Services", icon: "wrench", sectionStart: true },
+      { page: "service-rates", label: "Service Rates", icon: "tag", sectionStart: false },
+      { page: "finished-goods", label: "Finished Goods", icon: "box", sectionStart: true },
+      { page: "bom-costing", label: "BOM & Costing", icon: "calculator", sectionStart: false },
+      { page: "bom-list", label: "BOM List", icon: "list", sectionStart: false },
+      { page: "cost-calculator", label: "Cost Calculator", icon: "calculator", sectionStart: false }
+    ];
 
     const state = {
       currentPage: "dashboard",
@@ -18709,8 +18726,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!PAGE_META[page]) return;
       state.currentPage = page;
 
-      document.querySelectorAll(".nav-item").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.page === page);
+      mountSidebarNav(document.getElementById("sidebar-nav"), {
+        currentPage: page,
+        items: SIDEBAR_NAV_ITEMS
       });
 
       document.querySelectorAll(".page").forEach((section) => {

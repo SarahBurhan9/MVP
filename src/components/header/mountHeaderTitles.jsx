@@ -7,19 +7,6 @@ let headerTitleEl = null;
 let headerSubtitleRoot = null;
 let headerSubtitleEl = null;
 
-export function unmountHeaderTitles() {
-  if (headerTitleRoot) {
-    headerTitleRoot.unmount();
-    headerTitleRoot = null;
-    headerTitleEl = null;
-  }
-  if (headerSubtitleRoot) {
-    headerSubtitleRoot.unmount();
-    headerSubtitleRoot = null;
-    headerSubtitleEl = null;
-  }
-}
-
 export function mountHeaderTitles(titleElement, subtitleElement, model) {
   if (titleElement) {
     if (headerTitleRoot && headerTitleEl !== titleElement) {
