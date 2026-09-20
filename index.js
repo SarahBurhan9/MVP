@@ -14,6 +14,8 @@ import { mountFormulaVariablesTable, unmountFormulaVariablesTable } from "./src/
 import { mountFormulasTable, unmountFormulasTable } from "./src/components/formulas/mountFormulasTable.jsx";
 import { mountStylesTable, unmountStylesTable } from "./src/components/styles/mountStylesTable.jsx";
 import { mountRawMaterialsTable, unmountRawMaterialsTable } from "./src/components/rawMaterials/mountRawMaterialsTable.jsx";
+import { mountRawMaterialRatesTable, unmountRawMaterialRatesTable } from "./src/components/rawMaterialRates/mountRawMaterialRatesTable.jsx";
+import { mountOtherRawMaterialsTable, unmountOtherRawMaterialsTable } from "./src/components/otherRawMaterials/mountOtherRawMaterialsTable.jsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -9332,10 +9334,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshIcons();
     }
 
-    function renderRawMaterialRates() {
-      const page = document.getElementById("page-raw-material-rates");
-      if (!page) return;
-      const rows = materialRateTableRows();
+    function vanillaRawMaterialRatesTableHtml(rows) {
       const body = rows.length
         ? rows.map(({ material, rateRow }, index) => {
             const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
@@ -9359,8 +9358,50 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           `;
           }).join("")
         : emptyRow(8, "No material rates match this search.");
+      return `
+        <table class="data-table fm-table" style="min-width:1100px;">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Name</th>
+              <th>Code</th>
+              <th>Rate (PKR)</th>
+              <th>Rate UOM</th>
+              <th>Dimensions</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      page.innerHTML = `
+    function rawMaterialRateTableDisplayRows(rows) {
+      return rows.map(({ material, rateRow }, index) => ({
+        id: material.id,
+        rowNumber: index + 1,
+        name: material.name || "",
+        code: material.code || "",
+        rate: rateRow && Number.isFinite(Number(rateRow.rate))
+          ? formatNumber(rateRow.rate, 2)
+          : "—",
+        rateUom: (rateRow && rateRow.rateUOM) || "—",
+        dimensions: formatMaterialDimensionSummary(material),
+        statusLabel: rateRow ? (rateRow.status || "Inactive") : "Unset",
+        statusActive: Boolean(rateRow && rateRow.status === "Active")
+      }));
+    }
+
+    function renderRawMaterialRates() {
+      const page = document.getElementById("page-raw-material-rates");
+      if (!page) return;
+      const rows = materialRateTableRows();
+      let mount = document.getElementById("raw-material-rates-react-table");
+
+      if (!mount) {
+        unmountRawMaterialRatesTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9383,7 +9424,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${rawMaterials.length}</span>
+              <span class="badge badge-muted" id="mrate-visible-count">${rows.length} of ${rawMaterials.length}</span>
             </div>
           </div>
         </div>
@@ -9397,34 +9438,37 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Rates</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="mrate-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table" style="min-width:1100px;">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Name</th>
-                    <th>Code</th>
-                    <th>Rate (PKR)</th>
-                    <th>Rate UOM</th>
-                    <th>Dimensions</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="raw-material-rates-react-table">${vanillaRawMaterialRatesTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("raw-material-rates-react-table");
+      } else {
+        const toolbarCount = document.getElementById("mrate-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + rawMaterials.length;
+        const groupCount = document.getElementById("mrate-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("mrate-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.materialRates;
+        }
+        const statusFilter = document.getElementById("mrate-status-filter");
+        if (statusFilter && statusFilter.value !== state.materialRateFilter) {
+          statusFilter.value = state.materialRateFilter;
+        }
+        const sort = document.getElementById("mrate-sort");
+        if (sort && sort.value !== state.materialRateSort) {
+          sort.value = state.materialRateSort;
+        }
+      }
+
+      mountRawMaterialRatesTable(mount, rawMaterialRateTableDisplayRows(rows));
+      refreshIcons();
     }
 
-    function renderOtherRawMaterials() {
-      const page = document.getElementById("page-other-raw-materials");
-      if (!page) return;
-      const rows = filterOtherRawMaterials();
+    function vanillaOtherRawMaterialsTableHtml(rows) {
       const body = rows.length
         ? rows.map((item) => `
             <tr>
@@ -9440,8 +9484,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(9, "No other raw materials match this search.");
+      return `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Material</th>
+              <th>Category</th>
+              <th>GSM</th>
+              <th>UOM</th>
+              <th>Qty Formula</th>
+              <th>Dimensions</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      page.innerHTML = `
+    function otherRawMaterialTableDisplayRows(rows) {
+      return rows.map((item) => ({
+        id: item.id,
+        code: item.code || "",
+        name: item.name || "",
+        category: item.category || "",
+        gsm: item.gsm === null ? "—" : formatDecimal(item.gsm, 1, false),
+        uom: item.uom || "",
+        qtyFormula: formatBoundFormulaCode(item.qtyFormulaId),
+        dimensions: formatOtherMaterialDimensionSummary(item),
+        status: item.status || ""
+      }));
+    }
+
+    function renderOtherRawMaterials() {
+      const page = document.getElementById("page-other-raw-materials");
+      if (!page) return;
+      const rows = filterOtherRawMaterials();
+      let mount = document.getElementById("other-raw-materials-react-table");
+
+      if (!mount) {
+        unmountOtherRawMaterialsTable();
+        page.innerHTML = `
         <div class="toolbar">
           <div class="toolbar-left">
             ${toolbarSearch("orm-search", state.searches.otherRawMaterials, "Search code, material, category...")}
@@ -9450,30 +9535,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <button type="button" class="btn btn-primary" id="btn-add-other-material-master">
               <i data-lucide="plus"></i> Add Material
             </button>
-            <span class="badge badge-muted">${rows.length} of ${otherRawMaterials.length}</span>
+            <span class="badge badge-muted" id="orm-visible-count">${rows.length} of ${otherRawMaterials.length}</span>
           </div>
         </div>
         <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Material</th>
-                  <th>Category</th>
-                  <th>GSM</th>
-                  <th>UOM</th>
-                  <th>Qty Formula</th>
-                  <th>Dimensions</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
-          </div>
+          <div class="table-wrap" id="other-raw-materials-react-table">${vanillaOtherRawMaterialsTableHtml(rows)}</div>
         </div>
       `;
+        mount = document.getElementById("other-raw-materials-react-table");
+      } else {
+        const toolbarCount = document.getElementById("orm-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + otherRawMaterials.length;
+        const search = document.getElementById("orm-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.otherRawMaterials;
+        }
+      }
+
+      mountOtherRawMaterialsTable(mount, otherRawMaterialTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function renderOtherRawMaterialRates() {
