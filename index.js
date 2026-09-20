@@ -14,12 +14,23 @@ import { mountFormulaVariablesTable, unmountFormulaVariablesTable } from "./src/
 import { mountFormulasTable, unmountFormulasTable } from "./src/components/formulas/mountFormulasTable.jsx";
 import { mountStylesTable, unmountStylesTable } from "./src/components/styles/mountStylesTable.jsx";
 import { mountRawMaterialsTable, unmountRawMaterialsTable } from "./src/components/rawMaterials/mountRawMaterialsTable.jsx";
+import { mountServicesTable, unmountServicesTable } from "./src/components/services/mountServicesTable.jsx";
+import { mountServiceRatesTable, unmountServiceRatesTable } from "./src/components/serviceRates/mountServiceRatesTable.jsx";
 import { mountRawMaterialRatesTable, unmountRawMaterialRatesTable } from "./src/components/rawMaterialRates/mountRawMaterialRatesTable.jsx";
 import { mountOtherRawMaterialsTable, unmountOtherRawMaterialsTable } from "./src/components/otherRawMaterials/mountOtherRawMaterialsTable.jsx";
 import { mountOtherRawMaterialRatesTable, unmountOtherRawMaterialRatesTable } from "./src/components/otherRawMaterialRates/mountOtherRawMaterialRatesTable.jsx";
 import { mountFinishedGoodsTable, unmountFinishedGoodsTable } from "./src/components/finishedGoods/mountFinishedGoodsTable.jsx";
 import { mountBomListTable, unmountBomListTable } from "./src/components/bomList/mountBomListTable.jsx";
 import { mountBomHeaderMeta, unmountBomHeaderMeta } from "./src/components/bomHeader/mountBomHeaderMeta.jsx";
+import { mountHeaderTitles } from "./src/components/header/mountHeaderTitles.jsx";
+import { mountBomCostSummary, unmountBomCostSummary } from "./src/components/bomCostSummary/mountBomCostSummary.jsx";
+import { mountBomInfoPopup, unmountBomInfoPopup } from "./src/components/bomInfo/mountBomInfoPopup.jsx";
+import {
+  mountBomLineCostCells,
+  mountBomSectionTotal,
+  unmountAllBomCostCells,
+  unmountBomCostCells
+} from "./src/components/bomCostCells/mountBomCostCells.jsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -9703,8 +9714,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshIcons();
     }
 
-    function renderServices() {
-      const rows = filterServices();
+    function vanillaServicesTableHtml(rows) {
       const body = rows.length
         ? rows.map((item, index) => `
             <tr>
@@ -9720,8 +9730,45 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(7, "No services match this search.");
+      return `
+        <table class="data-table fm-table">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Service</th>
+              <th>Code</th>
+              <th>UOM</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      document.getElementById("page-services").innerHTML = `
+    function servicesTableDisplayRows(rows) {
+      return rows.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        name: item.name || "",
+        code: item.code || "",
+        uom: item.uom || "",
+        categories: serviceCategoryLabels(item.categories),
+        status: item.status || ""
+      }));
+    }
+
+    function renderServices() {
+      const rows = filterServices();
+      const page = document.getElementById("page-services");
+      if (!page) return;
+      let mount = document.getElementById("services-react-table");
+
+      if (!mount) {
+        unmountServicesTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9738,7 +9785,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${toolbarSearch("srv-search", state.searches.services, "Search code, service, UOM, category...")}
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+              <span class="badge badge-muted" id="srv-visible-count">${rows.length} of ${services.length}</span>
             </div>
           </div>
         </div>
@@ -9752,33 +9799,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Services</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="srv-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Service</th>
-                    <th>Code</th>
-                    <th>UOM</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="services-react-table">${vanillaServicesTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("services-react-table");
+      } else {
+        const toolbarCount = document.getElementById("srv-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + services.length;
+        const groupCount = document.getElementById("srv-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("srv-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.services;
+        }
+      }
+
+      mountServicesTable(mount, servicesTableDisplayRows(rows));
+      refreshIcons();
     }
 
-    function renderServiceRates() {
-      const page = document.getElementById("page-service-rates");
-      if (!page) return;
-      const rows = serviceRateTableRows();
+    function vanillaServiceRatesTableHtml(rows) {
       const body = rows.length
         ? rows.map(({ service, rateRow }, index) => {
             const formula = getFormula(rateRow && rateRow.formulaId);
@@ -9803,8 +9846,53 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           `;
           }).join("")
         : emptyRow(8, "No service rates match this search.");
+      return `
+        <table class="data-table fm-table" style="min-width:1100px;">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Service Name</th>
+              <th>Service Code</th>
+              <th>Rate (PKR)</th>
+              <th>Rate UOM</th>
+              <th>Formula</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      page.innerHTML = `
+    function serviceRateTableDisplayRows(rows) {
+      return rows.map(({ service, rateRow }, index) => {
+        const formula = getFormula(rateRow && rateRow.formulaId);
+        return {
+          id: service.id,
+          rowNumber: index + 1,
+          name: service.name || "",
+          code: service.code || "",
+          rate: rateRow && Number.isFinite(Number(rateRow.rate))
+            ? formatNumber(rateRow.rate, 2)
+            : "—",
+          rateUom: (rateRow && rateRow.rateUOM) || "—",
+          formulaCode: formula ? formula.code : "—",
+          statusLabel: rateRow ? (rateRow.status || "Inactive") : "Unset",
+          statusActive: Boolean(rateRow && rateRow.status === "Active")
+        };
+      });
+    }
+
+    function renderServiceRates() {
+      const page = document.getElementById("page-service-rates");
+      if (!page) return;
+      const rows = serviceRateTableRows();
+      let mount = document.getElementById("service-rates-react-table");
+
+      if (!mount) {
+        unmountServiceRatesTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9827,7 +9915,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${services.length}</span>
+              <span class="badge badge-muted" id="srate-visible-count">${rows.length} of ${services.length}</span>
             </div>
           </div>
         </div>
@@ -9841,28 +9929,34 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Rates</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="srate-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table" style="min-width:1100px;">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Service Name</th>
-                    <th>Service Code</th>
-                    <th>Rate (PKR)</th>
-                    <th>Rate UOM</th>
-                    <th>Formula</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="service-rates-react-table">${vanillaServiceRatesTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("service-rates-react-table");
+      } else {
+        const toolbarCount = document.getElementById("srate-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + services.length;
+        const groupCount = document.getElementById("srate-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("srate-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.serviceRates;
+        }
+        const statusFilter = document.getElementById("srate-status-filter");
+        if (statusFilter && statusFilter.value !== state.serviceRateFilter) {
+          statusFilter.value = state.serviceRateFilter;
+        }
+        const sort = document.getElementById("srate-sort");
+        if (sort && sort.value !== state.serviceRateSort) {
+          sort.value = state.serviceRateSort;
+        }
+      }
+
+      mountServiceRatesTable(mount, serviceRateTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function vanillaStylesTableHtml(rows) {
@@ -10698,6 +10792,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBOMPage() {
+      unmountBomCostSummary();
+      unmountAllBomCostCells();
+      unmountBomHeaderMeta();
+      unmountBomInfoPopup();
       if (!BOM_FLOW_SECTIONS.some((section) => section.id === state.bomFlowSection)) {
         state.bomFlowSection = BOM_FLOW_SECTIONS[0].id;
       }
@@ -11144,7 +11242,128 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshIcons();
     }
 
+    function plyVisualizationDisplayModel(ply) {
+      let layers = getStructuralLayers(ply);
+      if (Number(ply) === 3) {
+        const displayOrder = ["Top Liner", "Bottom Liner", "Inner Liner"];
+        layers = displayOrder.filter((layer) => layers.includes(layer))
+          .concat(layers.filter((layer) => !displayOrder.includes(layer)));
+      }
+      return {
+        ariaLabel: String(ply) + " ply structure",
+        layers: layers.map((layer, index) => ({
+          layer,
+          name: layerMaterialName(layer),
+          className: plyLayerClass(layer),
+          showArrow: index < layers.length - 1
+        }))
+      };
+    }
+
+    function styleFormulaRowDisplayModel(row, options) {
+      const opts = options || {};
+      const classes = ["style-formula-row"];
+      if (opts.nested) classes.push("is-nested");
+      if (opts.primary) classes.push("is-primary");
+      let hint = "";
+      if (row && row.success) {
+        const hintKind = styleFormulaHintKind(row);
+        if (hintKind === "length") hint = "Area Length = " + formatFormulaResult(row.result);
+        else if (hintKind === "width") hint = "Area Width = " + formatFormulaResult(row.result);
+        else if (hintKind === "coveredArea") hint = "Covered Area = " + formatFormulaResult(row.result);
+      }
+      return {
+        key: String(row.linkId || row.code || "") + ":" + String(opts.stepIndex || ""),
+        className: classes.join(" "),
+        stepLabel: opts.stepIndex != null ? "Step " + opts.stepIndex : "",
+        code: row.code || "",
+        title: row.description || row.name || "",
+        expression: row.expression || "—",
+        hint,
+        success: Boolean(row.success),
+        valueText: formatFormulaResult(row.result),
+        errorText: row.error || "Could not evaluate",
+        explainKind: "style",
+        explainLine: String(row.code || ""),
+        explainAriaLabel: "Explain style formula"
+      };
+    }
+
+    function stylePerimeterDisplayModel(rows) {
+      const perimeter = getStylePerimeterFromFormulaRows(rows);
+      return {
+        expression: STYLE_PERIMETER_EXPRESSION,
+        success: Boolean(perimeter.success),
+        valueText: formatFormulaResult(perimeter.result),
+        errorText: perimeter.error || "",
+        explainKind: "style-perimeter",
+        explainLine: "PERIMETER",
+        explainAriaLabel: "Explain perimeter"
+      };
+    }
+
+    function styleFormulasPopupDisplayModel(rows) {
+      const list = Array.isArray(rows) ? rows : [];
+      const perimeter = stylePerimeterDisplayModel(list);
+      if (!list.length) {
+        return { empty: true, independent: [], coveredGroup: null, perimeter };
+      }
+      const covered = list.find((row) => isCoveredAreaStyleFormula(row));
+      const nestedRows = covered ? coveredAreaDependentStyleRows(covered, list) : [];
+      const nestedKeys = new Set(nestedRows.map((row) => String(row.linkId || row.code)));
+      const coveredKey = covered ? String(covered.linkId || covered.code) : "";
+      const independent = list.filter((row) => {
+        const key = String(row.linkId || row.code);
+        if (covered && key === coveredKey) return false;
+        if (nestedKeys.has(key)) return false;
+        return true;
+      }).map((row) => styleFormulaRowDisplayModel(row));
+      let coveredGroup = null;
+      if (covered) {
+        coveredGroup = nestedRows.length
+          ? {
+              hasNested: true,
+              rows: nestedRows.map((row, index) => styleFormulaRowDisplayModel(row, { nested: true, stepIndex: index + 1 }))
+                .concat([styleFormulaRowDisplayModel(covered, { primary: true, stepIndex: nestedRows.length + 1 })])
+            }
+          : {
+              hasNested: false,
+              rows: [styleFormulaRowDisplayModel(covered, { primary: true })]
+            };
+      }
+      return { empty: false, independent, coveredGroup, perimeter };
+    }
+
+    function bomInfoPopupDisplayModel(fg) {
+      if (state.bomInfoPopup === "product") {
+        const ply = fg?.ply ?? "—";
+        const plyVis = plyVisualizationDisplayModel(fg?.ply);
+        return {
+          kind: "product",
+          productName: fg?.product ?? "missing data",
+          variant: fg?.variant ?? "—",
+          style: fg?.style ?? "—",
+          plyDisplay: String(ply) + " Ply",
+          plyStructureTitle: String(ply) + " Ply Structure",
+          uom: fg?.uom ?? "—",
+          dimensions: formatDimensions(fg) || "missing data",
+          plyAriaLabel: plyVis.ariaLabel,
+          plyLayers: plyVis.layers
+        };
+      }
+      const styleModel = styleFormulasPopupDisplayModel(Array.isArray(state.bomStyleResults) ? state.bomStyleResults : []);
+      return {
+        kind: "style",
+        styleName: fg?.style ?? "—",
+        empty: styleModel.empty,
+        independent: styleModel.independent,
+        coveredGroup: styleModel.coveredGroup,
+        perimeter: styleModel.perimeter
+      };
+    }
+
     function closeBomInfoPopup() {
+      unmountBomInfoPopup();
       state.bomInfoPopup = null;
       const backdrop = document.getElementById("bom-info-backdrop");
       const dialog = document.getElementById("bom-info-dialog");
@@ -11159,6 +11378,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const backdrop = document.getElementById("bom-info-backdrop");
       const dialog = document.getElementById("bom-info-dialog");
       if (!backdrop || !dialog) return;
+      unmountBomInfoPopup();
       const fg = getSelectedFinishedGood();
       if (!state.bomInfoPopup || !fg) {
         closeBomInfoPopup();
@@ -11167,6 +11387,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const isProduct = state.bomInfoPopup === "product";
       const title = isProduct ? "Product Information" : "Style Formulas";
       const kicker = isProduct ? "Finished Good" : "Auto-calculated";
+      const model = bomInfoPopupDisplayModel(fg);
       const body = isProduct
         ? renderProductInformationCard(fg, { kicker: "Finished Good", detailsVisible: true })
         : `
@@ -11187,6 +11408,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
         <div class="bom-info-body">${body}</div>
       `;
+      mountBomInfoPopup(dialog.querySelector(".bom-info-body"), model);
       backdrop.hidden = false;
       requestAnimationFrame(() => backdrop.classList.add("show"));
     }
@@ -11197,6 +11419,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderStyleFormulasSection() {
       if (state.bomInfoPopup === "style") renderBomInfoPopup();
+    }
+
+    function bomLineCostDisplayModel(line) {
+      const hasError = Boolean(line && line.error);
+      return {
+        hasError,
+        displayValue: hasError ? "Error" : formatRupees(line.costPerPiece)
+      };
+    }
+
+    function bomSectionTotalDisplayModel(hasError, amount) {
+      return {
+        hasError: Boolean(hasError),
+        displayValue: hasError ? "Error" : formatRupees(amount)
+      };
+    }
+
+    function mountBomCostCellHosts(root, lineModels, totalId, totalModel) {
+      mountBomLineCostCells(root, lineModels);
+      mountBomSectionTotal(totalId, totalModel);
     }
 
     function renderBomMaterialCard(options) {
@@ -11266,7 +11508,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "pencil",
                       "rate"
                     ) : "—"}</td>
-                    <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                    <td class="step-num" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                     <td>
                       <div class="row-actions">
                         <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
@@ -11294,6 +11536,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialSection() {
       const root = document.getElementById("bom-materials-root");
       if (!root) return;
+      unmountBomCostCells(["material"], ["bom-material-cost-total"]);
       const fg = getSelectedFinishedGood();
       if (!fg) {
         root.innerHTML = "";
@@ -11321,10 +11564,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
             <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
             ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
-            <div class="cc-total-line"><span>Total Material Cost</span><strong>${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
+            <div class="cc-total-line"><span>Total Material Cost</span><strong id="bom-material-cost-total">${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
         </section>
       `;
+      const lineModels = {};
+      orderedSlots.forEach((slot) => {
+        if (!slot.line) return;
+        lineModels["material:" + slot.line.id] = bomLineCostDisplayModel(slot.line);
+      });
+      mountBomCostCellHosts(
+        root,
+        lineModels,
+        "bom-material-cost-total",
+        bomSectionTotalDisplayModel(hasCalcErrors, state.totalMaterialCost)
+      );
     }
 
     function renderBomAdditionalServiceCard(line, index) {
@@ -11455,6 +11709,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderOtherMaterialSection() {
       const root = document.getElementById("bom-other-materials-root");
       if (!root) return;
+      unmountBomCostCells(["additional-material", "additional-service"], ["bom-additional-cost-total"]);
       const fg = getSelectedFinishedGood();
       if (!fg) {
         root.innerHTML = "";
@@ -11478,7 +11733,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </td>
             <td class="step-num">${renderRequiredQtyWithEdit(formatQty(line.netQty), "data-edit-required-qty-line", line.id)}</td>
             <td class="step-num">${renderLineRateWithEdit(material, material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—", "data-bom-material-rate", material && material.id)}</td>
-            <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num" data-bom-line-cost="additional-material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
@@ -11506,7 +11761,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </td>
             <td class="step-num">${renderRequiredQtyWithEdit(formatQty(line.quantity), "data-edit-required-qty-additional", line.id)}</td>
             <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
-            <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num" data-bom-line-cost="additional-service:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
@@ -11553,15 +11808,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>${additionalBody}</tbody>
               </table>
             </div>
-            <div class="cc-total-line"><span>Total Additional Materials Cost</span><strong>${additionalHasErrors ? "Error" : formatRupees(additionalSectionCost)}</strong></div>
+            <div class="cc-total-line"><span>Total Additional Materials Cost</span><strong id="bom-additional-cost-total">${additionalHasErrors ? "Error" : formatRupees(additionalSectionCost)}</strong></div>
           </div>
         </section>
       `;
+      const lineModels = {};
+      extraRows.forEach((line) => {
+        lineModels["additional-material:" + line.id] = bomLineCostDisplayModel(line);
+      });
+      additionalRows.forEach((line) => {
+        lineModels["additional-service:" + line.id] = bomLineCostDisplayModel(line);
+      });
+      mountBomCostCellHosts(
+        root,
+        lineModels,
+        "bom-additional-cost-total",
+        bomSectionTotalDisplayModel(additionalHasErrors, additionalSectionCost)
+      );
     }
 
     function renderServiceSection() {
       const root = document.getElementById("bom-services-root");
       if (!root) return;
+      unmountBomCostCells(["service"], ["bom-service-cost-total"]);
       const hasFg = Boolean(getSelectedFinishedGood());
       if (!hasFg) {
         root.innerHTML = "";
@@ -11586,7 +11855,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   </td>
                   <td class="step-num">${renderRequiredQtyWithEdit(formatStep6RequiredQty(line.quantity, line.error), "data-edit-required-qty-service", line.id)}</td>
                   <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
-                  <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                  <td class="step-num" data-bom-line-cost="service:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-service="${line.id}" title="Calculation breakdown">
@@ -11632,15 +11901,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>${body}</tbody>
               </table>
             </div>
-            ${rows.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${hasServiceErrors ? "Error" : formatRupees(state.totalServiceCost)}</strong></div>` : ""}
+            ${rows.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong id="bom-service-cost-total">${hasServiceErrors ? "Error" : formatRupees(state.totalServiceCost)}</strong></div>` : ""}
           </div>
         </div>
       `;
+      const lineModels = {};
+      rows.forEach((line) => {
+        lineModels["service:" + line.id] = bomLineCostDisplayModel(line);
+      });
+      mountBomCostCellHosts(
+        root,
+        lineModels,
+        rows.length ? "bom-service-cost-total" : null,
+        rows.length ? bomSectionTotalDisplayModel(hasServiceErrors, state.totalServiceCost) : null
+      );
     }
 
     function renderFinishingServicesSection() {
       const root = document.getElementById("bom-finishing-root");
       if (!root) return;
+      unmountBomCostCells(["finishing"], ["bom-finishing-cost-total"]);
       const hasFg = Boolean(getSelectedFinishedGood());
       if (!hasFg) {
         root.innerHTML = "";
@@ -11668,7 +11948,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     "pencil",
                     "rate"
                   ) : "—"}</td>
-                  <td class="step-num">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                  <td class="step-num" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
@@ -11714,10 +11994,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>${body}</tbody>
               </table>
             </div>
-            ${rows.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong>${hasFinishingErrors ? "Error" : formatRupees(state.totalFinishingServiceCost)}</strong></div>` : ""}
+            ${rows.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong id="bom-finishing-cost-total">${hasFinishingErrors ? "Error" : formatRupees(state.totalFinishingServiceCost)}</strong></div>` : ""}
           </div>
         </div>
       `;
+      const lineModels = {};
+      rows.forEach((line) => {
+        lineModels["finishing:" + line.id] = bomLineCostDisplayModel(line);
+      });
+      mountBomCostCellHosts(
+        root,
+        lineModels,
+        rows.length ? "bom-finishing-cost-total" : null,
+        rows.length ? bomSectionTotalDisplayModel(hasFinishingErrors, state.totalFinishingServiceCost) : null
+      );
     }
 
     function closeCostBreakdownDrawer() {
@@ -11844,15 +12134,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       openCostBreakdownDrawer(state.costBreakdownDrawer);
     }
 
-    function renderCostSummary() {
-      const root = document.getElementById("bom-cost-root");
-      if (!root) return;
-      const fg = getSelectedFinishedGood();
-      if (!fg) {
-        root.innerHTML = "";
-        return;
-      }
-      const calcErrors = collectBomCalculationErrors();
+    function bomCostSummaryDisplayModel(calcErrors) {
       const hasCalcErrors = calcErrors.length > 0;
       const showColorCost = hasBomColorCost();
       const total = hasCalcErrors ? 0 : (Number(state.finalCostPerPiece) || 0);
@@ -11860,6 +12142,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const servicePct = total > 0 ? roundTo((Number(state.totalServiceCost) / total) * 100, 1) : 0;
       const finishingPct = total > 0 ? roundTo((Number(state.totalFinishingServiceCost) / total) * 100, 1) : 0;
       const colorPct = showColorCost && total > 0 ? roundTo((Number(state.totalColorCost) / total) * 100, 1) : 0;
+      return {
+        errors: calcErrors.map((item) => ({
+          label: item.label,
+          section: item.section,
+          error: item.error
+        })),
+        hasCalcErrors,
+        showColorCost,
+        showCostMix: !hasCalcErrors && total > 0,
+        colorAmount: hasCalcErrors ? "Error" : formatCurrency(state.totalColorCost),
+        finalCost: formatCurrency(state.batchFinalCost),
+        saleCost: formatCurrency(state.saleCost),
+        materialWidth: materialPct + "%",
+        serviceWidth: servicePct + "%",
+        finishingWidth: finishingPct + "%",
+        colorWidth: colorPct + "%",
+        materialPctLabel: formatNumber(materialPct, 1),
+        servicePctLabel: formatNumber(servicePct, 1),
+        finishingPctLabel: formatNumber(finishingPct, 1),
+        colorPctLabel: formatNumber(colorPct, 1)
+      };
+    }
+
+    function renderCostSummary() {
+      const root = document.getElementById("bom-cost-root");
+      if (!root) return;
+      const fg = getSelectedFinishedGood();
+      unmountBomCostSummary();
+      if (!fg) {
+        root.innerHTML = "";
+        return;
+      }
+      const calcErrors = collectBomCalculationErrors();
+      const model = bomCostSummaryDisplayModel(calcErrors);
+      const hasCalcErrors = model.hasCalcErrors;
+      const showColorCost = model.showColorCost;
       const colorsValue = state.bomNumberOfColors == null || state.bomNumberOfColors === ""
         ? ""
         : String(state.bomNumberOfColors);
@@ -11871,17 +12189,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : formatDecimal(state.bomOrderQuantity, 4, false);
       const finalCostDisplay = hasCalcErrors
         ? `<span class="cost-metric-error">Error calculating cost</span>`
-        : formatCurrency(state.batchFinalCost);
+        : model.finalCost;
       const saleCostDisplay = hasCalcErrors
         ? `<span class="cost-metric-error">Error calculating cost</span>`
-        : formatCurrency(state.saleCost);
-      const showCostMix = !hasCalcErrors && total > 0;
+        : model.saleCost;
+      const showCostMix = model.showCostMix;
       root.innerHTML = `
         <div class="card cost-summary">
           <div class="card-body">
             <div class="cc-step">Cost Summary</div>
             <div class="section-title cost-summary-title">Per piece roll-up</div>
-            ${renderBomCalculationErrorBanner(calcErrors)}
+            <div id="bom-cost-alert">${renderBomCalculationErrorBanner(calcErrors)}</div>
             <div class="cost-summary-layout">
               <div class="cost-summary-main">
                 <section class="cost-summary-zone" aria-label="Order inputs">
@@ -11911,19 +12229,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         </div>
                       </div>
                     </div>
-                    ${showColorCost ? `
+                    <div id="bom-cost-color-line">${showColorCost ? `
                     <div class="cost-color-line">
                       <span>Color Printing Cost</span>
-                      <strong>${hasCalcErrors ? "Error" : formatCurrency(state.totalColorCost)}</strong>
+                      <strong>${model.colorAmount}</strong>
                     </div>
-                    ` : ""}
+                    ` : ""}</div>
                   </div>
                 </section>
 
                 <section class="cost-summary-zone" aria-label="Pricing">
                   <div class="cost-zone-label">Pricing</div>
                   <div class="cost-pricing-row">
-                    <div class="cost-metric cost-metric-final">
+                    <div class="cost-metric cost-metric-final" id="bom-cost-final">
                       <span class="cost-metric-label">Final Cost</span>
                       <strong class="cost-metric-value">${finalCostDisplay}</strong>
                     </div>
@@ -11941,7 +12259,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         <span aria-hidden="true">%</span>
                       </div>
                     </div>
-                    <div class="cost-metric cost-metric-sale">
+                    <div class="cost-metric cost-metric-sale" id="bom-cost-sale">
                       <span class="cost-metric-label">Sale Cost</span>
                       <strong class="cost-metric-value">${saleCostDisplay}</strong>
                     </div>
@@ -11952,25 +12270,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <aside class="cost-summary-aside" aria-label="Cost mix and actions">
                 <div class="cost-zone-label">Breakdown</div>
                 <p class="cost-aside-blurb">Open the full material, service, and finishing roll-up.</p>
-                ${showCostMix ? `
+                <div id="bom-cost-mix">${showCostMix ? `
                 <div class="cost-bars">
                   <div class="cost-zone-label">Cost mix</div>
                   <div class="cost-bar">
-                    <div class="cost-bar-mat" style="width:${escapeHtml(materialPct)}%;"></div>
-                    <div class="cost-bar-svc" style="width:${escapeHtml(servicePct)}%;"></div>
-                    <div class="cost-bar-finishing" style="width:${escapeHtml(finishingPct)}%;"></div>
-                    ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(colorPct)}%;"></div>` : ""}
+                    <div class="cost-bar-mat" style="width:${escapeHtml(model.materialWidth)};"></div>
+                    <div class="cost-bar-svc" style="width:${escapeHtml(model.serviceWidth)};"></div>
+                    <div class="cost-bar-finishing" style="width:${escapeHtml(model.finishingWidth)};"></div>
+                    ${showColorCost ? `<div class="cost-bar-color" style="width:${escapeHtml(model.colorWidth)};"></div>` : ""}
                   </div>
                   <div class="cost-legend cost-legend-wide">
-                    <span><i class="cost-dot cost-dot-mat" aria-hidden="true"></i>Material ${formatNumber(materialPct, 1)}%</span>
-                    <span><i class="cost-dot cost-dot-svc" aria-hidden="true"></i>Service ${formatNumber(servicePct, 1)}%</span>
-                    <span><i class="cost-dot cost-dot-finishing" aria-hidden="true"></i>Finishing ${formatNumber(finishingPct, 1)}%</span>
-                    ${showColorCost ? `<span><i class="cost-dot cost-dot-color" aria-hidden="true"></i>Color ${formatNumber(colorPct, 1)}%</span>` : ""}
+                    <span><i class="cost-dot cost-dot-mat" aria-hidden="true"></i>Material ${escapeHtml(model.materialPctLabel)}%</span>
+                    <span><i class="cost-dot cost-dot-svc" aria-hidden="true"></i>Service ${escapeHtml(model.servicePctLabel)}%</span>
+                    <span><i class="cost-dot cost-dot-finishing" aria-hidden="true"></i>Finishing ${escapeHtml(model.finishingPctLabel)}%</span>
+                    ${showColorCost ? `<span><i class="cost-dot cost-dot-color" aria-hidden="true"></i>Color ${escapeHtml(model.colorPctLabel)}%</span>` : ""}
                   </div>
                 </div>
                 ` : `
                 <p class="cost-mix-empty">Cost mix appears when rates are set and costs calculate.</p>
-                `}
+                `}</div>
                 <div class="cost-summary-actions">
                   <button type="button" class="btn btn-primary" id="btn-view-bom-cost-breakdown">
                     <i data-lucide="list"></i> View Cost Breakdown
@@ -11985,6 +12303,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
         </div>
       `;
+      mountBomCostSummary({
+        alert: document.getElementById("bom-cost-alert"),
+        colorLine: document.getElementById("bom-cost-color-line"),
+        mix: document.getElementById("bom-cost-mix"),
+        final: document.getElementById("bom-cost-final"),
+        sale: document.getElementById("bom-cost-sale")
+      }, model);
       if (state.costBreakdownDrawer === "bom") refreshOpenCostBreakdownDrawer();
     }
 
@@ -18393,8 +18718,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       const meta = PAGE_META[page];
-      document.getElementById("header-title").textContent = meta.title;
-      document.getElementById("header-subtitle").textContent = meta.subtitle;
+      mountHeaderTitles(
+        document.getElementById("header-title"),
+        document.getElementById("header-subtitle"),
+        { title: meta.title, subtitle: meta.subtitle }
+      );
 
       setSidebarOpen(false);
       if (page !== "bom-costing") {
