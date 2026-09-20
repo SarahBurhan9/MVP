@@ -16,6 +16,10 @@ import { mountStylesTable, unmountStylesTable } from "./src/components/styles/mo
 import { mountRawMaterialsTable, unmountRawMaterialsTable } from "./src/components/rawMaterials/mountRawMaterialsTable.jsx";
 import { mountRawMaterialRatesTable, unmountRawMaterialRatesTable } from "./src/components/rawMaterialRates/mountRawMaterialRatesTable.jsx";
 import { mountOtherRawMaterialsTable, unmountOtherRawMaterialsTable } from "./src/components/otherRawMaterials/mountOtherRawMaterialsTable.jsx";
+import { mountOtherRawMaterialRatesTable, unmountOtherRawMaterialRatesTable } from "./src/components/otherRawMaterialRates/mountOtherRawMaterialRatesTable.jsx";
+import { mountFinishedGoodsTable, unmountFinishedGoodsTable } from "./src/components/finishedGoods/mountFinishedGoodsTable.jsx";
+import { mountBomListTable, unmountBomListTable } from "./src/components/bomList/mountBomListTable.jsx";
+import { mountBomHeaderMeta, unmountBomHeaderMeta } from "./src/components/bomHeader/mountBomHeaderMeta.jsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -9145,8 +9149,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       mountDashboardStats(document.getElementById("dashboard-react-stats"), dashboardStats);
     }
 
-    function renderFinishedGoods() {
-      const rows = filterFinishedGoods();
+    function vanillaFinishedGoodsTableHtml(rows) {
       const body = rows.length
         ? rows.map((item, index) => `
             <tr>
@@ -9164,8 +9167,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(9, "No finished goods match this search.");
+      return `
+        <table class="data-table fm-table" style="min-width:1100px;">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Product</th>
+              <th>Style</th>
+              <th>Variant</th>
+              <th>Dimensions</th>
+              <th>Ply</th>
+              <th>UOM</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      document.getElementById("page-finished-goods").innerHTML = `
+    function finishedGoodTableDisplayRows(rows) {
+      return rows.map((item, index) => ({
+        id: item?.id,
+        rowNumber: index + 1,
+        product: item?.product ?? "missing data",
+        style: item?.style ?? "—",
+        variant: item?.variant ?? "—",
+        dimensions: formatDimensions(item) || "missing data",
+        ply: item?.ply ?? "—",
+        uom: item?.uom ?? "—",
+        status: item?.status || ""
+      }));
+    }
+
+    function renderFinishedGoods() {
+      const rows = filterFinishedGoods();
+      const page = document.getElementById("page-finished-goods");
+      if (!page) return;
+      let mount = document.getElementById("finished-goods-react-table");
+
+      if (!mount) {
+        unmountFinishedGoodsTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9182,7 +9226,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${toolbarSearch("fg-search", state.searches.finishedGoods, "Search product, variant, style...")}
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${finishedGoods.length}</span>
+              <span class="badge badge-muted" id="fg-visible-count">${rows.length} of ${finishedGoods.length}</span>
             </div>
           </div>
         </div>
@@ -9196,29 +9240,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Products</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="fg-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table" style="min-width:1100px;">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Product</th>
-                    <th>Style</th>
-                    <th>Variant</th>
-                    <th>Dimensions</th>
-                    <th>Ply</th>
-                    <th>UOM</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="finished-goods-react-table">${vanillaFinishedGoodsTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("finished-goods-react-table");
+      } else {
+        const toolbarCount = document.getElementById("fg-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + finishedGoods.length;
+        const groupCount = document.getElementById("fg-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("fg-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.finishedGoods;
+        }
+      }
+
+      mountFinishedGoodsTable(mount, finishedGoodTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function vanillaRawMaterialsTableHtml(rows) {
@@ -9556,10 +9597,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshIcons();
     }
 
-    function renderOtherRawMaterialRates() {
-      const page = document.getElementById("page-other-raw-material-rates");
-      if (!page) return;
-      const rows = otherMaterialRateTableRows();
+    function vanillaOtherRawMaterialRatesTableHtml(rows) {
       const body = rows.length
         ? rows.map(({ material, rateRow }) => {
             const rateText = rateRow && Number.isFinite(Number(rateRow.rate))
@@ -9580,8 +9618,48 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           `;
           }).join("")
         : emptyRow(7, "No material rates match this search.");
+      return `
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Code</th>
+              <th>Name</th>
+              <th>Rate (PKR)</th>
+              <th>Rate UOM</th>
+              <th>Dimensions</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      page.innerHTML = `
+    function otherRawMaterialRateTableDisplayRows(rows) {
+      return rows.map(({ material, rateRow }) => ({
+        id: material.id,
+        code: material.code || "",
+        name: material.name || "",
+        rate: rateRow && Number.isFinite(Number(rateRow.rate))
+          ? formatNumber(rateRow.rate, 2)
+          : "—",
+        rateUom: (rateRow && rateRow.rateUOM) || "—",
+        dimensions: formatOtherMaterialDimensionSummary(material),
+        statusLabel: rateRow ? (rateRow.status || "Inactive") : "Unset",
+        statusActive: Boolean(rateRow && rateRow.status === "Active")
+      }));
+    }
+
+    function renderOtherRawMaterialRates() {
+      const page = document.getElementById("page-other-raw-material-rates");
+      if (!page) return;
+      const rows = otherMaterialRateTableRows();
+      let mount = document.getElementById("other-raw-material-rates-react-table");
+
+      if (!mount) {
+        unmountOtherRawMaterialRatesTable();
+        page.innerHTML = `
         <div class="toolbar">
           <div class="toolbar-left">
             ${toolbarSearch("omrate-search", state.searches.otherMaterialRates, "Search material name, code...")}
@@ -9596,28 +9674,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </select>
           </div>
           <div class="toolbar-right">
-            <span class="badge badge-muted">${rows.length} of ${otherRawMaterials.length}</span>
+            <span class="badge badge-muted" id="omrate-visible-count">${rows.length} of ${otherRawMaterials.length}</span>
           </div>
         </div>
         <div class="card">
-          <div class="table-wrap">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Code</th>
-                  <th>Name</th>
-                  <th>Rate (PKR)</th>
-                  <th>Rate UOM</th>
-                  <th>Dimensions</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>${body}</tbody>
-            </table>
-          </div>
+          <div class="table-wrap" id="other-raw-material-rates-react-table">${vanillaOtherRawMaterialRatesTableHtml(rows)}</div>
         </div>
       `;
+        mount = document.getElementById("other-raw-material-rates-react-table");
+      } else {
+        const toolbarCount = document.getElementById("omrate-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + otherRawMaterials.length;
+        const search = document.getElementById("omrate-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.otherMaterialRates;
+        }
+        const statusFilter = document.getElementById("omrate-status-filter");
+        if (statusFilter && statusFilter.value !== state.otherMaterialRateFilter) {
+          statusFilter.value = state.otherMaterialRateFilter;
+        }
+        const sort = document.getElementById("omrate-sort");
+        if (sort && sort.value !== state.otherMaterialRateSort) {
+          sort.value = state.otherMaterialRateSort;
+        }
+      }
+
+      mountOtherRawMaterialRatesTable(mount, otherRawMaterialRateTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function renderServices() {
@@ -10809,12 +10892,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `<div class="ply-stack" aria-label="${escapeHtml(ply)} ply structure">${blocks}</div>`;
     }
 
+    function vanillaBomHeaderMetaHtml(bom) {
+      return `
+        <div class="section-kicker">BOM Actions</div>
+        <div class="bom-meta" style="margin-top:12px;">
+          <div>
+            <div class="field-label">BOM No</div>
+            <div class="field-value mono">${escapeHtml(bom.bomNo)}</div>
+          </div>
+          <div>
+            <div class="field-label">Version</div>
+            <div class="field-value">${escapeHtml(bom.version)}</div>
+          </div>
+          <div>
+            <div class="field-label">Status</div>
+            <div>${statusBadge(bom.status, bom.status === "Active")}</div>
+          </div>
+        </div>
+      `;
+    }
+
+    function bomHeaderMetaDisplayModel(bom) {
+      return {
+        bomNo: bom.bomNo || "",
+        version: bom.version || "",
+        statusLabel: bom.status || "Inactive",
+        statusActive: bom.status === "Active"
+      };
+    }
+
     function renderBOMHeader() {
       const root = document.getElementById("bom-header-root");
       if (!root) return;
       const bom = state.currentBOM;
       const fg = getSelectedFinishedGood();
       const activeSibling = bom && bom.status === "Draft" ? findActiveBomForNumber(bom.bomNo) : null;
+      unmountBomHeaderMeta();
       if (!bom || !fg) {
         root.innerHTML = "";
         return;
@@ -10824,35 +10937,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       root.innerHTML = `
         <div class="card">
           <div class="card-body">
-            <div class="section-kicker">BOM Actions</div>
-            <div class="bom-meta" style="margin-top:12px;">
-              <div>
-                <div class="field-label">BOM No</div>
-                <div class="field-value mono">${escapeHtml(bom.bomNo)}</div>
+            <div id="bom-header-meta">${vanillaBomHeaderMetaHtml(bom)}</div>
+            <div id="bom-header-actions">
+              <div class="workflow-actions">
+                <button type="button" class="btn btn-primary" id="btn-save-draft" ${hasCalcErrors ? "disabled" : ""} title="${hasCalcErrors ? "Fix calculation errors before saving" : ""}">Save Draft</button>
+                <button type="button" class="btn btn-activate" id="btn-activate-bom" ${hasCalcErrors ? "disabled" : ""} title="${hasCalcErrors ? "Fix calculation errors before saving" : ""}">Activate BOM</button>
+                <button type="button" class="btn btn-duplicate" id="btn-duplicate-bom">Duplicate BOM</button>
               </div>
-              <div>
-                <div class="field-label">Version</div>
-                <div class="field-value">${escapeHtml(bom.version)}</div>
-              </div>
-              <div>
-                <div class="field-label">Status</div>
-                <div>${statusBadge(bom.status, bom.status === "Active")}</div>
-              </div>
-            </div>
-            <div class="workflow-actions">
-              <button type="button" class="btn btn-primary" id="btn-save-draft" ${hasCalcErrors ? "disabled" : ""} title="${hasCalcErrors ? "Fix calculation errors before saving" : ""}">Save Draft</button>
-              <button type="button" class="btn btn-activate" id="btn-activate-bom" ${hasCalcErrors ? "disabled" : ""} title="${hasCalcErrors ? "Fix calculation errors before saving" : ""}">Activate BOM</button>
-              <button type="button" class="btn btn-duplicate" id="btn-duplicate-bom">Duplicate BOM</button>
             </div>
             ${activeSibling ? `<div class="modal-note" style="margin-top:12px;margin-bottom:0;">You are editing Draft version ${escapeHtml(bom.version)}. Active version ${escapeHtml(activeSibling.version)} is locked and will not change until you activate this Draft.</div>` : ""}
             ${state.workflowError ? `<div class="workflow-error">${escapeHtml(state.workflowError)}</div>` : ""}
           </div>
         </div>
       `;
+      mountBomHeaderMeta(document.getElementById("bom-header-meta"), bomHeaderMetaDisplayModel(bom));
     }
 
-    function renderBomList() {
-      const rows = filterBoms();
+    function vanillaBomListTableHtml(rows) {
       const body = rows.length
         ? rows.map((item, index) => `
             <tr>
@@ -10875,8 +10976,50 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(9, "No saved BOMs match this search.");
+      return `
+        <table class="data-table fm-table" style="min-width:1100px;">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>BOM Number</th>
+              <th>Finished Good</th>
+              <th>Variant</th>
+              <th>Version</th>
+              <th>Status</th>
+              <th>Final Cost / Piece</th>
+              <th>Updated Date</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      document.getElementById("page-bom-list").innerHTML = `
+    function bomListTableDisplayRows(rows) {
+      return rows.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        bomNo: item.bomNo || "",
+        finishedGoodName: item.finishedGoodName || "",
+        variant: item.variant || "",
+        version: item.version || "",
+        statusLabel: item.status || "Inactive",
+        statusActive: item.status === "Active",
+        finalCost: formatRupees(item.finalCostPerPiece),
+        updatedAt: formatDateTime(item.updatedAt)
+      }));
+    }
+
+    function renderBomList() {
+      const rows = filterBoms();
+      const page = document.getElementById("page-bom-list");
+      if (!page) return;
+      let mount = document.getElementById("bom-list-react-table");
+
+      if (!mount) {
+        unmountBomListTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Repository</div>
@@ -10896,7 +11039,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${boms.length}</span>
+              <span class="badge badge-muted" id="bom-list-visible-count">${rows.length} of ${boms.length}</span>
             </div>
           </div>
         </div>
@@ -10910,29 +11053,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Records</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="bom-list-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table" style="min-width:1100px;">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>BOM Number</th>
-                    <th>Finished Good</th>
-                    <th>Variant</th>
-                    <th>Version</th>
-                    <th>Status</th>
-                    <th>Final Cost / Piece</th>
-                    <th>Updated Date</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="bom-list-react-table">${vanillaBomListTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("bom-list-react-table");
+      } else {
+        const toolbarCount = document.getElementById("bom-list-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + boms.length;
+        const groupCount = document.getElementById("bom-list-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("bom-list-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.boms;
+        }
+        const filter = document.getElementById("bom-list-filter");
+        if (filter && filter.value !== state.bomListFilter) {
+          filter.value = state.bomListFilter;
+        }
+      }
+
+      mountBomListTable(mount, bomListTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function renderProductInformationCard(item, options) {
