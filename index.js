@@ -9,6 +9,10 @@ import {
 import { getFirestore, setDoc, doc, getDoc } from "firebase/firestore";
 import * as XLSX from "xlsx";
 import { mountDashboardStats, unmountDashboardStats } from "./src/components/dashboard/mountDashboardStats.jsx";
+import { mountDimensionsTable, unmountDimensionsTable } from "./src/components/dimensions/mountDimensionsTable.jsx";
+import { mountFormulaVariablesTable, unmountFormulaVariablesTable } from "./src/components/formulaVariables/mountFormulaVariablesTable.jsx";
+import { mountFormulasTable, unmountFormulasTable } from "./src/components/formulas/mountFormulasTable.jsx";
+import { mountStylesTable, unmountStylesTable } from "./src/components/styles/mountStylesTable.jsx";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfYEIou9GM0h1JX4-ncYn6SrseU9ZhmWs",
@@ -9660,8 +9664,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderStyles() {
-      const rows = filterStyles();
+    function vanillaStylesTableHtml(rows) {
       const body = rows.length
         ? rows.map((item, index) => `
             <tr>
@@ -9677,8 +9680,45 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(7, "No styles match this search.");
+      return `
+        <table class="data-table fm-table">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Style Name</th>
+              <th class="fm-desc-cell">Description</th>
+              <th>Variables</th>
+              <th>Formulas</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      document.getElementById("page-style").innerHTML = `
+    function styleTableDisplayRows(rows) {
+      return rows.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        name: item.name || "",
+        description: item.description || "—",
+        variablesLabel: getStyleVariables(item.id).length + " variables",
+        formulasLabel: getStyleFormulaLinks(item.id).length + " formulas",
+        status: item.status || ""
+      }));
+    }
+
+    function renderStyles() {
+      const rows = filterStyles();
+      const page = document.getElementById("page-style");
+      if (!page) return;
+      let mount = document.getElementById("styles-react-table");
+
+      if (!mount) {
+        unmountStylesTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9695,7 +9735,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${toolbarSearch("style-search", state.searches.style, "Search style name, description...")}
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${styles.length}</span>
+              <span class="badge badge-muted" id="style-visible-count">${rows.length} of ${styles.length}</span>
             </div>
           </div>
         </div>
@@ -9709,31 +9749,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Styles</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="style-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Style Name</th>
-                    <th class="fm-desc-cell">Description</th>
-                    <th>Variables</th>
-                    <th>Formulas</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="styles-react-table">${vanillaStylesTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("styles-react-table");
+      } else {
+        const toolbarCount = document.getElementById("style-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + styles.length;
+        const groupCount = document.getElementById("style-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("style-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.style;
+        }
+      }
+
+      mountStylesTable(mount, styleTableDisplayRows(rows));
+      refreshIcons();
     }
 
-    function renderDimensions() {
-      const rows = filterDimensions();
+    function vanillaDimensionTableHtml(rows) {
       const body = rows.length
         ? rows.map((item, index) => `
             <tr>
@@ -9750,8 +9788,47 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </tr>
           `).join("")
         : emptyRow(8, "No dimensions match this search.");
+      return `
+        <table class="data-table fm-table">
+          <thead>
+            <tr>
+              <th class="fm-num">#</th>
+              <th>Name</th>
+              <th>Description</th>
+              <th>Length</th>
+              <th>Width</th>
+              <th>Unit</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>
+      `;
+    }
 
-      document.getElementById("page-dimensions").innerHTML = `
+    function dimensionTableDisplayRows(rows) {
+      return rows.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        name: item.name || item.code || "",
+        description: item.description || "—",
+        length: formatDecimal(item.L, 2, false),
+        width: formatDecimal(item.W, 2, false),
+        unit: item.unit || item.uom || "",
+        status: item.status || ""
+      }));
+    }
+
+    function renderDimensions() {
+      const rows = filterDimensions();
+      const page = document.getElementById("page-dimensions");
+      if (!page) return;
+      let mount = document.getElementById("dimensions-react-table");
+
+      if (!mount) {
+        unmountDimensionsTable();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -9768,7 +9845,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${toolbarSearch("dim-search", state.searches.dimensions, "Search L x W, UOM...")}
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${dimensions.length}</span>
+              <span class="badge badge-muted" id="dim-visible-count">${rows.length} of ${dimensions.length}</span>
             </div>
           </div>
         </div>
@@ -9782,28 +9859,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div class="section-title">Sizes</div>
                 </div>
               </div>
-              <span class="badge badge-muted">${rows.length}</span>
+              <span class="badge badge-muted" id="dim-group-count">${rows.length}</span>
             </div>
-            <div class="table-wrap">
-              <table class="data-table fm-table">
-                <thead>
-                  <tr>
-                    <th class="fm-num">#</th>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th>Length</th>
-                    <th>Width</th>
-                    <th>Unit</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>${body}</tbody>
-              </table>
-            </div>
+            <div class="table-wrap" id="dimensions-react-table">${vanillaDimensionTableHtml(rows)}</div>
           </div>
         </div>
       `;
+        mount = document.getElementById("dimensions-react-table");
+      } else {
+        const toolbarCount = document.getElementById("dim-visible-count");
+        if (toolbarCount) toolbarCount.textContent = rows.length + " of " + dimensions.length;
+        const groupCount = document.getElementById("dim-group-count");
+        if (groupCount) groupCount.textContent = String(rows.length);
+        const search = document.getElementById("dim-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.dimensions;
+        }
+      }
+
+      mountDimensionsTable(mount, dimensionTableDisplayRows(rows));
+      refreshIcons();
     }
 
     function variableCategoryMeta(category) {
@@ -9870,36 +9945,70 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderFormulaVariables() {
+    function formulaVariableDisplayRows(items) {
+      return items.map((item, index) => {
+        const sheetArea = isFixedSheetAreaCode(item.code);
+        const description = sheetArea ? FIXED_SHEET_AREA.description : (item.description || "—");
+        const defaultValue = sheetArea
+          ? FIXED_SHEET_AREA.formula
+          : (item.defaultValue === null || item.defaultValue === undefined || item.defaultValue === ""
+            ? "—"
+            : (item.dataType === "numeric" ? formatDecimal(item.defaultValue, 8, false) : item.defaultValue));
+        return {
+          id: item.id,
+          rowNumber: index + 1,
+          name: item.name || "",
+          code: item.code || "",
+          sheetArea,
+          description,
+          category: item.category || "",
+          unit: item.unit || "—",
+          dataType: item.dataType || "",
+          defaultValue,
+          isActive: Boolean(item.isActive),
+          sheetAreaDescription: sheetArea ? FIXED_SHEET_AREA.description : ""
+        };
+      });
+    }
+
+    function fixedVariableDisplayRows(items) {
+      return items.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        code: item.code || "",
+        valueOrFormula: isDerivedFixedVariable(item) ? CONVERSION_FACTOR_FORMULA : String(item.value),
+        description: item.description || "—",
+        currentValue: isDerivedFixedVariable(item) ? formatDecimal(item.value, 8, false) : String(item.value)
+      }));
+    }
+
+    function formulaVariablesListModel() {
       const rows = filterFormulaVariables();
       const categoryOrder = ["Dimension", "Material", "Sheet", "Area", "Costing", "Service", "Printing"];
       const extras = [];
       rows.forEach((item) => {
         if (!categoryOrder.includes(item.category) && !extras.includes(item.category)) extras.push(item.category);
       });
-      const groups = categoryOrder.concat(extras);
-      const tables = groups.map((category) => {
+      const groups = categoryOrder.concat(extras).map((category) => {
         const items = rows.filter((item) => item.category === category);
         const meta = variableCategoryMeta(category);
-        return `
-          <div class="card fm-group ${meta.cls}" style="margin-bottom:16px;">
-            <div class="card-body">
-              <div class="section-head">
-                <div class="fm-group-title">
-                  <span class="fm-group-icon"><i data-lucide="${meta.icon}"></i></span>
-                  <div>
-                    <div class="section-kicker">${escapeHtml(category)} variables</div>
-                    <div class="section-title">${escapeHtml(category)}</div>
-                  </div>
-                </div>
-                <span class="badge badge-muted">${items.length}</span>
-              </div>
-              ${renderVariableTable(items, `No ${String(category).toLowerCase()} variables.`)}
-            </div>
-          </div>
-        `;
-      }).join("");
+        return {
+          category,
+          icon: meta.icon,
+          cls: meta.cls,
+          emptyMessage: "No " + String(category).toLowerCase() + " variables.",
+          rows: formulaVariableDisplayRows(items)
+        };
+      });
+      return {
+        filteredCount: rows.length,
+        totalCount: formulaVariables.length,
+        fixedRows: fixedVariableDisplayRows(fixedVariables),
+        groups
+      };
+    }
 
+    function vanillaFixedVariablesTableHtml() {
       const fixedRows = fixedVariables.map((item, index) => `
         <tr>
           <td class="fm-num">${index + 1}</td>
@@ -9916,28 +10025,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </td>
         </tr>
       `).join("");
-
-      document.getElementById("page-formula-variables").innerHTML = `
-        <div class="toolbar fm-hero">
-          <div>
-            <div class="section-kicker">Library</div>
-            <div class="section-title">Variable Management</div>
-            <div class="fm-hero-sub">Shared inputs used by formulas</div>
-          </div>
-          <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
-            <i data-lucide="plus"></i> Add Variable
-          </button>
-        </div>
-        <div class="card fm-controls">
-          <div class="toolbar" style="margin-bottom:0;">
-            <div class="toolbar-left">
-              ${toolbarSearch("fvar-search", state.searches.formulaVariables, "Search code, name, category...")}
-            </div>
-            <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${formulaVariables.length}</span>
-            </div>
-          </div>
-        </div>
+      return `
         <div class="card fm-group is-fixed" style="margin-bottom:16px;">
           <div class="card-body">
             <div class="section-head">
@@ -9973,8 +10061,85 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
           </div>
         </div>
-        ${tables}
       `;
+    }
+
+    function vanillaFormulaVariableGroupTablesHtml(rows) {
+      const categoryOrder = ["Dimension", "Material", "Sheet", "Area", "Costing", "Service", "Printing"];
+      const extras = [];
+      rows.forEach((item) => {
+        if (!categoryOrder.includes(item.category) && !extras.includes(item.category)) extras.push(item.category);
+      });
+      return categoryOrder.concat(extras).map((category) => {
+        const items = rows.filter((item) => item.category === category);
+        const meta = variableCategoryMeta(category);
+        return `
+          <div class="card fm-group ${meta.cls}" style="margin-bottom:16px;">
+            <div class="card-body">
+              <div class="section-head">
+                <div class="fm-group-title">
+                  <span class="fm-group-icon"><i data-lucide="${meta.icon}"></i></span>
+                  <div>
+                    <div class="section-kicker">${escapeHtml(category)} variables</div>
+                    <div class="section-title">${escapeHtml(category)}</div>
+                  </div>
+                </div>
+                <span class="badge badge-muted">${items.length}</span>
+              </div>
+              ${renderVariableTable(items, `No ${String(category).toLowerCase()} variables.`)}
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderFormulaVariables() {
+      const model = formulaVariablesListModel();
+      const page = document.getElementById("page-formula-variables");
+      if (!page) return;
+      let mount = document.getElementById("formula-variables-react-list");
+
+      if (!mount) {
+        unmountFormulaVariablesTable();
+        const rows = filterFormulaVariables();
+        page.innerHTML = `
+        <div class="toolbar fm-hero">
+          <div>
+            <div class="section-kicker">Library</div>
+            <div class="section-title">Variable Management</div>
+            <div class="fm-hero-sub">Shared inputs used by formulas</div>
+          </div>
+          <button type="button" class="btn btn-primary" id="btn-add-formula-variable">
+            <i data-lucide="plus"></i> Add Variable
+          </button>
+        </div>
+        <div class="card fm-controls">
+          <div class="toolbar" style="margin-bottom:0;">
+            <div class="toolbar-left">
+              ${toolbarSearch("fvar-search", state.searches.formulaVariables, "Search code, name, category...")}
+            </div>
+            <div class="toolbar-right">
+              <span class="badge badge-muted" id="fvar-visible-count">${model.filteredCount} of ${model.totalCount}</span>
+            </div>
+          </div>
+        </div>
+        <div id="formula-variables-react-list">
+          ${vanillaFixedVariablesTableHtml()}
+          ${vanillaFormulaVariableGroupTablesHtml(rows)}
+        </div>
+      `;
+        mount = document.getElementById("formula-variables-react-list");
+      } else {
+        const toolbarCount = document.getElementById("fvar-visible-count");
+        if (toolbarCount) toolbarCount.textContent = model.filteredCount + " of " + model.totalCount;
+        const search = document.getElementById("fvar-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.formulaVariables;
+        }
+      }
+
+      mountFormulaVariablesTable(mount, model);
+      refreshIcons();
     }
 
     function formulaDependsOnCode(expression, targetCode, stack) {
@@ -10110,7 +10275,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <span class="fm-filter-icon"><i data-lucide="list-filter"></i></span>
             <span class="fm-filter-copy">
               <span class="fm-filter-label">Filter</span>
-              <span class="fm-filter-value">${escapeHtml(current.label)}</span>
+              <span class="fm-filter-value" id="formula-filter-current">${escapeHtml(current.label)}</span>
             </span>
             <i data-lucide="chevron-down" class="fm-filter-chevron"></i>
           </button>
@@ -10124,7 +10289,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderFormulas() {
+    function formulaDisplayRows(items) {
+      return items.map((item, index) => ({
+        id: item.id,
+        rowNumber: index + 1,
+        name: item.name || "",
+        code: item.code || "",
+        type: item.type || "",
+        expression: item.expression || "",
+        dependencies: getExpressionDependencies(item.expression).map((dep) => ({
+          code: dep,
+          isFormula: Boolean(getFormulaByCode(dep))
+        })),
+        isActive: Boolean(item.isActive)
+      }));
+    }
+
+    function formulasListModel() {
       const rows = filterFormulas();
       const grouped = state.formulaFilter === "all";
       const typeMeta = {
@@ -10132,11 +10313,39 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         Service: { icon: "wrench", cls: "is-service" },
         Style: { icon: "palette", cls: "is-style" }
       };
-      const tables = grouped
-        ? FORMULA_TYPES.map((type) => {
-            const items = rows.filter((item) => item.type === type);
-            const meta = typeMeta[type] || { icon: "sigma", cls: "" };
-            return `
+      return {
+        filteredCount: rows.length,
+        totalCount: formulas.length,
+        grouped,
+        groups: grouped
+          ? FORMULA_TYPES.map((type) => {
+              const items = rows.filter((item) => item.type === type);
+              const meta = typeMeta[type] || { icon: "sigma", cls: "" };
+              return {
+                type,
+                icon: meta.icon,
+                cls: meta.cls,
+                emptyMessage: "No " + type.toLowerCase() + " formulas.",
+                rows: formulaDisplayRows(items)
+              };
+            })
+          : [],
+        rows: grouped ? [] : formulaDisplayRows(rows)
+      };
+    }
+
+    function vanillaFormulasListHtml(rows) {
+      const grouped = state.formulaFilter === "all";
+      const typeMeta = {
+        Material: { icon: "package", cls: "is-material" },
+        Service: { icon: "wrench", cls: "is-service" },
+        Style: { icon: "palette", cls: "is-style" }
+      };
+      if (grouped) {
+        return FORMULA_TYPES.map((type) => {
+          const items = rows.filter((item) => item.type === type);
+          const meta = typeMeta[type] || { icon: "sigma", cls: "" };
+          return `
               <div class="card fm-group ${meta.cls}" style="margin-bottom:16px;">
                 <div class="card-body">
                   <div class="section-head">
@@ -10153,10 +10362,42 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </div>
               </div>
             `;
-          }).join("")
-        : `<div class="card fm-group">${renderFormulaTable(rows)}</div>`;
+        }).join("");
+      }
+      return `<div class="card fm-group">${renderFormulaTable(rows)}</div>`;
+    }
 
-      document.getElementById("page-formulas").innerHTML = `
+    function syncFormulaFilterUi() {
+      const options = [
+        { value: "all", label: "All" },
+        { value: "material", label: "Material" },
+        { value: "service", label: "Service" },
+        { value: "style", label: "Style" },
+        { value: "active", label: "Active" },
+        { value: "inactive", label: "Inactive" }
+      ];
+      const current = options.find((opt) => opt.value === state.formulaFilter) || options[0];
+      const valueEl = document.getElementById("formula-filter-current");
+      if (valueEl) valueEl.textContent = current.label;
+      document.querySelectorAll("#page-formulas [data-formula-filter]").forEach((btn) => {
+        const selected = btn.dataset.formulaFilter === current.value;
+        btn.classList.toggle("selected", selected);
+        btn.setAttribute("aria-selected", selected ? "true" : "false");
+      });
+      const select = document.getElementById("formula-filter");
+      if (select && select.value !== current.value) select.value = current.value;
+    }
+
+    function renderFormulas() {
+      const model = formulasListModel();
+      const page = document.getElementById("page-formulas");
+      if (!page) return;
+      let mount = document.getElementById("formulas-react-list");
+
+      if (!mount) {
+        unmountFormulasTable();
+        const rows = filterFormulas();
+        page.innerHTML = `
         <div class="toolbar fm-hero">
           <div>
             <div class="section-kicker">Library</div>
@@ -10174,12 +10415,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${renderFormulaFilter()}
             </div>
             <div class="toolbar-right">
-              <span class="badge badge-muted">${rows.length} of ${formulas.length}</span>
+              <span class="badge badge-muted" id="formula-visible-count">${model.filteredCount} of ${model.totalCount}</span>
             </div>
           </div>
         </div>
-        ${tables}
+        <div id="formulas-react-list">${vanillaFormulasListHtml(rows)}</div>
       `;
+        mount = document.getElementById("formulas-react-list");
+      } else {
+        const toolbarCount = document.getElementById("formula-visible-count");
+        if (toolbarCount) toolbarCount.textContent = model.filteredCount + " of " + model.totalCount;
+        const search = document.getElementById("formula-search");
+        if (search && document.activeElement !== search) {
+          search.value = state.searches.formulas;
+        }
+        syncFormulaFilterUi();
+      }
+
+      mountFormulasTable(mount, model);
+      refreshIcons();
     }
 
     const BOM_FLOW_SECTIONS = [
