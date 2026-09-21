@@ -3119,11 +3119,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `${formatCurrency(rate)}/${unit}`;
     }
 
-    function finishedGoodVisibleDimCount(ply) {
-      const n = Number(ply);
-      return n === 1 || n === 2 || n === 3 ? n : 3;
-    }
-
     function getItemDimensions(item, fallback) {
       const fb = fallback || { L: 0, W: 0, H: 0 };
       const dims = item?.dimensions ?? {};
@@ -3136,7 +3131,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatDimensions(item) {
       const dims = item?.dimensions ?? item ?? {};
-      const code = formatFinishedGoodSizeCode(dims, item?.ply).replace(/x/g, " × ");
+      const code = formatFinishedGoodSizeCode(dims).replace(/x/g, " × ");
       return `${code} ${item?.dimensionUOM || item?.uom || ""}`.trim();
     }
 
@@ -3146,7 +3141,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatFinishedGoodDisplayName(item) {
       if (!item) return "missing data";
-      const dims = formatFinishedGoodSizeCode(item?.dimensions, item?.ply);
+      const dims = formatFinishedGoodSizeCode(item?.dimensions);
       return [item?.product, item?.style, item?.variant, dims]
         .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
         .join(" ") || "missing data";
@@ -7926,7 +7921,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = {
         id: nextMasterId(finishedGoods),
         product: "Cost Estimate",
-        variant: formatFinishedGoodSizeCode(fgTemplate.dimensions, fgTemplate.ply) + " " + fgTemplate.ply + "-Ply",
+        variant: formatFinishedGoodSizeCode(fgTemplate.dimensions) + " " + fgTemplate.ply + "-Ply",
         style: fgTemplate.style,
         ply: fgTemplate.ply,
         dimensions: {
@@ -10876,7 +10871,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const list = options.length
         ? options.map((item) => {
             const name = item?.product || formatFinishedGoodDisplayName(item);
-            const dims = formatFinishedGoodSizeCode(item?.dimensions, item?.ply);
+            const dims = formatFinishedGoodSizeCode(item?.dimensions);
             const meta = [item?.style, item?.variant, dims, item?.ply != null ? `${item.ply} Ply` : ""]
               .filter((part) => part !== null && part !== undefined && String(part).trim() !== "")
               .join(" · ") || "No details";
@@ -12736,10 +12731,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function parsedFinishedGoodDraftDimensions(draft) {
-      const dimCount = finishedGoodVisibleDimCount(draft.ply);
       const parsedL = parseByRule(draft.L, "dimension");
-      const parsedW = dimCount >= 2 ? parseByRule(draft.W, "dimension") : { value: 0 };
-      const parsedH = dimCount >= 3 ? parseByRule(draft.H, "dimension") : { value: 0 };
+      const parsedW = parseByRule(draft.W, "dimension");
+      const parsedH = parseByRule(draft.H, "dimension");
       return { L: parsedL.value, W: parsedW.value, H: parsedH.value };
     }
 
@@ -12749,17 +12743,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!String(draft.style || "").trim()) errors.style = "Style is required.";
       if (!String(draft.variant || "").trim()) errors.variant = "Variant is required.";
       if (![1, 2, 3].includes(Number(draft.ply))) errors.ply = "Ply must be 1, 2, or 3.";
-      const dimCount = finishedGoodVisibleDimCount(draft.ply);
       const L = parseByRule(draft.L, "dimension", { requiredError: "Length must be greater than 0.", minError: "Length must be at least 0.1." });
+      const W = parseByRule(draft.W, "dimension", { requiredError: "Width must be greater than 0.", minError: "Width must be at least 0.1." });
+      const H = parseByRule(draft.H, "dimension", { requiredError: "Height must be greater than 0.", minError: "Height must be at least 0.1." });
       if (!L.ok) errors.L = L.error;
-      if (dimCount >= 2) {
-        const W = parseByRule(draft.W, "dimension", { requiredError: "Width must be greater than 0.", minError: "Width must be at least 0.1." });
-        if (!W.ok) errors.W = W.error;
-      }
-      if (dimCount >= 3) {
-        const H = parseByRule(draft.H, "dimension", { requiredError: "Height must be greater than 0.", minError: "Height must be at least 0.1." });
-        if (!H.ok) errors.H = H.error;
-      }
+      if (!W.ok) errors.W = W.error;
+      if (!H.ok) errors.H = H.error;
       if (!draft.dimensionUOM) errors.dimensionUOM = "Dimension UOM is required.";
       if (!draft.uom) errors.uom = "UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
@@ -12769,7 +12758,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderFinishedGoodFormModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
-      const dimCount = finishedGoodVisibleDimCount(draft.ply);
       const isFinishing = state.modal.type === "finishing-service";
       const kicker = isFinishing ? "Finishing service" : "Product master";
       const title = isFinishing
@@ -12820,16 +12808,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <input id="fg-dim-l" class="full-search ${errors.L ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.L === "" || draft.L == null ? "" : formatDecimal(draft.L, 2, false))}" placeholder="Length" />
                   ${errors.L ? `<div class="field-error">${escapeHtml(errors.L)}</div>` : ""}
                 </div>
-                ${dimCount >= 2 ? `
                 <div>
                   <input id="fg-dim-w" class="full-search ${errors.W ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.W === "" || draft.W == null ? "" : formatDecimal(draft.W, 2, false))}" placeholder="Width" />
                   ${errors.W ? `<div class="field-error">${escapeHtml(errors.W)}</div>` : ""}
-                </div>` : ""}
-                ${dimCount >= 3 ? `
+                </div>
                 <div>
                   <input id="fg-dim-h" class="full-search ${errors.H ? "input-invalid" : ""}" type="number" min="0.1" step="0.01" value="${escapeHtml(draft.H === "" || draft.H == null ? "" : formatDecimal(draft.H, 2, false))}" placeholder="Height" />
                   ${errors.H ? `<div class="field-error">${escapeHtml(errors.H)}</div>` : ""}
-                </div>` : ""}
+                </div>
               </div>
             </div>
             <div>
@@ -12988,14 +12974,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (target.id === "fg-product") draft.product = target.value;
       else if (target.id === "fg-style") draft.style = target.value;
       else if (target.id === "fg-variant") draft.variant = target.value;
-      else if (target.id === "fg-ply") {
-        draft.ply = Number(target.value);
-        const dimCount = finishedGoodVisibleDimCount(draft.ply);
-        if (state.modal.errors) {
-          if (dimCount < 2) delete state.modal.errors.W;
-          if (dimCount < 3) delete state.modal.errors.H;
-        }
-      }
+      else if (target.id === "fg-ply") draft.ply = Number(target.value);
       else if (target.id === "fg-dim-l") draft.L = target.value;
       else if (target.id === "fg-dim-w") draft.W = target.value;
       else if (target.id === "fg-dim-h") draft.H = target.value;
@@ -15272,9 +15251,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }).join("x");
     }
 
-    function formatFinishedGoodSizeCode(dims, ply) {
+    function formatFinishedGoodSizeCode(dims) {
       const source = dims || {};
-      return [source.L, source.W, source.H].slice(0, finishedGoodVisibleDimCount(ply)).map((part) => {
+      return [source.L, source.W, source.H].map((part) => {
         const n = Number(part);
         return Number.isFinite(n) ? formatDecimal(n, 2, false) : "";
       }).join("x");
@@ -19747,10 +19726,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (event.target.id === "fg-dim-l") normalizeDraftNumber(event.target, "L", "dimension");
           else if (event.target.id === "fg-dim-w") normalizeDraftNumber(event.target, "W", "dimension");
           else if (event.target.id === "fg-dim-h") normalizeDraftNumber(event.target, "H", "dimension");
-          if (event.target.id === "fg-ply") {
-            renderModal();
-            restoreFocus("fg-ply");
-          }
           return;
         }
         if (updateRawMaterialDraftFromEvent(event.target)) {
