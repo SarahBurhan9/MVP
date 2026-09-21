@@ -3887,6 +3887,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderFinishingDimensionCell(finishedGood, line, dataAttr) {
+      if (!line) return "—";
+      return renderStepValueWithEdit(
+        formatBreakdownMaterialDimensions(finishedGood, line),
+        dataAttr || "data-edit-service-dims",
+        line.id || line.key,
+        "Edit dimensions",
+        "ruler",
+        "dims"
+      );
+    }
+
     function renderLineRateWithEdit(item, rateHtml, dataAttr, itemId) {
       if (!item || itemId == null || itemId === "") return "—";
       return renderStepValueWithEdit(rateHtml, dataAttr, itemId, "Edit rate", "pencil", "rate");
@@ -6707,9 +6719,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
                   ${!isActiveFinishingService(service) && service ? `<div class="stat-hint">Not an active Finishing service</div>` : ""}
                 </td>
-                <td class="step-num">${formatCostCalculatorRequiredQty()}</td>
+                <td>${renderFinishingDimensionCell(getCostCalculatorFinishedGood(), row, "data-edit-cc-service-dims")}</td>
+                <td class="step-num step-col-compact">${formatCostCalculatorRequiredQty()}</td>
                 <td class="step-num">${service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
-                <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+                <td class="step-num step-col-compact">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
                 <td>
                   <div class="row-actions">
                     <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-finishing-service="${lineId}" title="Calculation breakdown">
@@ -6726,7 +6739,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </tr>
             `;
           }).join("")
-        : emptyRow(6, "No finishing services added yet.");
+        : emptyRow(7, "No finishing services added yet.");
       return `
         <div class="table-wrap">
           <table class="data-table step-grid-table">
@@ -6734,9 +6747,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <tr>
                 <th>#</th>
                 <th>Finishing Services</th>
-                <th>Required Qty</th>
+                <th>Dimension</th>
+                <th class="step-col-compact">Required Qty</th>
                 <th>Rate</th>
-                <th>Cost / Piece</th>
+                <th class="step-col-compact">Cost / Piece</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -12113,12 +12127,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               return `
                 <tr>
                   <td>${index + 1}</td>
-                  <td>
-                    <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
-                    ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
-                  </td>
-                  <td class="step-num">${formatBomRequiredQtyFromOrder()}</td>
-                  <td class="step-num">${service ? renderStepValueWithEdit(
+                <td>
+                  <div>${escapeHtml(service ? service.name : "Unknown service")}</div>
+                  ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
+                </td>
+                <td>${renderFinishingDimensionCell(getSelectedFinishedGood(), line)}</td>
+                <td class="step-num step-col-compact">${formatBomRequiredQtyFromOrder()}</td>
+                <td class="step-num">${service ? renderStepValueWithEdit(
                     formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""),
                     "data-bom-service-rate",
                     service.id,
@@ -12126,7 +12141,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     "pencil",
                     "rate"
                   ) : "—"}</td>
-                  <td class="step-num" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                <td class="step-num step-col-compact" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                   <td>
                     <div class="row-actions">
                       <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
@@ -12143,7 +12158,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 </tr>
               `;
             }).join("")
-          : emptyRow(6, "No finishing services added yet.");
+          : emptyRow(7, "No finishing services added yet.");
 
       root.innerHTML = `
         <div class="card">
@@ -12163,9 +12178,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <th>#</th>
                     <th>Finishing Services</th>
-                    <th>Required Qty</th>
+                    <th>Dimension</th>
+                    <th class="step-col-compact">Required Qty</th>
                     <th>Rate</th>
-                    <th>Cost / Piece</th>
+                    <th class="step-col-compact">Cost / Piece</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -18549,6 +18565,60 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       );
     }
 
+    function renderServiceDimsPopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const service = getService(draft.serviceId);
+      const auto = getAutoQuantityLW(getServiceModalFinishedGood(), draft.dimensionId);
+      const autoLabel = (auto && renderCompactLW(auto.L, auto.W)) || "—";
+      const checked = isUseCustomDimensions(draft);
+      const lengthValue = draft.customLength == null || draft.customLength === "" ? "" : String(draft.customLength);
+      const widthValue = draft.customWidth == null || draft.customWidth === "" ? "" : String(draft.customWidth);
+      const body = `
+        <p class="stat-hint" style="margin:0 0 12px;">${service ? escapeHtml(service.name) + " — override length and width used in quantity formulas." : "Override length and width used in quantity formulas."}</p>
+        <div class="dim-popup-card">
+          <div class="dim-popup-current">
+            <span>Current dimensions</span>
+            <strong>${autoLabel}</strong>
+          </div>
+          <label class="custom-dim-flag dim-popup-toggle">
+            <input id="modal-service-use-custom-dim" type="checkbox" ${checked ? "checked" : ""} />
+            <span>
+              <strong>Use Custom Dimensions</strong>
+              <span class="stat-hint">Replace the current length and width for this finishing service line</span>
+            </span>
+          </label>
+          ${checked ? `
+            <div class="dim-input-row two dim-popup-fields">
+              <div>
+                <label class="form-label" for="modal-service-custom-length">Length (L)</label>
+                <div class="input-with-unit ${errors.customLength ? "is-invalid" : ""}">
+                  <input id="modal-service-custom-length" type="number" step="any" min="0.0001" value="${escapeHtml(lengthValue)}" aria-invalid="${errors.customLength ? "true" : "false"}" />
+                  <span>in.</span>
+                </div>
+                ${errors.customLength ? `<div class="field-error">${escapeHtml(errors.customLength)}</div>` : ""}
+              </div>
+              <div>
+                <label class="form-label" for="modal-service-custom-width">Width (W)</label>
+                <div class="input-with-unit ${errors.customWidth ? "is-invalid" : ""}">
+                  <input id="modal-service-custom-width" type="number" step="any" min="0.0001" value="${escapeHtml(widthValue)}" aria-invalid="${errors.customWidth ? "true" : "false"}" />
+                  <span>in.</span>
+                </div>
+                ${errors.customWidth ? `<div class="field-error">${escapeHtml(errors.customWidth)}</div>` : ""}
+              </div>
+            </div>
+          ` : ""}
+        </div>
+        ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+      `;
+      return renderCompactLineModal(
+        "Edit Dimensions",
+        body,
+        "btn-save-service",
+        isCostCalculatorServiceModal() ? "Cost Calculator" : "BOM line"
+      );
+    }
+
     function renderServiceModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
@@ -18656,7 +18726,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceFormModal() {
-      if (getBomLineModalPanel() === "qty") return renderServiceQtyPopup();
+      const panel = getBomLineModalPanel();
+      if (panel === "qty") return renderServiceQtyPopup();
+      if (panel === "dims") return renderServiceDimsPopup();
       const finishing = isFinishingServiceCollection(state.modal.collection);
       const title = state.modal.mode === "edit"
         ? (finishing ? "Edit Finishing Service" : "Edit Service")
@@ -18742,14 +18814,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const list = getBomServiceLines(resolved);
       const line = lineId ? list.find((item) => Number(item.id || item.key) === Number(lineId)) : null;
+      const viewPanel = panel || "full";
+      if ((viewPanel === "dims" || viewPanel === "qty") && !line) return;
+      const draft = defaultServiceDraft(line);
+      if (viewPanel === "dims" && draft.serviceId) applyServiceFormulaBinding(draft);
       state.modal = {
         type: "service",
         collection: resolved,
         selectedId: line ? line.serviceId : null,
         mode: line ? "edit" : "add",
         lineId: line ? Number(line.id || line.key) : null,
-        panel: panel || "full",
-        draft: defaultServiceDraft(line),
+        panel: viewPanel,
+        draft,
         errors: {}
       };
       renderModal();
@@ -19445,6 +19521,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           const serviceId = editRequiredQtyService.dataset.editRequiredQtyService;
           const serviceCollection = findCostCalculatorServiceLineById(serviceId) ? "cost-calculator" : "services";
           openServiceModal(serviceId, serviceCollection, "qty");
+          return;
+        }
+        const editServiceDims = event.target.closest("[data-edit-service-dims]");
+        if (editServiceDims) {
+          openServiceModal(editServiceDims.dataset.editServiceDims, "finishing", "dims");
+          return;
+        }
+        const editCcServiceDims = event.target.closest("[data-edit-cc-service-dims]");
+        if (editCcServiceDims) {
+          openServiceModal(editCcServiceDims.dataset.editCcServiceDims, "cc-finishing", "dims");
           return;
         }
         const deleteCcAdditionalMaterial = event.target.closest("[data-delete-cc-additional-material]");

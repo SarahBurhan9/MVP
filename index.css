@@ -710,6 +710,14 @@
       white-space: nowrap;
     }
 
+    table.data-table.step-grid-table .step-col-compact {
+      width: 1%;
+      max-width: 7.5rem;
+      padding-left: 8px;
+      padding-right: 8px;
+      white-space: nowrap;
+    }
+
     .step-dim-cell {
       line-height: 1.45;
       font-size: 13px;
