@@ -14918,10 +14918,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
       `;
       const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
+      const usedPlys = new Set(linkedFormulas.map((row) => Number(row.ply)).filter((ply) => ply === 1 || ply === 2 || ply === 3));
+      const availablePlys = [1, 2, 3].filter((ply) => !usedPlys.has(ply));
       const availableFormulas = getCoveredAreaStyleFormulas();
       const selectedFormulaId = Number(state.modal.styleFormulaId) || "";
       const selectedFormula = selectedFormulaId ? availableFormulas.find((item) => item.id === selectedFormulaId) : null;
-      const selectedPly = [1, 2, 3].includes(Number(state.modal.styleFormulaPly)) ? Number(state.modal.styleFormulaPly) : "";
+      const selectedPly = availablePlys.includes(Number(state.modal.styleFormulaPly)) ? Number(state.modal.styleFormulaPly) : "";
+      if (state.modal.styleFormulaPly && selectedPly === "") state.modal.styleFormulaPly = "";
+      const canAdd = Boolean(availableFormulas.length && availablePlys.length);
       const triggerLabel = selectedFormula
         ? `${selectedFormula.name} (${selectedFormula.code})`
         : (availableFormulas.length ? "Select a Style formula..." : "No Covered Area formulas");
@@ -14941,7 +14945,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formula && formula.expression ? formula.expression : "—")}</code></td>
                 <td>
                   <div class="row-actions">
-                    <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Remove formula">
+                    <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Delete ply">
                       <i data-lucide="trash-2"></i>
                     </button>
                   </div>
@@ -14976,12 +14980,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
           <div>
             <label class="form-label" for="style-formula-ply">Ply</label>
-            <select id="style-formula-ply" class="full-select" ${availableFormulas.length ? "" : "disabled"}>
-              <option value="">Select ply...</option>
-              ${[1, 2, 3].map((ply) => `<option value="${ply}" ${selectedPly === ply ? "selected" : ""}>${ply}</option>`).join("")}
+            <select id="style-formula-ply" class="full-select" ${canAdd ? "" : "disabled"}>
+              <option value="">${availablePlys.length ? "Select ply..." : "All plies added"}</option>
+              ${availablePlys.map((ply) => `<option value="${ply}" ${selectedPly === ply ? "selected" : ""}>${ply}</option>`).join("")}
             </select>
           </div>
-          <button type="button" class="btn btn-primary style-form-add" id="btn-add-style-formula" ${availableFormulas.length ? "" : "disabled"}>
+          <button type="button" class="btn btn-primary style-form-add" id="btn-add-style-formula" ${canAdd ? "" : "disabled"}>
             <i data-lucide="plus"></i> Add Formula
           </button>
           <div class="table-wrap style-form-formula-grid">
@@ -15369,8 +15373,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const styleId = Number(state.modal.draft.id);
-      if (styleFormulas.some((row) => row.styleId === styleId && Number(row.formulaId) === formula.id && Number(row.ply) === ply)) {
-        showNotification("This formula is already linked for that ply.", "error");
+      if (styleFormulas.some((row) => row.styleId === styleId && Number(row.ply) === ply)) {
+        showNotification("This ply is already linked to the style.", "error");
         return;
       }
       const order = getStyleFormulaLinks(styleId).reduce((max, row) => Math.max(max, Number(row.order) || 0), 0) + 1;
