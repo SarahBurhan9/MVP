@@ -350,6 +350,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const FORMULA_TYPES = ["Material", "Service", "Style"];
     const FORMULA_PURPOSES = ["Rate", "Quantity"];
     const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Consumable"];
+    const RAW_MATERIAL_CATEGORIES = MATERIAL_CATEGORIES.concat("Accessories");
     const MATERIAL_UOMS = ["kg", "gm", "sheet", "sq.meter"];
     const FINISHED_GOOD_UOMS = ["pieces", "kg", "box"];
 
@@ -13036,7 +13037,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="rm-category">Category</label>
               <select id="rm-category" class="full-select">
-                ${MATERIAL_CATEGORIES.map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
+                ${RAW_MATERIAL_CATEGORIES.map((cat) => `<option value="${cat}" ${draft.category === cat ? "selected" : ""}>${cat}</option>`).join("")}
               </select>
             </div>
             <div>
