@@ -4136,8 +4136,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function materialBomUsageMessage(rawMaterialId) {
-      const nos = uniqueBomNumbers(getBomsUsingMaterial(rawMaterialId));
-      if (!nos.length) return "";
+      const id = Number(rawMaterialId);
+      const nos = uniqueBomNumbers(getBomsUsingMaterial(id));
+      const accessoryProducts = finishedGoods.filter((item) => Number(item.accessoryId) === id);
+      if (!nos.length && !accessoryProducts.length) return "";
+      if (accessoryProducts.length && !nos.length) {
+        return "Cannot delete. Used as accessory on " + accessoryProducts.length + " finished good" + (accessoryProducts.length === 1 ? "" : "s") + ".";
+      }
       return "Cannot delete. Used in " + nos.length + " BOM" + (nos.length === 1 ? "" : "s") + ": " + nos.join(", ");
     }
 
@@ -4348,6 +4353,31 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function isConsumableRawMaterial(rawMaterialId) {
       const material = getRawMaterial(rawMaterialId);
       return Boolean(material && material.category === "Consumable");
+    }
+
+    function isAccessoryRawMaterial(rawMaterialId) {
+      const material = getRawMaterial(rawMaterialId);
+      return Boolean(material && material.category === "Accessories");
+    }
+
+    function normalizeAccessoryId(value) {
+      const id = Number(value);
+      return Number.isFinite(id) && id > 0 ? id : null;
+    }
+
+    function getAccessoryRawMaterials(selectedId) {
+      const options = rawMaterials.filter((item) => item.status !== "Inactive" && item.category === "Accessories");
+      const id = normalizeAccessoryId(selectedId);
+      if (id && !options.some((item) => item.id === id)) {
+        const current = getRawMaterial(id);
+        if (current) options.unshift(current);
+      }
+      return options;
+    }
+
+    function isBomAccessoryLine(line) {
+      if (!line) return false;
+      return String(line.layer || "") === "Accessories" || isAccessoryRawMaterial(line.rawMaterialId);
     }
 
     function getOtherRawMaterial(id) {
@@ -5753,7 +5783,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return (state.bomFinishingServices || []).reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0);
     }
 
+    function syncFinishedGoodAccessoryLine(finishedGood, materials) {
+      const rows = (Array.isArray(materials) ? materials : []).filter(Boolean);
+      const accessoryId = normalizeAccessoryId(finishedGood && finishedGood.accessoryId);
+      const others = rows.filter((line) => !isBomAccessoryLine(line));
+      if (!accessoryId) return others;
+      const prev = rows.find(isBomAccessoryLine) || null;
+      return others.concat([rebuildBomMaterialLine(prev, {
+        rawMaterialId: accessoryId,
+        layer: "Accessories"
+      })]);
+    }
+
     function recalculateBOMCosts() {
+      const fg = getSelectedFinishedGood();
+      if (fg) state.bomMaterials = syncFinishedGoodAccessoryLine(fg, state.bomMaterials);
       state.bomMaterials = state.bomMaterials.map((line) => calculateMaterialCost(line));
       state.totalMaterialCost = roundTo(calculateTotalMaterialCost(), 2);
       state.bomOtherMaterials = (state.bomOtherMaterials || []).map((line) => calculateOtherMaterialCost(line));
@@ -6132,7 +6176,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getCostCalculatorMaterials() {
-      return rawMaterials.filter((item) => item.status !== "Inactive");
+      return rawMaterials.filter((item) => item.status !== "Inactive" && item.category !== "Accessories");
     }
 
     function getBomOtherMaterialsForPly() {
@@ -7520,14 +7564,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const slots = layers.map((layer) => ({ layer, line: null }));
       rows.forEach((item) => {
         if (!item || claimed.has(item.id)) return;
+        if (isBomAccessoryLine(item)) return;
         if (!layerSet.has(item.layer)) return;
         const slot = slots.find((entry) => entry.layer === item.layer && !entry.line);
         if (!slot) return;
         slot.line = item;
         claimed.add(item.id);
       });
-      const extras = rows.filter((item) => item && !claimed.has(item.id));
-      return { ply, layers, slots, extras };
+      const extras = rows.filter((item) => item && !claimed.has(item.id) && !isBomAccessoryLine(item));
+      const accessoryLine = rows.find(isBomAccessoryLine) || null;
+      return { ply, layers, slots, extras, accessoryLine };
     }
 
     function getBomOtherMaterialSlotLayout(materials) {
@@ -7557,7 +7603,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getBomSlotMaterialOptions(ply, selectedId) {
-      const options = getCostCalculatorMaterials(ply).slice();
+      const options = getCostCalculatorMaterials(ply).filter((item) => item.category !== "Accessories");
       const id = Number(selectedId);
       if (id && !options.some((item) => item.id === id)) {
         const current = getRawMaterial(id);
@@ -7567,7 +7613,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getBomExtraMaterialOptions(selectedId) {
-      const options = rawMaterials.filter((item) => item.status !== "Inactive");
+      const options = rawMaterials.filter((item) => item.status !== "Inactive" && item.category !== "Accessories");
       const id = Number(selectedId);
       if (id && !options.some((item) => item.id === id)) {
         const current = getRawMaterial(id);
@@ -11464,23 +11510,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const layer = options.layer;
       const ply = options.ply;
       const extra = Boolean(options.extra);
+      const accessory = Boolean(options.accessory);
       const index = options.index;
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
       const missingMaterialId = line && line.rawMaterialId && !material ? line.rawMaterialId : null;
-      const materials = extra
-        ? getBomExtraMaterialOptions(line && line.rawMaterialId)
-        : getBomSlotMaterialOptions(ply, line && line.rawMaterialId);
-      const selectId = extra ? "bom-extra-mat-" + line.id : "bom-layer-mat-" + index;
-      const selectAttr = extra
-        ? `data-bom-extra-material="${line.id}"`
-        : `data-bom-layer-material="${escapeHtml(layer)}"`;
+      const materials = accessory
+        ? getAccessoryRawMaterials(line && line.rawMaterialId)
+        : extra
+          ? getBomExtraMaterialOptions(line && line.rawMaterialId)
+          : getBomSlotMaterialOptions(ply, line && line.rawMaterialId);
+      const selectId = accessory
+        ? "bom-accessory-mat-" + (line && line.id)
+        : extra ? "bom-extra-mat-" + line.id : "bom-layer-mat-" + index;
+      const selectAttr = accessory
+        ? "disabled"
+        : extra
+          ? `data-bom-extra-material="${line.id}"`
+          : `data-bom-layer-material="${escapeHtml(layer)}"`;
       const materialTitle = material
         ? `${material.name}${material.code ? ` (${material.code})` : ""}`
         : (missingMaterialId ? `Missing material (ID: ${missingMaterialId})` : "Select material");
       return `
         <div class="cc-layer step-liner-block">
           <div class="step-liner-head">
-            <div class="step-liner-title">${escapeHtml(layer)} Material${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}</div>
+            <div class="step-liner-title">${escapeHtml(layer)} Material${extra ? ` <span class="badge badge-muted">Extra</span>` : ""}${accessory ? ` <span class="badge badge-muted">From product</span>` : ""}</div>
             <div class="step-liner-material">${escapeHtml(materialTitle)}</div>
           </div>
           <label class="form-label" for="${selectId}">Material</label>
@@ -11491,6 +11544,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
+          ${accessory ? `<p class="stat-hint">Set on the finished good. Quantity uses this material’s Default Quantity Formula.</p>` : ""}
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
@@ -11517,7 +11571,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "ruler",
                       "dims"
                     )}</td>
-                    <td class="step-num">${extra ? (line.error ? "—" : formatQty(line.netQty)) : formatBomRequiredQtyFromOrder()}</td>
+                    <td class="step-num">${extra || accessory ? (line.error ? "—" : formatQty(line.netQty)) : formatBomRequiredQtyFromOrder()}</td>
                     <td class="step-num">${material ? renderStepValueWithEdit(
                       formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
                       "data-bom-material-rate",
@@ -11535,7 +11589,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="Edit calculation details">
                           <i data-lucide="pencil"></i>
                         </button>
-                        ${extra ? `
+                        ${extra && !accessory ? `
                           <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
                             <i data-lucide="trash-2"></i>
                           </button>
@@ -11575,6 +11629,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         extra: false,
         index
       })).join("");
+      const accessoryCard = layout.accessoryLine
+        ? renderBomMaterialCard({
+            layer: "Accessories",
+            line: layout.accessoryLine,
+            ply: layout.ply,
+            extra: false,
+            accessory: true,
+            index: orderedSlots.length
+          })
+        : "";
       const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
       root.innerHTML = `
         <section class="card cc-card">
@@ -11582,6 +11646,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
             <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
             ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
+            ${accessoryCard}
             <div class="cc-total-line"><span>Total Material Cost</span><strong id="bom-material-cost-total">${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
         </section>
@@ -11591,6 +11656,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (!slot.line) return;
         lineModels["material:" + slot.line.id] = bomLineCostDisplayModel(slot.line);
       });
+      if (layout.accessoryLine) {
+        lineModels["material:" + layout.accessoryLine.id] = bomLineCostDisplayModel(layout.accessoryLine);
+      }
       mountBomCostCellHosts(
         root,
         lineModels,
@@ -12722,6 +12790,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         style: styles[0] ? styles[0].name : "",
         variant: "",
         ply: 3,
+        accessoryId: null,
         L: "",
         W: "",
         H: "",
@@ -12802,6 +12871,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
             </div>
+            ${isFinishing ? "" : `
+            <div>
+              <label class="form-label" for="fg-accessory">Accessories</label>
+              <select id="fg-accessory" class="full-select">
+                <option value="">None</option>
+                ${getAccessoryRawMaterials(draft.accessoryId).map((item) => `<option value="${item.id}" ${Number(draft.accessoryId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
+              </select>
+            </div>
+            `}
             <div class="form-span-2">
               <label class="form-label">Dimensions</label>
               <div class="dim-input-row">
@@ -12855,6 +12933,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         style: item?.style ?? "",
         variant: item?.variant ?? "",
         ply: item?.ply,
+        accessoryId: normalizeAccessoryId(item?.accessoryId),
         L: formatDecimal(dims.L, 2, false),
         W: formatDecimal(dims.W, 2, false),
         H: formatDecimal(dims.H, 2, false),
@@ -12944,6 +13023,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         style: String(draft.style).trim(),
         variant: String(draft.variant).trim(),
         ply: Number(draft.ply),
+        accessoryId: normalizeAccessoryId(draft.accessoryId),
         dimensions: parsedFinishedGoodDraftDimensions(draft),
         dimensionUOM: draft.dimensionUOM,
         uom: draft.uom,
@@ -12976,6 +13056,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "fg-style") draft.style = target.value;
       else if (target.id === "fg-variant") draft.variant = target.value;
       else if (target.id === "fg-ply") draft.ply = Number(target.value);
+      else if (target.id === "fg-accessory") draft.accessoryId = normalizeAccessoryId(target.value);
       else if (target.id === "fg-dim-l") draft.L = target.value;
       else if (target.id === "fg-dim-w") draft.W = target.value;
       else if (target.id === "fg-dim-h") draft.H = target.value;
@@ -15182,7 +15263,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function refreshOpenBomCalculations() {
       if (!state.selectedFinishedGoodId || !getSelectedFinishedGood()) return;
       recalculateBOMCosts();
-      if (state.currentPage === "bom-costing") refreshBomViews();
+      if (state.currentPage === "bom-costing") {
+        refreshBomViews();
+        persistEditorState();
+      }
     }
 
     function addStyleFormulaToStyle() {
@@ -17666,7 +17750,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = defaultMaterialDraft(line);
       if (draft.rawMaterialId) applyMaterialFormulaBindings(draft);
       const layout = getBomMaterialSlotLayout(getSelectedFinishedGood(), state.bomMaterials);
-      const slotLocked = layout.slots.some((slot) => slot.line && slot.line.id === line.id);
+      const slotLocked = layout.slots.some((slot) => slot.line && slot.line.id === line.id) || isBomAccessoryLine(line);
       const fromAdditional = !slotLocked;
       state.modal = {
         type: "material",
@@ -17699,6 +17783,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openDeleteMaterialModal(lineId) {
       const fromCalculator = Boolean(findCostCalculatorAdditionalMaterialById(lineId));
+      const bomLine = state.bomMaterials.find((item) => item.id === Number(lineId));
+      if (!fromCalculator && isBomAccessoryLine(bomLine)) {
+        showNotification("Change this accessory on the finished good, not on the BOM.", "error");
+        return;
+      }
       state.modal = {
         type: "confirm-delete",
         collection: fromCalculator ? "cc-additional" : null,
@@ -17783,6 +17872,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         persistCostCalculatorState();
         renderCostCalculator();
         refreshIcons();
+        return;
+      }
+      const deleting = state.bomMaterials.find((line) => line.id === Number(state.modal.lineId));
+      if (isBomAccessoryLine(deleting)) {
+        closeModal();
+        showNotification("Change this accessory on the finished good, not on the BOM.", "error");
         return;
       }
       state.bomMaterials = state.bomMaterials.filter((line) => line.id !== state.modal.lineId);
