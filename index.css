@@ -711,11 +711,38 @@
     }
 
     table.data-table.step-grid-table .step-col-compact {
-      width: 1%;
-      max-width: 7.5rem;
-      padding-left: 8px;
-      padding-right: 8px;
       white-space: nowrap;
+      text-align: center;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+
+    table.data-table.step-grid-table .step-col-dim {
+      width: 1%;
+      white-space: nowrap;
+    }
+
+    table.data-table.step-grid-table th:first-child,
+    table.data-table.step-grid-table td:first-child {
+      width: 1%;
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    table.data-table.step-grid-table .step-col-actions {
+      width: 1%;
+      white-space: nowrap;
+      padding-left: 6px;
+      padding-right: 6px;
+      text-align: center;
+    }
+
+    table.data-table.step-grid-table .step-col-actions .row-actions {
+      justify-content: center;
+    }
+
+    table.data-table.step-grid-table th.step-col-compact {
+      font-size: 12px;
     }
 
     .step-dim-cell {
