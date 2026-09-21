@@ -3334,14 +3334,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function buildFlatStyleFormulaVariables(finishedGood) {
+    function buildFlatStyleFormulaVariables(finishedGood, plyOverride) {
       const { context, style } = resolveBomDimensionContext(finishedGood);
       const vars = { ...getFormulaVariableDefaults(), ...context };
       delete vars.L;
       delete vars.W;
       delete vars.H;
+      const ply = plyOverride != null ? Number(plyOverride) : getFinishedGoodPly(finishedGood);
       if (style) {
-        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
+        getStyleVariablesForPly(style.id, [1, 2, 3].includes(ply) ? ply : getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
           if (n !== null && row.variableCode !== "L" && row.variableCode !== "W" && row.variableCode !== "H") {
             vars[row.variableCode] = n;
@@ -3475,10 +3476,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return buildFlatStyleFormulaVariables(finishedGood);
     }
 
-    function buildStyleFormulaResultRow(formula, calculated, linkId) {
+    function buildStyleFormulaResultRow(formula, calculated, linkId, ply) {
       return {
         linkId: linkId,
         formulaId: formula.id,
+        ply: [1, 2, 3].includes(Number(ply)) ? Number(ply) : null,
         code: formula.code,
         name: formula.name,
         description: formula.description || formula.name,
@@ -3523,18 +3525,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!finishedGood) return [];
       const style = findStyleByName(finishedGood.style);
       if (!style) return [];
-      const variables = buildFlatStyleFormulaVariables(finishedGood);
       const productPly = getFinishedGoodPly(finishedGood);
       const rows = getStyleFormulaLinks(style.id).filter((link) => {
         const linkPly = Number(link.ply);
         if (![1, 2, 3].includes(linkPly)) return true;
-        return linkPly === productPly;
+        return linkPly <= productPly;
       }).map((link) => {
+        const linkPly = [1, 2, 3].includes(Number(link.ply)) ? Number(link.ply) : null;
+        const variables = buildFlatStyleFormulaVariables(finishedGood, linkPly || productPly);
         const formula = getFormula(link.formulaId);
         if (!formula) {
           return {
             linkId: link.id,
             formulaId: link.formulaId,
+            ply: linkPly,
             code: "—",
             name: "Missing formula",
             expression: "",
@@ -3550,6 +3554,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return {
             linkId: link.id,
             formulaId: formula.id,
+            ply: linkPly,
             code: formula.code,
             name: formula.name,
             expression: formula.expression,
@@ -3562,10 +3567,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           };
         }
         const calculated = evaluateFormula(formula.expression, variables, [formula.code], { strictJobDimensions: true });
-        if (calculated.success) variables[formula.code] = calculated.result;
-        return buildStyleFormulaResultRow(formula, calculated, link.id);
+        return buildStyleFormulaResultRow(formula, calculated, link.id, linkPly);
       });
-      return appendCoveredAreaDependencyRows(rows, variables);
+      return appendCoveredAreaDependencyRows(rows, buildFlatStyleFormulaVariables(finishedGood, productPly));
     }
 
     function styleFormulaSearchText(row) {
@@ -3607,51 +3611,85 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getStyleFormulaMetrics(finishedGood, evaluatedStyleFormulas) {
       const rows = evaluatedStyleFormulas || evaluateStyleFormulasForFinishedGood(finishedGood);
+      const productPly = getFinishedGoodPly(finishedGood);
+      const coveredRows = rows.filter((row) => isCoveredAreaStyleFormula(row));
+      const coveredRow = coveredRows.find((row) => Number(row.ply) === productPly)
+        || coveredRows.find((row) => row.ply == null)
+        || coveredRows[0]
+        || null;
       return {
         rows,
+        productPly,
+        coveredRows,
         lengthRow: rows.find((row) => isAreaLengthStyleFormula(row)) || null,
         widthRow: rows.find((row) => isAreaWidthStyleFormula(row)) || null,
-        coveredRow: rows.find((row) => isCoveredAreaStyleFormula(row)) || null
+        coveredRow
       };
     }
 
-    function evaluateCoveredAreaValue(finishedGood, fallbackVars, metrics) {
+    function coveredAreaRowForPly(snap, ply) {
+      const list = snap && Array.isArray(snap.coveredRows) ? snap.coveredRows : [];
+      const match = list.find((row) => Number(row.ply) === Number(ply));
+      if (match) return match;
+      if (![1, 2, 3].includes(Number(ply))) return snap && snap.coveredRow ? snap.coveredRow : null;
+      return list.find((row) => row.ply == null) || null;
+    }
+
+    function evaluateCoveredAreaValue(finishedGood, fallbackVars, metrics, plyOverride) {
       const snap = metrics || getStyleFormulaMetrics(finishedGood);
-      if (snap.coveredRow) {
-        const n = snap.coveredRow.success ? numericOrNull(snap.coveredRow.result) : null;
+      const ply = plyOverride != null ? Number(plyOverride) : getFinishedGoodPly(finishedGood);
+      const plyRow = coveredAreaRowForPly(snap, ply);
+      if (plyRow) {
+        const n = plyRow.success ? numericOrNull(plyRow.result) : null;
         return {
           success: n !== null,
           result: n,
-          error: snap.coveredRow.success ? null : snap.coveredRow.error,
+          error: plyRow.success ? null : plyRow.error,
           source: "style_covered_area",
-          code: snap.coveredRow.code
+          code: plyRow.code,
+          ply: [1, 2, 3].includes(Number(plyRow.ply)) ? Number(plyRow.ply) : ply
         };
       }
-      const vars = fallbackVars || buildFlatStyleFormulaVariables(finishedGood);
+      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      if (style && styleHasPlyCoveredAreaFormulas(style.id) && [1, 2, 3].includes(ply)) {
+        return {
+          success: false,
+          result: null,
+          error: "No Covered Area formula linked for ply " + ply + ".",
+          source: "style_covered_area",
+          ply
+        };
+      }
+      const vars = fallbackVars || buildFlatStyleFormulaVariables(finishedGood, ply);
       snap.rows.forEach((row) => {
         if (row.success && row.code && row.code !== "—") vars[row.code] = row.result;
       });
       const areaFormula = getFormulaByCode("COVERED_AREA");
       if (!areaFormula || !areaFormula.isActive) {
-        return { success: false, result: null, error: "COVERED_AREA formula is not available.", source: "covered_area" };
+        return { success: false, result: null, error: "COVERED_AREA formula is not available.", source: "covered_area", ply };
       }
       const evaluated = evaluateFormula(areaFormula.expression, vars, ["COVERED_AREA"]);
       return {
         success: evaluated.success,
         result: evaluated.success ? evaluated.result : null,
         error: evaluated.success ? null : evaluated.error,
-        source: "covered_area"
+        source: "covered_area",
+        ply
       };
     }
 
-    function injectStyleFormulaResults(finishedGood, variables) {
+    function injectStyleFormulaResults(finishedGood, variables, plyOverride) {
       if (!finishedGood || !variables) return;
       const snap = getStyleFormulaMetrics(finishedGood);
+      const ply = plyOverride != null ? Number(plyOverride) : getFinishedGoodPly(finishedGood);
       snap.rows.forEach((row) => {
-        if (row.success && row.code && row.code !== "—") variables[row.code] = row.result;
+        if (!row.success || !row.code || row.code === "—") return;
+        if (isCoveredAreaStyleFormula(row) && [1, 2, 3].includes(Number(row.ply)) && Number(row.ply) !== ply) return;
+        variables[row.code] = row.result;
       });
-      if (snap.coveredRow && snap.coveredRow.success) {
-        const n = numericOrNull(snap.coveredRow.result);
+      const covered = evaluateCoveredAreaValue(finishedGood, variables, snap, ply);
+      if (covered.success) {
+        const n = numericOrNull(covered.result);
         if (n !== null) variables.COVERED_AREA = n;
       }
     }
@@ -3923,6 +3961,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function getStructuralLayers(plyCount) {
       return STRUCTURAL_PLY_LAYERS[Number(plyCount)] || STRUCTURAL_PLY_LAYERS[3];
+    }
+
+    function styleFormulaPlyForLayer(layer, productPly) {
+      const ply = normalizeStylePly(productPly, 3);
+      const layers = getStructuralLayers(ply);
+      const name = canonicalPlyLayerName(layer);
+      const index = layers.indexOf(name);
+      if (index < 0) return ply;
+      return index + 1;
+    }
+
+    function styleFormulaPlyForBomLine(finishedGood, line) {
+      const productPly = getFinishedGoodPly(finishedGood);
+      if (!line || isBomAccessoryLine(line)) return productPly;
+      return styleFormulaPlyForLayer(line.layer, productPly);
+    }
+
+    function styleHasPlyCoveredAreaFormulas(styleId) {
+      return getStyleFormulaLinks(styleId).some((link) => {
+        if (![1, 2, 3].includes(Number(link.ply))) return false;
+        const formula = getFormula(link.formulaId);
+        return Boolean(formula && formula.coveredArea);
+      });
     }
 
     function getLayerOptionsForEditor(currentLayer) {
@@ -5251,8 +5312,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const dim = getDimension(dimensionId);
       const styleVals = {};
       const style = finishedGood ? findStyleByName(finishedGood?.style) : null;
+      const layerPly = styleFormulaPlyForBomLine(finishedGood, line);
       if (style) {
-        getStyleVariablesForPly(style.id, getFinishedGoodPly(finishedGood)).forEach((row) => {
+        getStyleVariablesForPly(style.id, layerPly).forEach((row) => {
           const n = numericOrNull(row.value);
           if (n !== null) styleVals[row.variableCode] = n;
         });
@@ -5286,7 +5348,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         PIECE_AREA: pieceArea,
         ...ENGINE_CONSTANTS
       };
-      injectStyleFormulaResults(finishedGood, vars);
+      injectStyleFormulaResults(finishedGood, vars, layerPly);
       return vars;
     }
 
@@ -5472,6 +5534,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
         const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, formula, line);
+        const style = findStyleByName(finishedGood.style);
+        const layerPly = styleFormulaPlyForBomLine(finishedGood, line);
+        if (style && styleHasPlyCoveredAreaFormulas(style.id)) {
+          const areaEval = evaluateCoveredAreaValue(finishedGood, variables, null, layerPly);
+          if (!areaEval.success) {
+            line.error = areaEval.error || ("No Covered Area formula linked for ply " + layerPly + ".");
+            line.netQty = 0;
+            line.grossQty = 0;
+            line.costPerPiece = 0;
+            return line;
+          }
+        }
         const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
         if (!calculated.success) {
           line.error = calculated.error;
@@ -6072,10 +6146,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (opts.nested) classes.push("is-nested");
       if (opts.primary) classes.push("is-primary");
       const stepLabel = opts.stepIndex != null ? `<span class="style-formula-step">Step ${opts.stepIndex}</span>` : "";
+      const plyLabel = [1, 2, 3].includes(Number(row.ply)) ? `Ply ${row.ply} · ` : "";
       return `
         <div class="${classes.join(" ")}">
           <div>
-            <div>${stepLabel}<span class="mono">${escapeHtml(row.code)}</span>: ${escapeHtml(row.description || row.name)}</div>
+            <div>${stepLabel}<span class="mono">${escapeHtml(plyLabel + (row.code || ""))}</span>: ${escapeHtml(row.description || row.name)}</div>
             <div class="stat-hint mono">${escapeHtml(row.expression || "—")}</div>
             ${renderStyleFormulaHint(row)}
           </div>
@@ -6101,27 +6176,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
         `;
       }
-      const covered = list.find((row) => isCoveredAreaStyleFormula(row));
-      const nestedRows = covered ? coveredAreaDependentStyleRows(covered, list) : [];
-      const nestedKeys = new Set(nestedRows.map((row) => String(row.linkId || row.code)));
-      const coveredKey = covered ? String(covered.linkId || covered.code) : "";
+      const coveredRows = list.filter((row) => isCoveredAreaStyleFormula(row));
+      const nestedKeys = new Set();
+      coveredRows.forEach((covered) => {
+        coveredAreaDependentStyleRows(covered, list).forEach((row) => nestedKeys.add(String(row.linkId || row.code)));
+      });
+      const coveredKeys = new Set(coveredRows.map((row) => String(row.linkId || row.code)));
       const independent = list.filter((row) => {
         const key = String(row.linkId || row.code);
-        if (covered && key === coveredKey) return false;
+        if (coveredKeys.has(key)) return false;
         if (nestedKeys.has(key)) return false;
         return true;
       });
       const independentHtml = independent.map((row) => renderStyleFormulaRow(row)).join("");
-      const coveredHtml = covered
-        ? (nestedRows.length
-          ? `<div class="style-formula-group">
-              <div class="style-formula-group-head">Covered Area calculation</div>
-              <p class="stat-hint style-formula-group-note">These formulas are used, in order, to derive Covered Area.</p>
-              ${nestedRows.map((row, index) => renderStyleFormulaRow(row, { nested: true, stepIndex: index + 1 })).join("")}
-              ${renderStyleFormulaRow(covered, { primary: true, stepIndex: nestedRows.length + 1 })}
-            </div>`
-          : renderStyleFormulaRow(covered, { primary: true }))
-        : "";
+      const coveredHtml = coveredRows.map((row) => renderStyleFormulaRow(row, { primary: true })).join("");
       return `
         <div class="style-formula-results">
           ${independentHtml}
@@ -6881,8 +6949,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           dimWarnings: styleUsage.warnings
         };
       }
-      const variables = buildFormulaVariables(fg, material, wastage, null, formula);
-      const areaEval = evaluateCoveredAreaValue(fg);
+      const variables = buildFormulaVariables(fg, material, wastage, null, formula, { layer: layerRow.layer, rawMaterialId: material.id });
+      const areaEval = evaluateCoveredAreaValue(fg, null, null, styleFormulaPlyForLayer(layerRow.layer, ply));
       return {
         qty: line.grossQty,
         netQty: line.netQty,
@@ -11370,7 +11438,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         key: String(row.linkId || row.code || "") + ":" + String(opts.stepIndex || ""),
         className: classes.join(" "),
         stepLabel: opts.stepIndex != null ? "Step " + opts.stepIndex : "",
-        code: row.code || "",
+        code: ([1, 2, 3].includes(Number(row.ply)) ? ("Ply " + row.ply + " · ") : "") + (row.code || ""),
         title: row.description || row.name || "",
         expression: row.expression || "—",
         hint,
@@ -11402,28 +11470,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!list.length) {
         return { empty: true, independent: [], coveredGroup: null, perimeter };
       }
-      const covered = list.find((row) => isCoveredAreaStyleFormula(row));
-      const nestedRows = covered ? coveredAreaDependentStyleRows(covered, list) : [];
-      const nestedKeys = new Set(nestedRows.map((row) => String(row.linkId || row.code)));
-      const coveredKey = covered ? String(covered.linkId || covered.code) : "";
+      const coveredRows = list.filter((row) => isCoveredAreaStyleFormula(row));
+      const nestedKeys = new Set();
+      coveredRows.forEach((covered) => {
+        coveredAreaDependentStyleRows(covered, list).forEach((row) => nestedKeys.add(String(row.linkId || row.code)));
+      });
+      const coveredKeys = new Set(coveredRows.map((row) => String(row.linkId || row.code)));
       const independent = list.filter((row) => {
         const key = String(row.linkId || row.code);
-        if (covered && key === coveredKey) return false;
+        if (coveredKeys.has(key)) return false;
         if (nestedKeys.has(key)) return false;
         return true;
       }).map((row) => styleFormulaRowDisplayModel(row));
       let coveredGroup = null;
-      if (covered) {
-        coveredGroup = nestedRows.length
-          ? {
-              hasNested: true,
-              rows: nestedRows.map((row, index) => styleFormulaRowDisplayModel(row, { nested: true, stepIndex: index + 1 }))
-                .concat([styleFormulaRowDisplayModel(covered, { primary: true, stepIndex: nestedRows.length + 1 })])
-            }
-          : {
-              hasNested: false,
-              rows: [styleFormulaRowDisplayModel(covered, { primary: true })]
-            };
+      if (coveredRows.length) {
+        coveredGroup = {
+          hasNested: false,
+          rows: coveredRows.map((row) => styleFormulaRowDisplayModel(row, { primary: true }))
+        };
       }
       return { empty: false, independent, coveredGroup, perimeter };
     }
