@@ -2935,10 +2935,10 @@
     }
     .modal.style-form-modal .style-form-formulas-panel {
       display: grid;
-      gap: 0;
+      gap: 12px;
     }
     .modal.style-form-modal .style-form-add {
-      margin-top: 12px;
+      margin-top: 0;
     }
     .modal.style-form-modal .style-formula-pretty {
       z-index: 2;
@@ -2947,6 +2947,24 @@
       min-height: 44px;
       border-radius: 10px;
       padding: 12px 14px;
+    }
+    .modal.style-form-modal .style-formula-search-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: #fff;
+      padding-bottom: 8px;
+    }
+    .modal.style-form-modal .pretty-select-option[hidden] {
+      display: none;
+    }
+    .modal.style-form-modal .style-formula-search-empty {
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 8px 10px;
+    }
+    .modal.style-form-modal .style-form-formula-grid {
+      margin-top: 4px;
     }
     .modal.style-form-modal .style-formula-dd-linked {
       display: grid;

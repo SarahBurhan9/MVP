@@ -3467,8 +3467,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || a.id - b.id);
     }
 
-    function getStyleTypeFormulas() {
-      return formulas.filter((item) => item.type === "Style" && item.isActive);
+    function getCoveredAreaStyleFormulas() {
+      return formulas.filter((item) => item.type === "Style" && item.isActive !== false && Boolean(item.coveredArea));
     }
 
     function buildStyleFormulaVariables(finishedGood) {
@@ -3524,7 +3524,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const style = findStyleByName(finishedGood.style);
       if (!style) return [];
       const variables = buildFlatStyleFormulaVariables(finishedGood);
-      const rows = getStyleFormulaLinks(style.id).map((link) => {
+      const productPly = getFinishedGoodPly(finishedGood);
+      const rows = getStyleFormulaLinks(style.id).filter((link) => {
+        const linkPly = Number(link.ply);
+        if (![1, 2, 3].includes(linkPly)) return true;
+        return linkPly === productPly;
+      }).map((link) => {
         const formula = getFormula(link.formulaId);
         if (!formula) {
           return {
@@ -14913,68 +14918,92 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
       `;
       const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
-      const linkedIds = new Set(linkedFormulas.map((row) => Number(row.formulaId)));
-      const availableFormulas = getStyleTypeFormulas().filter((item) => !linkedIds.has(item.id));
-      const unusedOptions = [
-        { value: "", label: availableFormulas.length ? "Select a Style formula..." : "No unused Style formulas" },
-        ...availableFormulas.map((item) => ({
-          value: item.id,
-          label: `${item.name} (${item.code})`
-        }))
-      ];
-      const firstLinked = linkedFormulas[0] ? getFormula(linkedFormulas[0].formulaId) : null;
-      const triggerLabel = availableFormulas.length
-        ? unusedOptions[0].label
-        : (firstLinked ? `${firstLinked.name} (${firstLinked.code})` : unusedOptions[0].label);
-      const unusedMenu = unusedOptions.map((opt) => `
-        <button type="button" class="pretty-select-option${opt.value === "" ? " selected" : ""}" role="option" aria-selected="${opt.value === "" ? "true" : "false"}" data-pretty-select="style-formula-select" data-pretty-value="${escapeHtml(String(opt.value))}">${escapeHtml(opt.label)}</button>
-      `).join("");
-      const linkedMenu = linkedFormulas.length
+      const availableFormulas = getCoveredAreaStyleFormulas();
+      const selectedFormulaId = Number(state.modal.styleFormulaId) || "";
+      const selectedFormula = selectedFormulaId ? availableFormulas.find((item) => item.id === selectedFormulaId) : null;
+      const selectedPly = [1, 2, 3].includes(Number(state.modal.styleFormulaPly)) ? Number(state.modal.styleFormulaPly) : "";
+      const triggerLabel = selectedFormula
+        ? `${selectedFormula.name} (${selectedFormula.code})`
+        : (availableFormulas.length ? "Select a Style formula..." : "No Covered Area formulas");
+      const unusedMenu = availableFormulas.map((item) => {
+        const selected = item.id === selectedFormulaId;
+        return `<button type="button" class="pretty-select-option${selected ? " selected" : ""}" role="option" aria-selected="${selected ? "true" : "false"}" data-pretty-select="style-formula-select" data-pretty-value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</button>`;
+      }).join("");
+      const gridBody = linkedFormulas.length
         ? linkedFormulas.map((row) => {
             const formula = getFormula(row.formulaId);
+            const plyLabel = [1, 2, 3].includes(Number(row.ply)) ? String(row.ply) : "—";
             return `
-              <div class="style-form-formula-item">
-                <div>
-                  <div class="style-form-formula-name">${escapeHtml(formula ? formula.name : "Missing formula")}</div>
-                  <div class="stat-hint mono">${escapeHtml(formula ? formula.code : "—")}${formula && formula.expression ? ` · ${escapeHtml(formula.expression)}` : ""}</div>
-                </div>
-                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Remove formula">
-                  <i data-lucide="trash-2"></i>
-                </button>
-              </div>
+              <tr>
+                <td>${escapeHtml(formula ? formula.name : "Missing formula")}</td>
+                <td class="mono">${escapeHtml(formula ? formula.code : "—")}</td>
+                <td>${escapeHtml(plyLabel)}</td>
+                <td class="fm-expr-cell"><code class="fm-expr">${escapeHtml(formula && formula.expression ? formula.expression : "—")}</code></td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-style-formula="${row.id}" title="Remove formula">
+                      <i data-lucide="trash-2"></i>
+                    </button>
+                  </div>
+                </td>
+              </tr>
             `;
           }).join("")
-        : `<div class="style-form-formula-empty">No formulas linked to this style yet.</div>`;
-      const formulasNote = `
-        <div class="style-form-formulas">
-          <div class="form-label">Style Formulas</div>
-          <p class="stat-hint">Optional. Link Style-type formulas. They auto-calculate in the BOM when a finished good uses this style.</p>
-        </div>
-      `;
+        : `<tr><td colspan="5"><div class="empty">No formulas linked to this style yet.</div></td></tr>`;
       const formulasForm = `
         <div class="style-form-formulas-panel">
-          <label class="form-label" for="style-formula-select-trigger">Formula</label>
-          <div class="pretty-select style-formula-pretty">
-            <button type="button" class="pretty-select-trigger" id="style-formula-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="style-formula-select-panel">
-              <span class="pretty-select-value">${escapeHtml(triggerLabel)}</span>
-              <span class="pretty-select-chevron" aria-hidden="true"></span>
-            </button>
-            <div class="pretty-select-panel" id="style-formula-select-panel" role="listbox">
-              ${availableFormulas.length ? unusedMenu : ""}
-              ${linkedFormulas.length ? `
-                <div class="style-formula-dd-linked">
-                  <div class="style-formula-dd-label">Linked to this style</div>
-                  ${linkedMenu}
+          <div>
+            <label class="form-label" for="style-formula-select-trigger">Formula</label>
+            <div class="pretty-select style-formula-pretty">
+              <button type="button" class="pretty-select-trigger" id="style-formula-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="style-formula-select-panel">
+                <span class="pretty-select-value">${escapeHtml(triggerLabel)}</span>
+                <span class="pretty-select-chevron" aria-hidden="true"></span>
+              </button>
+              <div class="pretty-select-panel" id="style-formula-select-panel" role="listbox">
+                <div class="style-formula-search-wrap">
+                  <input id="style-formula-search" class="full-search" type="search" placeholder="Search formula..." autocomplete="off" />
                 </div>
-              ` : (!availableFormulas.length ? `<div class="style-form-formula-empty">No formulas linked to this style yet.</div>` : "")}
+                <div id="style-formula-option-list">
+                  ${unusedMenu || `<div class="style-form-formula-empty">No Covered Area formulas.</div>`}
+                </div>
+                <div class="style-formula-search-empty" id="style-formula-search-empty" hidden>No matching formulas.</div>
+              </div>
+              <select id="style-formula-select" class="pretty-select-native" tabindex="-1" aria-hidden="true" ${availableFormulas.length ? "" : "disabled"}>
+                <option value="">Select a Style formula...</option>
+                ${availableFormulas.map((item) => `<option value="${item.id}" ${item.id === selectedFormulaId ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
+              </select>
             </div>
-            <select id="style-formula-select" class="pretty-select-native" tabindex="-1" aria-hidden="true" ${availableFormulas.length ? "" : "disabled"}>
-              ${unusedOptions.map((opt) => `<option value="${escapeHtml(String(opt.value))}">${escapeHtml(opt.label)}</option>`).join("")}
+          </div>
+          <div>
+            <label class="form-label" for="style-formula-ply">Ply</label>
+            <select id="style-formula-ply" class="full-select" ${availableFormulas.length ? "" : "disabled"}>
+              <option value="">Select ply...</option>
+              ${[1, 2, 3].map((ply) => `<option value="${ply}" ${selectedPly === ply ? "selected" : ""}>${ply}</option>`).join("")}
             </select>
           </div>
           <button type="button" class="btn btn-primary style-form-add" id="btn-add-style-formula" ${availableFormulas.length ? "" : "disabled"}>
             <i data-lucide="plus"></i> Add Formula
           </button>
+          <div class="table-wrap style-form-formula-grid">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Formula</th>
+                  <th>Code</th>
+                  <th>Ply</th>
+                  <th>Expression</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>${gridBody}</tbody>
+            </table>
+          </div>
+        </div>
+      `;
+      const formulasNote = `
+        <div class="style-form-formulas">
+          <div class="form-label">Style Formulas</div>
+          <p class="stat-hint">Optional. Link Style-type formulas. They auto-calculate in the BOM when a finished good uses this style.</p>
         </div>
       `;
       const tab = editing && state.modal.styleTab === "formulas" ? "formulas" : "info";
@@ -15010,6 +15039,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         mode: item ? "edit" : "add",
         lineId: null,
         styleTab: "info",
+        styleFormulaId: null,
+        styleFormulaPly: "",
         draft: item ? { id: item.id, name: item.name, description: item.description || "", status: item.status } : defaultStyleDraft(),
         errors: {},
         sub: null
@@ -15325,15 +15356,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function addStyleFormulaToStyle() {
       if (state.modal.type !== "style-master" || state.modal.mode !== "edit" || !state.modal.draft || !state.modal.draft.id) return;
       const select = document.getElementById("style-formula-select");
+      const plySelect = document.getElementById("style-formula-ply");
       const formulaId = select && select.value ? Number(select.value) : null;
+      const ply = Number(plySelect && plySelect.value);
       const formula = getFormula(formulaId);
-      if (!formula || formula.type !== "Style") {
-        showNotification("Select a Style formula to add.", "error");
+      if (!formula || formula.type !== "Style" || !formula.coveredArea) {
+        showNotification("Select a Covered Area formula.", "error");
+        return;
+      }
+      if (![1, 2, 3].includes(ply)) {
+        showNotification("Select ply 1, 2, or 3.", "error");
         return;
       }
       const styleId = Number(state.modal.draft.id);
-      if (styleFormulas.some((row) => row.styleId === styleId && Number(row.formulaId) === formula.id)) {
-        showNotification("This formula is already linked to the style.", "error");
+      if (styleFormulas.some((row) => row.styleId === styleId && Number(row.formulaId) === formula.id && Number(row.ply) === ply)) {
+        showNotification("This formula is already linked for that ply.", "error");
         return;
       }
       const order = getStyleFormulaLinks(styleId).reduce((max, row) => Math.max(max, Number(row.order) || 0), 0) + 1;
@@ -15341,9 +15378,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: nextMasterId(styleFormulas),
         styleId,
         formulaId: formula.id,
+        ply,
         order,
         createdAt: new Date().toISOString()
       });
+      state.modal.styleFormulaId = null;
+      state.modal.styleFormulaPly = "";
       showNotification("Formula linked to style");
       state.modal.styleTab = "formulas";
       renderModal();
@@ -15351,6 +15391,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshIcons();
       afterDataChange("styleFormulas");
       refreshBomStyleFormulasIfNeeded(styleId);
+    }
+
+    function filterStyleFormulaOptions(query) {
+      const q = String(query || "").trim().toLowerCase();
+      const buttons = document.querySelectorAll("#style-formula-option-list [data-pretty-select]");
+      let visible = 0;
+      buttons.forEach((btn) => {
+        const match = !q || String(btn.textContent || "").toLowerCase().includes(q);
+        btn.hidden = !match;
+        if (match) visible += 1;
+      });
+      const empty = document.getElementById("style-formula-search-empty");
+      if (empty) empty.hidden = visible > 0 || !buttons.length;
     }
 
     function removeStyleFormulaFromStyle(linkId) {
@@ -19830,6 +19883,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.getElementById("modal-dialog").addEventListener("change", (event) => {
+        if (event.target.id === "style-formula-select") {
+          state.modal.styleFormulaId = Number(event.target.value) || null;
+          return;
+        }
+        if (event.target.id === "style-formula-ply") {
+          state.modal.styleFormulaPly = Number(event.target.value) || "";
+          return;
+        }
         if (event.target.id === "fb-type") {
           state.modal.draft.type = event.target.value;
           if (event.target.value === "Style") state.modal.draft.purpose = null;
@@ -19986,6 +20047,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
 
       document.getElementById("modal-dialog").addEventListener("input", (event) => {
+        if (event.target.id === "style-formula-search") {
+          filterStyleFormulaOptions(event.target.value);
+          return;
+        }
         const caretStart = event.target.selectionStart;
         const caretEnd = event.target.selectionEnd;
         if (event.target.id === "modal-manual-qty" || event.target.id === "modal-manual-rate" || event.target.id === "modal-wastage" || event.target.id === "modal-material-custom-length" || event.target.id === "modal-material-custom-width") {
@@ -20073,10 +20138,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               btn.setAttribute("aria-selected", selected ? "true" : "false");
             });
             const valueEl = wrap.querySelector(".pretty-select-value");
-            if (valueEl) valueEl.textContent = prettyOption.textContent;
+            if (valueEl) valueEl.textContent = prettyOption.textContent.trim();
             wrap.classList.remove("open");
             const trigger = wrap.querySelector(".pretty-select-trigger");
             if (trigger) trigger.setAttribute("aria-expanded", "false");
+            if (prettyOption.dataset.prettySelect === "style-formula-select") {
+              state.modal.styleFormulaId = Number(prettyOption.dataset.prettyValue) || null;
+            }
             select.dispatchEvent(new Event("change", { bubbles: true }));
           }
           return;
@@ -20093,6 +20161,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (wrap) {
             wrap.classList.toggle("open", willOpen);
             prettyTrigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+            if (willOpen && wrap.classList.contains("style-formula-pretty")) {
+              const search = wrap.querySelector("#style-formula-search");
+              if (search) {
+                search.value = "";
+                filterStyleFormulaOptions("");
+                requestAnimationFrame(() => search.focus());
+              }
+            }
           }
           return;
         }
