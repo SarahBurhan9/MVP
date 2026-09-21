@@ -2931,10 +2931,14 @@
       margin-bottom: 4px;
     }
     .modal.style-form-modal .style-form-formulas > .stat-hint {
-      margin: 0 0 14px;
+      margin: 0;
+    }
+    .modal.style-form-modal .style-form-formulas-panel {
+      display: grid;
+      gap: 0;
     }
     .modal.style-form-modal .style-form-add {
-      margin-top: 10px;
+      margin-top: 12px;
     }
     .modal.style-form-modal .style-formula-pretty {
       z-index: 2;

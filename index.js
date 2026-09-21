@@ -14831,10 +14831,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             `;
           }).join("")
         : `<div class="style-form-formula-empty">No formulas linked to this style yet.</div>`;
-      const formulasForm = `
+      const formulasNote = `
         <div class="style-form-formulas">
           <div class="form-label">Style Formulas</div>
           <p class="stat-hint">Optional. Link Style-type formulas. They auto-calculate in the BOM when a finished good uses this style.</p>
+        </div>
+      `;
+      const formulasForm = `
+        <div class="style-form-formulas-panel">
           <label class="form-label" for="style-formula-select-trigger">Formula</label>
           <div class="pretty-select style-formula-pretty">
             <button type="button" class="pretty-select-trigger" id="style-formula-select-trigger" aria-haspopup="listbox" aria-expanded="false" aria-controls="style-formula-select-panel">
@@ -14859,6 +14863,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </button>
         </div>
       `;
+      const tab = editing && state.modal.styleTab === "formulas" ? "formulas" : "info";
       return `
         <div class="modal-header">
           <div>
@@ -14870,10 +14875,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="modal-body">
           ${editing ? `
             <div class="section-tabs">
-              <button type="button" class="section-tab active">Style Info</button>
+              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-style-tab="info">Style Info</button>
+              <button type="button" class="section-tab ${tab === "formulas" ? "active" : ""}" data-style-tab="formulas">Style Formulas</button>
             </div>
-            ${infoForm}
-            ${formulasForm}
+            ${tab === "formulas" ? formulasForm : `${infoForm}${formulasNote}`}
           ` : `${infoForm}`}
         </div>
         <div class="modal-footer">
@@ -14903,6 +14908,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = validateStyleDraft(draft);
       state.modal.errors = errors;
       if (Object.keys(errors).length) {
+        if (state.modal.mode === "edit") state.modal.styleTab = "info";
         renderModal();
         return;
       }
