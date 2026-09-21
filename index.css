@@ -3072,7 +3072,15 @@
       line-height: 1;
       padding: 0;
     }
-    .dim-chip-remove:hover { color: var(--danger); }
+    .fg-accessory-picker { margin-top: 2px; }
+    .fg-accessory-box {
+      margin-top: 8px;
+      min-height: 44px;
+      padding: 8px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: #f8fafc;
+    }
     .op-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 12px; }
     .op-btn { min-width: 36px; font-weight: 700; }
     textarea.expression-input {

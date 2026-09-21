@@ -4138,7 +4138,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function materialBomUsageMessage(rawMaterialId) {
       const id = Number(rawMaterialId);
       const nos = uniqueBomNumbers(getBomsUsingMaterial(id));
-      const accessoryProducts = finishedGoods.filter((item) => Number(item.accessoryId) === id);
+      const accessoryProducts = finishedGoods.filter((item) => finishedGoodAccessoryIds(item).includes(id));
       if (!nos.length && !accessoryProducts.length) return "";
       if (accessoryProducts.length && !nos.length) {
         return "Cannot delete. Used as accessory on " + accessoryProducts.length + " finished good" + (accessoryProducts.length === 1 ? "" : "s") + ".";
@@ -4365,13 +4365,34 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Number.isFinite(id) && id > 0 ? id : null;
     }
 
-    function getAccessoryRawMaterials(selectedId) {
+    function normalizeAccessoryIds(value) {
+      const raw = Array.isArray(value) ? value : (value != null && value !== "" ? [value] : []);
+      const seen = new Set();
+      const next = [];
+      raw.forEach((item) => {
+        const id = normalizeAccessoryId(item);
+        if (!id || seen.has(id)) return;
+        seen.add(id);
+        next.push(id);
+      });
+      return next;
+    }
+
+    function finishedGoodAccessoryIds(item) {
+      if (!item) return [];
+      const fromList = normalizeAccessoryIds(item.accessoryIds);
+      if (fromList.length) return fromList;
+      return normalizeAccessoryIds(item.accessoryId);
+    }
+
+    function getAccessoryRawMaterials(selectedIds) {
+      const selected = normalizeAccessoryIds(selectedIds);
       const options = rawMaterials.filter((item) => item.status !== "Inactive" && item.category === "Accessories");
-      const id = normalizeAccessoryId(selectedId);
-      if (id && !options.some((item) => item.id === id)) {
+      selected.forEach((id) => {
+        if (options.some((item) => item.id === id)) return;
         const current = getRawMaterial(id);
-        if (current) options.unshift(current);
-      }
+        if (current) options.push(current);
+      });
       return options;
     }
 
@@ -5785,14 +5806,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function syncFinishedGoodAccessoryLine(finishedGood, materials) {
       const rows = (Array.isArray(materials) ? materials : []).filter(Boolean);
-      const accessoryId = normalizeAccessoryId(finishedGood && finishedGood.accessoryId);
+      const accessoryIds = finishedGoodAccessoryIds(finishedGood);
       const others = rows.filter((line) => !isBomAccessoryLine(line));
-      if (!accessoryId) return others;
-      const prev = rows.find(isBomAccessoryLine) || null;
-      return others.concat([rebuildBomMaterialLine(prev, {
-        rawMaterialId: accessoryId,
+      if (!accessoryIds.length) return others;
+      const prevByMaterial = new Map();
+      rows.filter(isBomAccessoryLine).forEach((line) => {
+        const id = Number(line.rawMaterialId);
+        if (!prevByMaterial.has(id)) prevByMaterial.set(id, line);
+      });
+      return others.concat(accessoryIds.map((id) => rebuildBomMaterialLine(prevByMaterial.get(id) || null, {
+        rawMaterialId: id,
         layer: "Accessories"
-      })]);
+      })));
     }
 
     function recalculateBOMCosts() {
@@ -7572,8 +7597,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         claimed.add(item.id);
       });
       const extras = rows.filter((item) => item && !claimed.has(item.id) && !isBomAccessoryLine(item));
-      const accessoryLine = rows.find(isBomAccessoryLine) || null;
-      return { ply, layers, slots, extras, accessoryLine };
+      const accessoryLines = rows.filter(isBomAccessoryLine);
+      return { ply, layers, slots, extras, accessoryLines };
     }
 
     function getBomOtherMaterialSlotLayout(materials) {
@@ -11629,16 +11654,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         extra: false,
         index
       })).join("");
-      const accessoryCard = layout.accessoryLine
-        ? renderBomMaterialCard({
-            layer: "Accessories",
-            line: layout.accessoryLine,
-            ply: layout.ply,
-            extra: false,
-            accessory: true,
-            index: orderedSlots.length
-          })
-        : "";
+      const accessoryCards = (layout.accessoryLines || []).map((line, accessoryIndex) => renderBomMaterialCard({
+        layer: "Accessories",
+        line,
+        ply: layout.ply,
+        extra: false,
+        accessory: true,
+        index: orderedSlots.length + accessoryIndex
+      })).join("");
       const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
       root.innerHTML = `
         <section class="card cc-card">
@@ -11646,7 +11669,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
             <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
             ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
-            ${accessoryCard}
+            ${accessoryCards}
             <div class="cc-total-line"><span>Total Material Cost</span><strong id="bom-material-cost-total">${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
           </div>
         </section>
@@ -11656,9 +11679,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (!slot.line) return;
         lineModels["material:" + slot.line.id] = bomLineCostDisplayModel(slot.line);
       });
-      if (layout.accessoryLine) {
-        lineModels["material:" + layout.accessoryLine.id] = bomLineCostDisplayModel(layout.accessoryLine);
-      }
+      (layout.accessoryLines || []).forEach((line) => {
+        lineModels["material:" + line.id] = bomLineCostDisplayModel(line);
+      });
       mountBomCostCellHosts(
         root,
         lineModels,
@@ -12790,7 +12813,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         style: styles[0] ? styles[0].name : "",
         variant: "",
         ply: 3,
-        accessoryId: null,
+        accessoryIds: [],
         L: "",
         W: "",
         H: "",
@@ -12823,6 +12846,36 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!draft.uom) errors.uom = "UOM is required.";
       if (!draft.status) errors.status = "Status is required.";
       return errors;
+    }
+
+    function renderFinishedGoodAccessoryPicker(draft) {
+      const selected = normalizeAccessoryIds(draft && draft.accessoryIds);
+      const unused = getAccessoryRawMaterials(selected).filter((item) => item.status !== "Inactive" && !selected.includes(item.id));
+      const chips = selected.map((id) => {
+        const item = getRawMaterial(id);
+        const label = item ? item.name + " (" + item.code + ")" : "Missing accessory (ID: " + id + ")";
+        return `
+          <span class="dim-chip">
+            ${escapeHtml(label)}
+            <button type="button" class="dim-chip-remove" data-remove-fg-accessory="${id}" aria-label="Remove accessory">&times;</button>
+          </span>
+        `;
+      }).join("");
+      const placeholder = unused.length
+        ? "Select accessories to add..."
+        : (selected.length ? "All accessories added" : "No accessories in Raw Material Master");
+      return `
+        <div class="form-span-2 fg-accessory-picker">
+          <label class="form-label" for="fg-accessory">Accessories</label>
+          <select id="fg-accessory" class="full-select" ${unused.length ? "" : "disabled"}>
+            <option value="">${escapeHtml(placeholder)}</option>
+            ${unused.map((item) => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
+          </select>
+          <div class="fg-accessory-box dim-chip-wrap">
+            ${chips || `<span class="stat-hint">Optional. Add one or more accessories from Raw Material Master.</span>`}
+          </div>
+        </div>
+      `;
     }
 
     function renderFinishedGoodFormModal() {
@@ -12864,22 +12917,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <input id="fg-variant" class="full-search ${errors.variant ? "input-invalid" : ""}" value="${escapeHtml(draft.variant)}" placeholder="1POUND" />
               ${errors.variant ? `<div class="field-error">${escapeHtml(errors.variant)}</div>` : ""}
             </div>
-            <div>
+            <div class="form-span-2">
               <label class="form-label" for="fg-ply">Ply Selection</label>
               <select id="fg-ply" class="full-select ${errors.ply ? "input-invalid" : ""}">
                 ${[1, 2, 3].map((ply) => `<option value="${ply}" ${Number(draft.ply) === ply ? "selected" : ""}>${ply}</option>`).join("")}
               </select>
               ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
             </div>
-            ${isFinishing ? "" : `
-            <div>
-              <label class="form-label" for="fg-accessory">Accessories</label>
-              <select id="fg-accessory" class="full-select">
-                <option value="">None</option>
-                ${getAccessoryRawMaterials(draft.accessoryId).map((item) => `<option value="${item.id}" ${Number(draft.accessoryId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
-              </select>
-            </div>
-            `}
+            ${isFinishing ? "" : renderFinishedGoodAccessoryPicker(draft)}
             <div class="form-span-2">
               <label class="form-label">Dimensions</label>
               <div class="dim-input-row">
@@ -12933,7 +12978,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         style: item?.style ?? "",
         variant: item?.variant ?? "",
         ply: item?.ply,
-        accessoryId: normalizeAccessoryId(item?.accessoryId),
+        accessoryIds: finishedGoodAccessoryIds(item),
         L: formatDecimal(dims.L, 2, false),
         W: formatDecimal(dims.W, 2, false),
         H: formatDecimal(dims.H, 2, false),
@@ -13023,7 +13068,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         style: String(draft.style).trim(),
         variant: String(draft.variant).trim(),
         ply: Number(draft.ply),
-        accessoryId: normalizeAccessoryId(draft.accessoryId),
+        accessoryIds: normalizeAccessoryIds(draft.accessoryIds),
         dimensions: parsedFinishedGoodDraftDimensions(draft),
         dimensionUOM: draft.dimensionUOM,
         uom: draft.uom,
@@ -13035,6 +13080,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (index >= 0) {
           finishedGoods[index] = { ...finishedGoods[index], ...payload };
           delete finishedGoods[index].material;
+          delete finishedGoods[index].accessoryId;
         }
         showNotification("Product updated successfully");
       } else {
@@ -13056,7 +13102,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "fg-style") draft.style = target.value;
       else if (target.id === "fg-variant") draft.variant = target.value;
       else if (target.id === "fg-ply") draft.ply = Number(target.value);
-      else if (target.id === "fg-accessory") draft.accessoryId = normalizeAccessoryId(target.value);
+      else if (target.id === "fg-accessory") {
+        const id = normalizeAccessoryId(target.value);
+        if (id) {
+          const current = normalizeAccessoryIds(draft.accessoryIds);
+          if (!current.includes(id)) draft.accessoryIds = current.concat([id]);
+        }
+        return "rerender";
+      }
       else if (target.id === "fg-dim-l") draft.L = target.value;
       else if (target.id === "fg-dim-w") draft.W = target.value;
       else if (target.id === "fg-dim-h") draft.H = target.value;
@@ -19822,6 +19875,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           if (event.target.id === "fg-dim-l") normalizeDraftNumber(event.target, "L", "dimension");
           else if (event.target.id === "fg-dim-w") normalizeDraftNumber(event.target, "W", "dimension");
           else if (event.target.id === "fg-dim-h") normalizeDraftNumber(event.target, "H", "dimension");
+          if (event.target.id === "fg-accessory") {
+            renderModal();
+            refreshIcons();
+            restoreFocus("fg-accessory");
+          }
           return;
         }
         if (updateRawMaterialDraftFromEvent(event.target)) {
@@ -20048,6 +20106,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const removeLinkedDim = event.target.closest("[data-remove-linked-dim]");
         if (removeLinkedDim && state.modal.draft) {
           state.modal.draft.dimensionIds = removeLinkedDimensionId(state.modal.draft.dimensionIds, removeLinkedDim.dataset.removeLinkedDim);
+          renderModal();
+          refreshIcons();
+          return;
+        }
+        const removeFgAccessory = event.target.closest("[data-remove-fg-accessory]");
+        if (removeFgAccessory && state.modal.draft && state.modal.type === "finished-good") {
+          const removeId = normalizeAccessoryId(removeFgAccessory.dataset.removeFgAccessory);
+          state.modal.draft.accessoryIds = normalizeAccessoryIds(state.modal.draft.accessoryIds).filter((id) => id !== removeId);
           renderModal();
           refreshIcons();
           return;
