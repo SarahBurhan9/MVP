@@ -4496,7 +4496,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formatQty(waste);
     }
 
-    function renderPlyMaterialQtyHeaders() {
+    function renderPlyMaterialQtyHeaders(requiredQtyOnly) {
+      if (requiredQtyOnly) {
+        return `<th class="step-col-compact">Required Qty</th>`;
+      }
       return `
         <th class="step-col-compact">Required Qty</th>
         <th class="step-col-compact">Wastage %</th>
@@ -4505,7 +4508,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId) {
+    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly) {
+      if (requiredQtyOnly) {
+        return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>`;
+      }
       const wastageHtml = formatWastagePercent(wastagePercent, hasError);
       const wastageCell = wastageLineId
         ? renderStepValueWithEdit(wastageHtml, "data-edit-material-wastage", wastageLineId, "Edit wastage %", "pencil", "edit")
@@ -12319,7 +12325,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <th>#</th>
                     <th class="step-col-dim">Dimension</th>
-                    ${renderPlyMaterialQtyHeaders()}
+                    ${renderPlyMaterialQtyHeaders(accessory)}
                     <th class="step-col-compact">Rate</th>
                     <th class="step-col-compact">Cost / Piece</th>
                     <th class="step-col-actions">Action</th>
@@ -12342,7 +12348,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       line.grossQty,
                       line.wastagePercent,
                       Boolean(line.error),
-                      line.id
+                      line.id,
+                      accessory
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
