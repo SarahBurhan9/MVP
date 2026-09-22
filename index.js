@@ -4481,9 +4481,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function formatWastagePercent(value, hasError) {
-      if (hasError) return "—";
       const n = Number(value);
-      if (!Number.isFinite(n) || n < 0) return "—";
+      if (!Number.isFinite(n) || n < 0) return hasError ? "—" : "0%";
       return escapeHtml(formatDecimal(n, 2, false)) + "%";
     }
 
@@ -4506,10 +4505,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError) {
+    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId) {
+      const wastageHtml = formatWastagePercent(wastagePercent, hasError);
+      const wastageCell = wastageLineId
+        ? renderStepValueWithEdit(wastageHtml, "data-edit-material-wastage", wastageLineId, "Edit wastage %", "pencil", "edit")
+        : wastageHtml;
       return `
         <td class="step-num step-col-compact">${requiredQtyHtml}</td>
-        <td class="step-num step-col-compact">${formatWastagePercent(wastagePercent, hasError)}</td>
+        <td class="step-num step-col-compact">${wastageCell}</td>
         <td class="step-num step-col-compact">${formatWastageQty(netQty, grossQty, hasError)}</td>
         <td class="step-num step-col-compact">${hasError ? "—" : formatQty(netQty)}</td>
       `;
@@ -12338,7 +12341,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       line.netQty,
                       line.grossQty,
                       line.wastagePercent,
-                      Boolean(line.error)
+                      Boolean(line.error),
+                      line.id
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
@@ -18216,6 +18220,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       );
     }
 
+    function renderMaterialWastagePopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const wastageValue = draft.wastagePercent == null || draft.wastagePercent === ""
+        ? ""
+        : escapeHtml(formatDecimal(draft.wastagePercent, 2, false));
+      const body = `
+        <p class="stat-hint" style="margin:0 0 12px;">${material ? escapeHtml(material.name) + " (" + escapeHtml(material.code) + ")" : "Material not found"}</p>
+        <div>
+          <label class="form-label" for="modal-wastage">Wastage %</label>
+          <div class="input-with-unit ${errors.wastagePercent ? "is-invalid" : ""}">
+            <input id="modal-wastage" type="number" min="0" max="100" step="0.01" value="${wastageValue}" placeholder="0" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
+            <span>%</span>
+          </div>
+          ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
+          <p class="stat-hint" style="margin-top:8px;">Gross qty = Net qty × (1 + wastage / 100). Cost uses gross qty.</p>
+        </div>
+      `;
+      return renderCompactLineModal(
+        "Edit Wastage %",
+        body,
+        "btn-save-material",
+        isCostCalculatorAdditionalModal() ? "Cost Calculator" : "BOM line"
+      );
+    }
+
     function renderMaterialModalLeft() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
@@ -18361,6 +18392,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const panel = getBomLineModalPanel();
       if (panel === "dims") return renderMaterialDimsPopup();
       if (panel === "qty") return renderMaterialQtyPopup();
+      if (panel === "wastage") return renderMaterialWastagePopup();
       const fromAdditional = Boolean(state.modal.fromAdditional);
       const title = fromAdditional
         ? (state.modal.mode === "edit" ? "Edit Material" : "Add Material")
@@ -18797,7 +18829,54 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderModal();
     }
 
+    function saveMaterialWastageFromModal() {
+      const draft = state.modal.draft;
+      const wastageInput = draft.wastagePercent == null || draft.wastagePercent === "" ? 0 : draft.wastagePercent;
+      const wastage = parseByRule(wastageInput, "wastage", { requiredError: "Wastage cannot be negative." });
+      if (!wastage.ok) {
+        state.modal.errors = { wastagePercent: wastage.error };
+        showNotification(wastage.error, "error");
+        renderModal();
+        return;
+      }
+      const lineId = Number(state.modal.lineId);
+      if (isCostCalculatorAdditionalModal()) {
+        const rows = state.costCalculator.additionalMaterials || [];
+        const prev = rows.find((line) => Number(line.id || line.key) === lineId);
+        if (!prev) return;
+        const nextLine = calculateMaterialCost({
+          ...prev,
+          wastagePercent: wastage.value
+        }, getMaterialModalCalcContext());
+        nextLine.id = prev.id || prev.key;
+        nextLine.key = nextLine.id;
+        state.costCalculator.additionalMaterials = rows.map((line) =>
+          Number(line.id || line.key) === lineId ? nextLine : line
+        );
+        closeModal();
+        persistCostCalculatorState();
+        renderCostCalculator();
+        refreshIcons();
+        showNotification("Wastage updated");
+        return;
+      }
+      const prev = state.bomMaterials.find((line) => line.id === lineId);
+      if (!prev) return;
+      state.bomMaterials = state.bomMaterials.map((line) =>
+        line.id === lineId ? { ...line, wastagePercent: wastage.value } : line
+      );
+      recalculateBOMCosts();
+      closeModal();
+      refreshBomViews();
+      persistEditorState();
+      showNotification("Wastage updated");
+    }
+
     function saveMaterialFromModal() {
+      if (getBomLineModalPanel() === "wastage") {
+        saveMaterialWastageFromModal();
+        return;
+      }
       const draft = state.modal.draft;
       applyMaterialFormulaBindings(draft);
       const errors = validateMaterialDraft(draft, state.modal.lineId);
@@ -20717,6 +20796,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const editDimsBtn = event.target.closest("[data-edit-material-dims]");
         if (editDimsBtn) {
           openMaterialModal(editDimsBtn.dataset.editMaterialDims, "dims");
+          return;
+        }
+        const editWastageBtn = event.target.closest("[data-edit-material-wastage]");
+        if (editWastageBtn) {
+          openMaterialModal(editWastageBtn.dataset.editMaterialWastage, "wastage");
           return;
         }
 
