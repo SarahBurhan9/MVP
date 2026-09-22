@@ -12722,7 +12722,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
-            <td class="step-num">${line.serviceId ? renderRequiredQtyWithEdit(formatStep6RequiredQty(line.quantity, line.error), "data-edit-required-qty-service", line.id) : "—"}</td>
+            <td class="step-num">${line.serviceId ? formatStep6RequiredQty(line.quantity, line.error) : "—"}</td>
             <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
             <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)) : "—"}</td>
             <td>
