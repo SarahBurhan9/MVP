@@ -2678,6 +2678,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function positiveOrderQuantity(value) {
+      const qty = Number(value);
+      return Number.isFinite(qty) && qty > 0 ? qty : null;
+    }
+
+    function bomOrderQuantityValue() {
+      return positiveOrderQuantity(state.bomOrderQuantity) ?? 1;
+    }
+
+    function calculatorOrderQuantityValue() {
+      return positiveOrderQuantity(state.costCalculator && state.costCalculator.ccOrderQuantity) ?? 1;
+    }
+
+    function isCostCalculatorFinishedGood(finishedGood) {
+      return Boolean(finishedGood && Number(finishedGood.id) === 0 && finishedGood.product === "Cost Estimate");
+    }
+
+    function orderQuantityForFinishedGood(finishedGood) {
+      return isCostCalculatorFinishedGood(finishedGood)
+        ? calculatorOrderQuantityValue()
+        : bomOrderQuantityValue();
+    }
+
     function formatBomRequiredQtyFromOrder() {
       if (!hasBomOrderQuantity()) return "—";
       return formatQty(Number(state.bomOrderQuantity));
@@ -3354,6 +3377,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (job.L !== null) vars.L = job.L;
       if (job.W !== null) vars.W = job.W;
       if (job.H !== null) vars.H = job.H;
+      vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
       return vars;
     }
 
@@ -5479,7 +5503,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         GLUE_FLAP: glueFlap,
         WASTAGE: roundTo(wastagePercent, 2),
         MATERIAL_RATE: material ? roundTo((getMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
-        ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
+        ORDER_QTY: orderQuantityForFinishedGood(finishedGood),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
         NO_OF_COLOR: resolveNumberOfColors(finishedGood),
         SHEET_LENGTH: sheet.length,
@@ -5489,6 +5513,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ...ENGINE_CONSTANTS
       };
       injectStyleFormulaResults(finishedGood, vars, layerPly);
+      vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
       return vars;
     }
 
@@ -5522,7 +5547,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         GLUE_FLAP: glueFlap,
         WASTAGE: roundTo(wastagePercent, 2),
         MATERIAL_RATE: material ? roundTo((getOtherMaterialRate(material.id)?.rate) ?? 0, 2) : resolveVariableValue("MATERIAL_RATE", finishedGood, defaults.MATERIAL_RATE),
-        ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
+        ORDER_QTY: orderQuantityForFinishedGood(finishedGood),
         NET_QTY: resolveVariableValue("NET_QTY", finishedGood, defaults.NET_QTY ?? 1),
         NO_OF_COLOR: resolveNumberOfColors(finishedGood),
         SHEET_LENGTH: sheet.length,
@@ -5532,6 +5557,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ...ENGINE_CONSTANTS
       };
       injectStyleFormulaResults(finishedGood, vars);
+      vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
       return vars;
     }
 
@@ -5907,7 +5933,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         H,
         PLY: Number(finishedGood?.ply ?? defaults.PLY),
         GLUE_FLAP: glueFlap,
-        ORDER_QTY: resolveVariableValue("ORDER_QTY", finishedGood, defaults.ORDER_QTY ?? 1),
+        ORDER_QTY: orderQuantityForFinishedGood(finishedGood),
         NO_OF_COLOR: resolveNumberOfColors(finishedGood),
         SERVICE_RATE: roundTo((getServiceRate(service && service.id)?.rate) ?? 0, 2),
         PRINT_AREA: area.success ? area.result : resolveVariableValue("PRINT_AREA", finishedGood, defaults.PRINT_AREA),
@@ -5915,6 +5941,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         SERVICE_COST: 0
       };
       injectStyleFormulaResults(finishedGood, vars);
+      vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
       return vars;
     }
 
@@ -12268,7 +12295,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
-          ${accessory ? `<p class="stat-hint">Set on the finished good. Quantity uses this material’s Default Quantity Formula.</p>` : ""}
+          ${accessory ? `<p class="stat-hint">Set on the finished good. Required quantity uses the order quantity. Net quantity uses this material’s Default Quantity Formula.</p>` : ""}
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
@@ -12296,7 +12323,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "dims"
                     )}</td>
                     ${renderPlyMaterialQtyCells(
-                      extra || accessory ? (line.error ? "—" : formatQty(line.netQty)) : formatBomRequiredQtyFromOrder(),
+                      formatBomRequiredQtyFromOrder(),
                       line.netQty,
                       line.grossQty,
                       line.wastagePercent,
