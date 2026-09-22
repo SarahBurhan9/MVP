@@ -3495,31 +3495,31 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function appendCoveredAreaDependencyRows(rows, variables) {
+    function appendCoveredAreaDependencyRows(rows, finishedGood) {
       const list = Array.isArray(rows) ? rows.slice() : [];
-      const covered = list.find((row) => isCoveredAreaStyleFormula(row));
-      if (!covered) return list;
-      const formula = getFormula(covered.formulaId) || getFormulaByCode(covered.code);
-      if (!formula) return list;
-      const extra = extraFormulasFromStyleRows(list);
-      const nested = collectNestedFormulas(formula, extra);
-      const have = new Set(list.map((row) => row.code));
-      const vars = { ...(variables || {}) };
-      list.forEach((row) => {
-        if (row.success && row.code && row.code !== "—") vars[row.code] = row.result;
+      const coveredRows = list.filter((row) => isCoveredAreaStyleFormula(row));
+      if (!coveredRows.length) return list;
+      coveredRows.forEach((covered) => {
+        const formula = getFormula(covered.formulaId) || getFormulaByCode(covered.code);
+        if (!formula) return;
+        const ply = [1, 2, 3].includes(Number(covered.ply)) ? Number(covered.ply) : null;
+        const vars = buildFlatStyleFormulaVariables(finishedGood, ply || getFinishedGoodPly(finishedGood));
+        list.forEach((row) => {
+          if (!row.success || !row.code || row.code === "—") return;
+          if (ply != null && [1, 2, 3].includes(Number(row.ply)) && Number(row.ply) !== ply) return;
+          vars[row.code] = row.result;
+        });
+        const nested = collectNestedFormulas(formula, extraFormulasFromStyleRows(list));
+        nested.forEach((item) => {
+          if (!item || !item.code || item.code === formula.code) return;
+          const samePly = list.some((row) => row && row.code === item.code && (ply == null ? row.ply == null : Number(row.ply) === ply));
+          if (samePly) return;
+          const calculated = evaluateFormula(item.expression, vars, [item.code], { strictJobDimensions: true });
+          if (calculated.success) vars[item.code] = calculated.result;
+          list.push(buildStyleFormulaResultRow(item, calculated, "dep:" + item.id + ":" + (ply == null ? "x" : String(ply)), ply));
+        });
       });
-      const extras = [];
-      nested.forEach((item) => {
-        if (!item || !item.code || item.code === formula.code || have.has(item.code)) return;
-        const calculated = evaluateFormula(item.expression, vars, [item.code], { strictJobDimensions: true });
-        if (calculated.success) vars[item.code] = calculated.result;
-        extras.push(buildStyleFormulaResultRow(item, calculated, "dep:" + item.id));
-        have.add(item.code);
-      });
-      if (!extras.length) return list;
-      const coveredIndex = list.findIndex((row) => isCoveredAreaStyleFormula(row));
-      if (coveredIndex < 0) return list.concat(extras);
-      return list.slice(0, coveredIndex).concat(extras, list.slice(coveredIndex));
+      return list;
     }
 
     function evaluateStyleFormulasForFinishedGood(finishedGood) {
@@ -3570,7 +3570,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const calculated = evaluateFormula(formula.expression, variables, [formula.code], { strictJobDimensions: true });
         return buildStyleFormulaResultRow(formula, calculated, link.id, linkPly);
       });
-      return appendCoveredAreaDependencyRows(rows, buildFlatStyleFormulaVariables(finishedGood, productPly));
+      return appendCoveredAreaDependencyRows(rows, finishedGood);
     }
 
     function styleFormulaSearchText(row) {
@@ -3608,6 +3608,56 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (/(^|_)(WDT|WID)(_|$)/.test(code)) return true;
       if (/\bWIDTH\b/.test(text)) return true;
       return false;
+    }
+
+    function styleFormulaAxisRole(row) {
+      if (!row || isCoveredAreaStyleFormula(row)) return null;
+      const text = styleFormulaSearchText(row);
+      const saysLength = /\bLENGTH\b/.test(text);
+      const saysWidth = /\bWIDTH\b/.test(text);
+      if (saysLength && !saysWidth) return "length";
+      if (saysWidth && !saysLength) return "width";
+      if (row.serviceLength && !row.serviceWidth) return "length";
+      if (row.serviceWidth && !row.serviceLength) return "width";
+      const code = String(row.code || "").toUpperCase();
+      const codeLength = /(^|_)(LNG|LEN)(_|$)/.test(code);
+      const codeWidth = /(^|_)(WDT|WID)(_|$)/.test(code);
+      if (codeLength && !codeWidth) return "length";
+      if (codeWidth && !codeLength) return "width";
+      if (row.serviceLength) return "length";
+      if (row.serviceWidth) return "width";
+      return null;
+    }
+
+    function coveredAreaInputRows(coveredRow, allRows) {
+      if (!coveredRow) return [];
+      const formula = getFormula(coveredRow.formulaId) || getFormulaByCode(coveredRow.code);
+      if (!formula) return [];
+      const nested = collectNestedFormulas(formula, extraFormulasFromStyleRows(allRows));
+      const ply = Number(coveredRow.ply);
+      return nested.map((item) => {
+        if (!item || !item.code || item.code === formula.code) return null;
+        const matches = (allRows || []).filter((row) => row && row.code === item.code);
+        if ([1, 2, 3].includes(ply)) {
+          const samePly = matches.find((row) => Number(row.ply) === ply);
+          if (samePly) return samePly;
+        }
+        return matches.find((row) => row.ply == null) || matches[0] || null;
+      }).filter(Boolean);
+    }
+
+    function coveredAreaAxesForPly(rows, ply) {
+      const list = Array.isArray(rows) ? rows : [];
+      const coveredRow = coveredAreaRowForPly({
+        coveredRows: list.filter((row) => isCoveredAreaStyleFormula(row))
+      }, ply);
+      const inputs = coveredAreaInputRows(coveredRow, list);
+      return {
+        coveredRow,
+        inputs,
+        lengthRow: inputs.find((row) => styleFormulaAxisRole(row) === "length") || null,
+        widthRow: inputs.find((row) => styleFormulaAxisRole(row) === "width") || null
+      };
     }
 
     function getStyleFormulaMetrics(finishedGood, evaluatedStyleFormulas) {
@@ -3685,7 +3735,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const ply = plyOverride != null ? Number(plyOverride) : getFinishedGoodPly(finishedGood);
       snap.rows.forEach((row) => {
         if (!row.success || !row.code || row.code === "—") return;
-        if (isCoveredAreaStyleFormula(row) && [1, 2, 3].includes(Number(row.ply)) && Number(row.ply) !== ply) return;
+        if ([1, 2, 3].includes(Number(row.ply)) && Number(row.ply) !== ply) return;
         variables[row.code] = row.result;
       });
       const covered = evaluateCoveredAreaValue(finishedGood, variables, snap, ply);
@@ -3748,11 +3798,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return n !== null && n !== 0;
     }
 
-    function resolveQuantityFormulaLW(finishedGood, dim, defaults) {
+    function resolveQuantityFormulaLW(finishedGood, dim, defaults, plyOverride) {
       const catalog = defaults || getFormulaVariableDefaults();
       const fgDims = finishedGood?.dimensions ?? {};
       const snap = getStyleFormulaMetrics(finishedGood);
       const warnings = [];
+      let lengthRow = snap.lengthRow;
+      let widthRow = snap.widthRow;
+      if (plyOverride != null) {
+        const axes = coveredAreaAxesForPly(snap.rows, plyOverride);
+        if (axes.coveredRow) {
+          lengthRow = axes.lengthRow;
+          widthRow = axes.widthRow;
+        }
+      }
 
       function pickAxis(row, fallback, label) {
         if (!row) return { value: fallback, used: false, code: null };
@@ -3765,16 +3824,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { value: n, used: true, code: row.code };
       }
 
-      const lengthPick = pickAxis(snap.lengthRow, dim?.L ?? fgDims.L ?? catalog.L, "Area Length");
-      const widthPick = pickAxis(snap.widthRow, dim?.W ?? fgDims.W ?? catalog.W, "Area Width");
+      const lengthPick = pickAxis(lengthRow, dim?.L ?? fgDims.L ?? catalog.L, "Area Length");
+      const widthPick = pickAxis(widthRow, dim?.W ?? fgDims.W ?? catalog.W, "Area Width");
       return {
         L: lengthPick.value,
         W: widthPick.value,
         useL: lengthPick.used,
         useW: widthPick.used,
         warnings,
-        serviceL: lengthPick.used ? lengthPick.value : snap.lengthRow && snap.lengthRow.success ? numericOrNull(snap.lengthRow.result) : null,
-        serviceW: widthPick.used ? widthPick.value : snap.widthRow && snap.widthRow.success ? numericOrNull(snap.widthRow.result) : null,
+        serviceL: lengthPick.used ? lengthPick.value : lengthRow && lengthRow.success ? numericOrNull(lengthRow.result) : null,
+        serviceW: widthPick.used ? widthPick.value : widthRow && widthRow.success ? numericOrNull(widthRow.result) : null,
         serviceLCode: lengthPick.code,
         serviceWCode: widthPick.code
       };
@@ -3788,10 +3847,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Boolean(source && source.useCustomDimensions === true);
     }
 
-    function getAutoQuantityLW(finishedGood, dimensionId) {
+    function getAutoQuantityLW(finishedGood, dimensionId, ply) {
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
-      const resolved = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      const resolved = resolveQuantityFormulaLW(finishedGood, dim, defaults, ply);
       return { L: roundTo(resolved.L, 2), W: roundTo(resolved.W, 2) };
     }
 
@@ -3821,7 +3880,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const custom = renderCompactLW(line.customLength, line.customWidth);
         if (custom) return custom;
       }
-      const auto = getAutoQuantityLW(finishedGood, line && line.dimensionId);
+      const auto = getAutoQuantityLW(finishedGood, line && line.dimensionId, styleFormulaPlyForBomLine(finishedGood, line));
       return (auto && renderCompactLW(auto.L, auto.W)) || "—";
     }
 
@@ -3867,7 +3926,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = state.modal && state.modal.type === "material"
         ? getMaterialModalFinishedGood()
         : getServiceModalFinishedGood();
-      const auto = getAutoQuantityLW(fg, draft && draft.dimensionId);
+      const ply = state.modal && state.modal.type === "material" && draft && draft.layer
+        ? styleFormulaPlyForLayer(draft.layer, getFinishedGoodPly(fg))
+        : null;
+      const auto = getAutoQuantityLW(fg, draft && draft.dimensionId, ply);
       if (draft.customLength === "" || draft.customLength == null) draft.customLength = auto.L;
       if (draft.customWidth === "" || draft.customWidth == null) draft.customWidth = auto.W;
     }
@@ -5371,7 +5433,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const sheet = getSheetDimensions(finishedGood);
       const pieceArea = resolveVariableValue("PIECE_AREA", finishedGood, defaults.PIECE_AREA ?? DEFAULT_TEST_VALUES.PIECE_AREA);
       const fgDims = finishedGood?.dimensions ?? {};
-      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults, layerPly);
       const override = getCustomDimensionOverride(line);
       const L = roundTo(override.L !== null ? override.L : resolvedDims.L, 2);
       const W = roundTo(override.W !== null ? override.W : resolvedDims.W, 2);
@@ -7356,7 +7418,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCostCalculatorLayerCard(row, index, materials, steps) {
       const material = getRawMaterial(row.rawMaterialId);
       const calc = row.calc || {};
-      const autoDims = getAutoQuantityLW(getCostCalculatorFinishedGood(), calc.dimensionId);
+      const autoDims = getAutoQuantityLW(
+        getCostCalculatorFinishedGood(),
+        calc.dimensionId,
+        styleFormulaPlyForLayer(row.layer, steps && steps.ply)
+      );
       const materialTitle = material
         ? `${material.name}${material.code ? ` (${material.code})` : ""}`
         : "Select material";
@@ -11559,12 +11625,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { empty: false, independent, coveredGroup, perimeter };
     }
 
-    function materialAxisFormulaDisplayModel(axis, fg, line, resolved, override, snap, dim) {
+    function materialAxisFormulaDisplayModel(axis, fg, line, resolved, override, snap, dim, axisRow) {
       const isLength = axis === "L";
       const label = isLength ? "Area Length" : "Area Width";
       const customVal = isLength ? override.L : override.W;
       const usedStyle = isLength ? resolved.useL : resolved.useW;
-      const styleRow = isLength ? snap.lengthRow : snap.widthRow;
+      const styleRow = axisRow || (isLength ? snap.lengthRow : snap.widthRow);
       const value = customVal !== null ? customVal : (isLength ? resolved.L : resolved.W);
       const n = numericOrNull(value);
       const explainKind = isLength ? "material-l" : "material-w";
@@ -11592,6 +11658,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         model.hint = styleRow.success
           ? (label + " = " + formatFormulaResult(styleRow.result))
           : "";
+        model.explainKind = explainKind;
+        model.explainLine = explainLine;
+        model.explainAriaLabel = "Explain " + label;
         return model;
       }
       const dimVal = dim ? numericOrNull(dim[axis]) : null;
@@ -11621,13 +11690,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const coveredRow = coveredAreaRowForPly(snap, ply);
       const coveredEval = evaluateCoveredAreaValue(fg, null, snap, ply);
       if (coveredRow) {
-        const lengthCode = snap.lengthRow && snap.lengthRow.code;
-        const widthCode = snap.widthRow && snap.widthRow.code;
-        const deps = coveredAreaDependentStyleRows(coveredRow, styleRows).filter((row) => {
+        const axisCodes = new Set(
+          coveredAreaInputRows(coveredRow, styleRows)
+            .filter((row) => {
+              const role = styleFormulaAxisRole(row);
+              return role === "length" || role === "width";
+            })
+            .map((row) => row.code)
+        );
+        const deps = coveredAreaInputRows(coveredRow, styleRows).filter((row) => {
           const code = row && row.code;
-          if (!code) return false;
-          if (code === coveredRow.code) return false;
-          if (code === lengthCode || code === widthCode) return false;
+          if (!code || code === coveredRow.code || axisCodes.has(code)) return false;
           return true;
         });
         const nestedRows = deps.map((row, index) => styleFormulaRowDisplayModel(row, {
@@ -11719,12 +11792,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function materialLineFormulaPopupDisplayModel(fg, line) {
       const material = getRawMaterial(line.rawMaterialId);
       const dim = getDimension(line.dimensionId);
-      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults());
+      const ply = styleFormulaPlyForBomLine(fg, line);
+      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults(), ply);
       const override = getCustomDimensionOverride(line);
       const snap = getStyleFormulaMetrics(fg);
       const styleRows = Array.isArray(state.bomStyleResults) && state.bomStyleResults.length
         ? state.bomStyleResults
         : evaluateStyleFormulasForFinishedGood(fg);
+      const axes = coveredAreaAxesForPly(styleRows, ply);
       return {
         kind: "material-formula",
         styleName: fg?.style ?? "—",
@@ -11732,8 +11807,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ? (material.name + (material.code ? " (" + material.code + ")" : ""))
           : "Material",
         layerLabel: line.layer || "",
-        lengthRow: materialAxisFormulaDisplayModel("L", fg, line, resolved, override, snap, dim),
-        widthRow: materialAxisFormulaDisplayModel("W", fg, line, resolved, override, snap, dim),
+        lengthRow: materialAxisFormulaDisplayModel("L", fg, line, resolved, override, snap, dim, axes.lengthRow),
+        widthRow: materialAxisFormulaDisplayModel("W", fg, line, resolved, override, snap, dim, axes.widthRow),
         coveredGroup: materialCoveredFormulaDisplayGroup(fg, line, snap, styleRows),
         qtyRow: materialQtyFormulaDisplayModel(line, material)
       };
@@ -17217,21 +17292,28 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function buildFormulaExplainModel_StyleFormula(formulaCode) {
+    function buildFormulaExplainModel_StyleFormula(formulaCode, plyOverride) {
       const fromCalculator = state.currentPage === "cost-calculator";
       const fg = fromCalculator ? getCostCalculatorStyleFinishedGood() : getSelectedFinishedGood();
       if (!fg) {
         return { error: "Calculation details are unavailable." };
       }
       const rows = evaluateStyleFormulasForFinishedGood(fg);
-      const row = rows.find((item) => item.code === formulaCode || String(item.formulaId) === String(formulaCode));
+      const ply = plyOverride != null && [1, 2, 3].includes(Number(plyOverride)) ? Number(plyOverride) : null;
+      const matches = rows.filter((item) => item.code === formulaCode || String(item.formulaId) === String(formulaCode));
+      const row = (ply != null && matches.find((item) => Number(item.ply) === ply))
+        || matches.find((item) => item.ply == null)
+        || matches[0]
+        || null;
       const formula = getFormulaByCode(formulaCode) || (row ? getFormula(row.formulaId) : null);
       if (!formula) {
         return { error: "This style formula is no longer available." };
       }
-      const variables = buildStyleFormulaVariables(fg);
+      const variables = ply != null ? buildFlatStyleFormulaVariables(fg, ply) : buildStyleFormulaVariables(fg);
       rows.forEach((item) => {
-        if (item.success && item.code && item.code !== "—") variables[item.code] = item.result;
+        if (!item.success || !item.code || item.code === "—") return;
+        if (ply != null && [1, 2, 3].includes(Number(item.ply)) && Number(item.ply) !== ply) return;
+        variables[item.code] = item.result;
       });
       const result = row && row.success ? row.result : null;
       const extraByCode = extraFormulasFromStyleRows(rows);
@@ -17303,13 +17385,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { error: "Calculation details are unavailable." };
       }
       const dim = getDimension(line.dimensionId);
-      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults());
+      const ply = styleFormulaPlyForBomLine(fg, line);
+      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults(), ply);
       const override = getCustomDimensionOverride(line);
       const usedStyle = axis === "L" ? resolved.useL : resolved.useW;
-      const snap = getStyleFormulaMetrics(fg);
-      const formulaRow = axis === "L" ? snap.lengthRow : snap.widthRow;
+      const axes = coveredAreaAxesForPly(evaluateStyleFormulasForFinishedGood(fg), ply);
+      const formulaRow = axis === "L" ? axes.lengthRow : axes.widthRow;
       if (!isUseCustomDimensions(line) && usedStyle && formulaRow && formulaRow.code) {
-        return buildFormulaExplainModel_StyleFormula(formulaRow.code);
+        return buildFormulaExplainModel_StyleFormula(formulaRow.code, ply);
       }
       const customVal = axis === "L" ? override.L : override.W;
       const value = isUseCustomDimensions(line) ? customVal : (axis === "L" ? resolved.L : resolved.W);
@@ -17351,7 +17434,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const ply = styleFormulaPlyForBomLine(fg, line);
       const coveredRow = coveredAreaRowForPly(snap, ply);
       if (coveredRow && coveredRow.code) {
-        return buildFormulaExplainModel_StyleFormula(coveredRow.code);
+        return buildFormulaExplainModel_StyleFormula(coveredRow.code, ply);
       }
       const material = getRawMaterial(line.rawMaterialId);
       const formula = getFormulaByCode("COVERED_AREA");
@@ -17685,7 +17768,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const material = getRawMaterial(draft.rawMaterialId);
-      const auto = getAutoQuantityLW(getMaterialModalFinishedGood(), draft.dimensionId);
+      const materialFg = getMaterialModalFinishedGood();
+      const auto = getAutoQuantityLW(
+        materialFg,
+        draft.dimensionId,
+        draft && draft.layer ? styleFormulaPlyForLayer(draft.layer, getFinishedGoodPly(materialFg)) : null
+      );
       const autoLabel = (auto && renderCompactLW(auto.L, auto.W)) || "—";
       const checked = isUseCustomDimensions(draft);
       const lengthValue = draft.customLength == null || draft.customLength === "" ? "" : String(draft.customLength);
