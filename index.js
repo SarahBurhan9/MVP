@@ -5905,6 +5905,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return getCustomDimensionOverride(line);
     }
 
+    function finishingServiceMaterialPly(line) {
+      if (!line) return null;
+      const ply = Number(line.ply);
+      if (![1, 2, 3].includes(ply)) return null;
+      if (line.finishing === true) return ply;
+      const id = Number(line.id);
+      if (id && (state.bomFinishingServices || []).some((row) => Number(row.id) === id)) return ply;
+      return null;
+    }
+
     function buildServiceFormulaVariables(finishedGood, service, dimensionId, line, formula) {
       const defaults = getFormulaVariableDefaults();
       const dim = getDimension(dimensionId);
@@ -5919,7 +5929,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         });
       }
       const fgDims = finishedGood?.dimensions ?? {};
-      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults);
+      const materialPly = finishingServiceMaterialPly(line);
+      const resolvedDims = resolveQuantityFormulaLW(finishedGood, dim, defaults, materialPly);
       const L = roundTo(override.L !== null ? override.L : resolvedDims.L, 2);
       const W = roundTo(override.W !== null ? override.W : resolvedDims.W, 2);
       const H = roundTo(dim?.H ?? fgDims.H ?? defaults.H, 2);
@@ -18019,6 +18030,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const preview = calculateServiceCost({
         id: (state.modal && state.modal.lineId) || 0,
         serviceId: draft.serviceId,
+        finishing: state.modal && state.modal.collection === "finishing",
+        ply: state.modal && state.modal.collection === "finishing" ? Number(draft.ply) : undefined,
         calculationMethod: draft.calculationMethod,
         formulaId: draft.formulaId,
         dimensionId: draft.dimensionId,
@@ -19299,6 +19312,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const preview = calculateServiceCost({
           id: lineId || 0,
           serviceId: draft.serviceId,
+          finishing: state.modal.collection === "finishing",
+          ply: state.modal.collection === "finishing" ? Number(draft.ply) : undefined,
           calculationMethod: draft.calculationMethod,
           formulaId: draft.formulaId,
           dimensionId: draft.dimensionId,
@@ -19630,6 +19645,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const viewPanel = panel || "full";
       if ((viewPanel === "dims" || viewPanel === "qty") && !line) return;
       const draft = defaultServiceDraft(line);
+      if (resolved === "finishing") draft.finishing = true;
       if (viewPanel === "dims" && draft.serviceId) applyServiceFormulaBinding(draft);
       state.modal = {
         type: "service",
@@ -19705,6 +19721,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ply: state.modal.collection === "finishing"
           ? Number(draft.ply)
           : (existingLine && existingLine.ply ? existingLine.ply : undefined),
+        finishing: state.modal.collection === "finishing",
         userPicked: Boolean(existingLine && existingLine.userPicked),
         calculationMethod: draft.calculationMethod,
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
