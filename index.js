@@ -6516,18 +6516,98 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
     }
 
+    function autoPlyGeneralServiceLines(lines, finishedGood, makeId) {
+      const layers = getStructuralLayers(finishedGood && finishedGood.ply);
+      const prev = Array.isArray(lines) ? lines : [];
+      const used = new Set();
+      const next = [];
+      getActiveGeneralServices().forEach((service) => {
+        layers.forEach((layer) => {
+          const ply = styleFormulaPlyForLayer(layer, finishedGood.ply);
+          if (!serviceMatchesPly(service, ply)) return;
+          let line = prev.find((row) => row && !used.has(row.id) && Number(row.serviceId) === Number(service.id) && canonicalPlyLayerName(row.layer) === layer);
+          if (!line) {
+            line = prev.find((row) => row && !used.has(row.id) && Number(row.serviceId) === Number(service.id) && !serviceLineHasStructuralLayer(row, finishedGood.ply));
+          }
+          if (line) {
+            used.add(line.id);
+            next.push({ ...line, layer, ply, serviceId: Number(service.id) });
+            return;
+          }
+          next.push({
+            id: makeId(),
+            layer,
+            ply,
+            ...defaultGeneralServiceFields(service, finishedGood),
+            quantity: 0,
+            rate: 0,
+            costPerPiece: 0,
+            error: null
+          });
+        });
+      });
+      return next;
+    }
+
     function syncBomServiceSlots(kind) {
       const fg = getSelectedFinishedGood();
       if (!fg) return false;
       const key = kind === "finishing" ? "bomFinishingServices" : "bomServices";
       const prev = state[key] || [];
-      const next = layerServiceLines(prev, fg, nextBomLineId);
+      const next = kind === "finishing"
+        ? layerServiceLines(prev, fg, nextBomLineId)
+        : prev.filter((line) => line && line.userPicked && line.serviceId);
       const same = prev.length === next.length && next.every((line, index) => {
         const before = prev[index];
         return before && before.id === line.id && before.layer === line.layer && Number(before.serviceId) === Number(line.serviceId);
       });
       if (same) return false;
       state[key] = next;
+      return true;
+    }
+
+    function syncCostCalculatorGeneralServices() {
+      const steps = getCostCalculatorStepState();
+      if (!steps.hasPly) return false;
+      const fg = getCostCalculatorFinishedGood();
+      const layers = getStructuralLayers(steps.ply);
+      const prev = Array.isArray(state.costCalculator.services) ? state.costCalculator.services : [];
+      const removed = new Set((state.costCalculator.removedServices || []).map(Number));
+      const used = new Set();
+      const next = [];
+      getActiveGeneralServices().forEach((service) => {
+        if (removed.has(Number(service.id))) return;
+        layers.forEach((layer) => {
+          const ply = styleFormulaPlyForLayer(layer, steps.ply);
+          if (!serviceMatchesPly(service, ply)) return;
+          let existing = prev.find((row) => row && !used.has(row.id || row.key) && Number(row.serviceId) === Number(service.id) && canonicalPlyLayerName(row.layer) === layer);
+          if (!existing) {
+            existing = prev.find((row) => row && !used.has(row.id || row.key) && Number(row.serviceId) === Number(service.id) && !serviceLineHasStructuralLayer(row, steps.ply));
+          }
+          if (existing) {
+            used.add(existing.id || existing.key);
+            existing.layer = layer;
+            existing.ply = ply;
+            existing.serviceId = Number(service.id);
+            next.push(existing);
+            return;
+          }
+          const key = nextCostCalculatorServiceKey();
+          next.push({
+            id: key,
+            key,
+            layer,
+            ply,
+            ...defaultGeneralServiceFields(service, fg)
+          });
+        });
+      });
+      const same = prev.length === next.length && next.every((line, index) => {
+        const before = prev[index];
+        return before && (before.id || before.key) === (line.id || line.key) && before.layer === line.layer && Number(before.serviceId) === Number(line.serviceId);
+      });
+      if (same) return false;
+      state.costCalculator.services = next;
       return true;
     }
 
@@ -6836,8 +6916,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderCostCalculatorServices(summary, steps) {
       const body = (summary.services || []).map((row, index) => {
-        const ply = styleFormulaPlyForLayer(row.layer, steps.ply);
-        const options = servicesForPlySlot("general", ply, row.serviceId);
+        const ply = row.ply || styleFormulaPlyForLayer(row.layer, steps.ply);
         const service = row.serviceId ? getService(row.serviceId) : null;
         const calc = row.calc || {};
         const lineId = row.id || row.key;
@@ -6845,12 +6924,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <tr>
             <td>${index + 1}</td>
             <td>
-              <div class="step-liner-title">${escapeHtml(row.layer || ("Ply " + ply))} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
-              <select class="full-select" data-cc-service-slot="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} packaging service">
-                <option value="">Select service</option>
-                ${options.map((item) => `<option value="${item.id}" ${Number(row.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
-              </select>
-              ${row.serviceId && calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
+              <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
+              <div class="stat-hint">${escapeHtml(row.layer || "")}</div>
+              ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
             <td class="step-num">${row.serviceId ? renderRequiredQtyWithEdit(formatStep6RequiredQty(calc.qty, calc.error), "data-edit-required-qty-service", lineId) : "—"}</td>
             <td class="step-num">${row.serviceId ? renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
@@ -7576,7 +7652,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (steps.hasPly) {
         loadCostCalculatorOtherLayers();
       }
-      if (syncCostCalculatorServiceSlots("services") || syncCostCalculatorServiceSlots("finishingServices")) persistCostCalculatorState();
+      if (syncCostCalculatorGeneralServices() || syncCostCalculatorServiceSlots("finishingServices")) persistCostCalculatorState();
       const summary = updateCostCalculatorSummary();
       const ccHasCalcErrors = summary.layers.some((row) => row.calc.error)
         || summary.otherLayers.some((row) => row.calc.error)
@@ -7741,7 +7817,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <div>
                     <div class="cc-step">Step 6: Select Packaging Services</div>
                     <div class="section-title">Conversion steps</div>
-                    <p class="stat-hint" style="margin:4px 0 0;">One service row per ply layer.</p>
+                    <p class="stat-hint" style="margin:4px 0 0;">Each packaging service loads once for every ply it is linked to.</p>
                   </div>
                 </div>
                 ${serviceRows}
@@ -7983,6 +8059,40 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rate: 0,
         costPerPiece: 0
       });
+    }
+
+    function addBomPackagingService(serviceId) {
+      const fg = getSelectedFinishedGood();
+      const service = getService(serviceId);
+      if (!fg || !service) return;
+      const layers = getStructuralLayers(fg.ply);
+      const existing = state.bomServices || [];
+      const additions = [];
+      layers.forEach((layer) => {
+        const ply = styleFormulaPlyForLayer(layer, fg.ply);
+        if (!serviceMatchesPly(service, ply)) return;
+        const already = existing.concat(additions).some((row) => Number(row.serviceId) === Number(service.id) && canonicalPlyLayerName(row.layer) === layer);
+        if (already) return;
+        additions.push(calculateServiceCost({
+          id: nextBomLineId(),
+          layer,
+          ply,
+          userPicked: true,
+          ...defaultGeneralServiceFields(service, fg),
+          quantity: 0,
+          rate: 0,
+          costPerPiece: 0
+        }));
+      });
+      if (!additions.length) {
+        showNotification((service.name || "Service") + " is already added");
+        return;
+      }
+      state.bomServices = existing.concat(additions);
+      recalculateBOMCosts();
+      refreshBomViews();
+      persistEditorState();
+      showNotification((service.name || "Service") + " added");
     }
 
     function assignBomLayerService(kind, layer, serviceId) {
@@ -8405,6 +8515,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         serviceId: Number(row.serviceId),
         layer: row.layer,
         ply: styleFormulaPlyForLayer(row.layer, fg.ply),
+        userPicked: true,
         calculationMethod: row.calculationMethod === "manual" ? "manual" : "formula",
         formulaId: row.calculationMethod === "formula" ? (row.formulaId || (row.calc && row.calc.formulaId)) : null,
         dimensionId: row.dimensionId || (row.calc && row.calc.dimensionId) || null,
@@ -12542,40 +12653,43 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         root.innerHTML = "";
         return;
       }
-      if (syncBomServiceSlots("services")) persistEditorState();
+      if (syncBomServiceSlots("services")) {
+        recalculateBOMCosts();
+        persistEditorState();
+      }
       const rows = state.bomServices;
       const activeRows = rows.filter((line) => line.serviceId);
       const hasServiceErrors = activeRows.some((line) => line.error);
+      const addOptions = getActiveGeneralServices();
 
       const body = rows.map((line, index) => {
         const ply = line.ply || styleFormulaPlyForLayer(line.layer, getFinishedGoodPly(getSelectedFinishedGood()));
-        const options = servicesForPlySlot("general", ply, line.serviceId);
         const service = line.serviceId ? getService(line.serviceId) : null;
         return `
           <tr>
             <td>${index + 1}</td>
             <td>
-              <div class="step-liner-title">${escapeHtml(line.layer || ("Ply " + ply))} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
-              <select class="full-select" data-bom-service-slot="${escapeHtml(line.layer)}" aria-label="${escapeHtml(line.layer)} packaging service">
-                <option value="">Select service</option>
-                ${options.map((item) => `<option value="${item.id}" ${Number(line.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
-              </select>
-              ${line.serviceId && line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
+              <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
+              <div class="stat-hint">${escapeHtml(line.layer || "")}</div>
+              ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
             <td class="step-num">${line.serviceId ? renderRequiredQtyWithEdit(formatStep6RequiredQty(line.quantity, line.error), "data-edit-required-qty-service", line.id) : "—"}</td>
             <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
             <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)) : "—"}</td>
             <td>
-              ${line.serviceId ? `
-                <div class="row-actions">
+              <div class="row-actions">
+                ${line.serviceId ? `
                   <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-service="${line.id}" title="Calculation breakdown">
                     <i data-lucide="calculator"></i>
                   </button>
                   <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-service="${line.id}" title="Edit">
                     <i data-lucide="pencil"></i>
                   </button>
-                </div>
-              ` : "—"}
+                ` : ""}
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-service="${line.id}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -12588,8 +12702,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>
                 <div class="cc-step">Step ${getBomVisibleStepNumbers().services}: Select Packaging Services</div>
                 <div class="section-title">Conversion Steps</div>
-                <p class="stat-hint" style="margin:4px 0 0;">One service row per ply layer. The list shows services linked to that ply.</p>
+                <p class="stat-hint" style="margin:4px 0 0;">Select a service. It loads once for each ply. Delete removes that row.</p>
               </div>
+              <select id="bom-add-packaging-service" class="full-select" style="max-width:280px;" aria-label="Select packaging service">
+                <option value="">Select service</option>
+                ${addOptions.map((item) => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
+              </select>
             </div>
             <div class="table-wrap">
               <table class="data-table step-grid-table">
@@ -12603,7 +12721,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <th>Action</th>
                   </tr>
                 </thead>
-                <tbody>${body}</tbody>
+                <tbody>${body || emptyRow(6, "Select a packaging service.")}</tbody>
               </table>
             </div>
             ${activeRows.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong id="bom-service-cost-total">${hasServiceErrors ? "Error" : formatRupees(state.totalServiceCost)}</strong></div>` : ""}
@@ -19531,6 +19649,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         serviceId: Number(draft.serviceId),
         layer: isAdditional ? "Additional" : ((existingLine && existingLine.layer) || (isFinishing ? "Finishing" : undefined)),
         ply: existingLine && existingLine.ply ? existingLine.ply : undefined,
+        userPicked: Boolean(existingLine && existingLine.userPicked),
         calculationMethod: draft.calculationMethod,
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
@@ -20022,6 +20141,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const bomLayerSelect = event.target.dataset && event.target.dataset.bomLayerMaterial;
         if (bomLayerSelect) {
           assignBomSlotMaterial(bomLayerSelect, event.target.value);
+        }
+        if (event.target.id === "bom-add-packaging-service") {
+          const selectedId = event.target.value;
+          if (selectedId) addBomPackagingService(selectedId);
+          return;
         }
         const bomServiceSlot = event.target.dataset && event.target.dataset.bomServiceSlot;
         if (bomServiceSlot) {
