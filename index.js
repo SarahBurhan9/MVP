@@ -6550,6 +6550,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function syncBomServiceSlots(kind) {
+      if (kind === "finishing") return false;
       const fg = getSelectedFinishedGood();
       if (!fg) return false;
       const key = kind === "finishing" ? "bomFinishingServices" : "bomServices";
@@ -12670,7 +12671,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td>${index + 1}</td>
             <td>
               <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
-              <div class="stat-hint">${escapeHtml(line.layer || "")}</div>
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
             <td class="step-num">${line.serviceId ? renderRequiredQtyWithEdit(formatStep6RequiredQty(line.quantity, line.error), "data-edit-required-qty-service", line.id) : "—"}</td>
@@ -12749,29 +12749,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         root.innerHTML = "";
         return;
       }
-      if (syncBomServiceSlots("finishing")) persistEditorState();
+      const kept = (state.bomFinishingServices || []).filter((line) => line && line.serviceId);
+      if (kept.length !== (state.bomFinishingServices || []).length) {
+        state.bomFinishingServices = kept;
+        persistEditorState();
+      }
       const rows = state.bomFinishingServices || [];
-      const activeRows = rows.filter((line) => line.serviceId);
+      const activeRows = rows;
       const hasFinishingErrors = activeRows.some((line) => line.error);
+      const fg = getSelectedFinishedGood();
 
       const body = rows.map((line, index) => {
-        const ply = line.ply || styleFormulaPlyForLayer(line.layer, getFinishedGoodPly(getSelectedFinishedGood()));
-        const options = servicesForPlySlot("finishing", ply, line.serviceId);
-        const service = line.serviceId ? getService(line.serviceId) : null;
+        const ply = line.ply || styleFormulaPlyForLayer(line.layer, getFinishedGoodPly(fg));
+        const service = getService(line.serviceId);
         return `
           <tr>
             <td>${index + 1}</td>
             <td>
-              <div class="step-liner-title">${escapeHtml(line.layer || ("Ply " + ply))} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
-              <select class="full-select" data-bom-finishing-slot="${escapeHtml(line.layer)}" aria-label="${escapeHtml(line.layer)} finishing service">
-                <option value="">Select service</option>
-                ${options.map((item) => `<option value="${item.id}" ${Number(line.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
-              </select>
-              ${line.serviceId && line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
+              <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
+              ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
-            <td class="step-col-dim">${line.serviceId ? renderFinishingDimensionCell(getSelectedFinishedGood(), line) : "—"}</td>
-            <td class="step-num step-col-compact">${line.serviceId ? formatBomRequiredQtyFromOrder() : "—"}</td>
-            <td class="step-num">${line.serviceId && service ? renderStepValueWithEdit(
+            <td class="step-col-dim">${renderFinishingDimensionCell(fg, line)}</td>
+            <td class="step-num step-col-compact">${formatBomRequiredQtyFromOrder()}</td>
+            <td class="step-num">${service ? renderStepValueWithEdit(
                 formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""),
                 "data-bom-service-rate",
                 service.id,
@@ -12779,18 +12779,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 "pencil",
                 "rate"
               ) : "—"}</td>
-            <td class="step-num step-col-compact" data-bom-line-cost="finishing:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)) : "—"}</td>
+            <td class="step-num step-col-compact" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
             <td>
-              ${line.serviceId ? `
-                <div class="row-actions">
-                  <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
-                    <i data-lucide="calculator"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-finishing-service="${line.id}" title="Edit">
-                    <i data-lucide="pencil"></i>
-                  </button>
-                </div>
-              ` : "—"}
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-finishing-service="${line.id}" title="Edit">
+                  <i data-lucide="pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-finishing-service="${line.id}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -12803,8 +12804,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>
                 <div class="cc-step">Step ${getBomVisibleStepNumbers().finishing}: Finishing Services</div>
                 <div class="section-title">Finishing Steps</div>
-                <p class="stat-hint" style="margin:4px 0 0;">One finishing row per ply layer. The list shows finishing services linked to that ply.</p>
+                <p class="stat-hint" style="margin:4px 0 0;">Add a service and choose its ply. The same service can be added again on the same ply.</p>
               </div>
+              <button type="button" class="btn btn-primary" id="btn-add-finishing-service">
+                <i data-lucide="plus"></i> Add Finishing Service
+              </button>
             </div>
             <div class="table-wrap">
               <table class="data-table step-grid-table">
@@ -12819,7 +12823,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <th>Action</th>
                   </tr>
                 </thead>
-                <tbody>${body}</tbody>
+                <tbody>${body || emptyRow(7, "No finishing services yet. Use Add Finishing Service.")}</tbody>
               </table>
             </div>
             ${activeRows.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong id="bom-finishing-cost-total">${hasFinishingErrors ? "Error" : formatRupees(state.totalFinishingServiceCost)}</strong></div>` : ""}
@@ -19187,7 +19191,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           manualRate: line.manualRate,
           useCustomDimensions: Boolean(line.useCustomDimensions),
           customLength: line.customLength != null ? line.customLength : "",
-          customWidth: line.customWidth != null ? line.customWidth : ""
+          customWidth: line.customWidth != null ? line.customWidth : "",
+          ply: line.ply ? Number(line.ply) : (line.layer ? styleFormulaPlyForLayer(line.layer, getFinishedGoodPly(getSelectedFinishedGood())) : null)
         };
       }
       return {
@@ -19199,7 +19204,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         manualRate: null,
         useCustomDimensions: false,
         customLength: "",
-        customWidth: ""
+        customWidth: "",
+        ply: null
       };
     }
 
@@ -19247,7 +19253,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Quantity / Piece must be greater than 0." });
         if (!qty.ok) errors.manualQty = qty.error;
       }
-      if (state.modal.collection !== "additional" && state.modal.collection !== "cc-additional-service" && draft.serviceId && findDuplicateService(draft.serviceId, lineId, state.modal.collection)) {
+      if (state.modal.collection !== "additional" && state.modal.collection !== "cc-additional-service" && state.modal.collection !== "finishing" && draft.serviceId && findDuplicateService(draft.serviceId, lineId, state.modal.collection)) {
         errors.duplicate = isFinishingServiceCollection(state.modal.collection)
           ? (isCostCalculatorFinishingModal()
             ? "This finishing service is already added to the Cost Calculator."
@@ -19257,6 +19263,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             : "This service is already added to the BOM.");
       }
       validateCustomDimensionDraft(draft, errors);
+      if (state.modal.collection === "finishing") {
+        const maxPly = getFinishedGoodPly(getSelectedFinishedGood());
+        const ply = Number(draft.ply);
+        if (![1, 2, 3].includes(ply) || ply > maxPly) errors.ply = "Select a ply.";
+      }
       if (!Object.keys(errors).length) {
         const preview = calculateServiceCost({
           id: lineId || 0,
@@ -19409,6 +19420,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">${isCostCalculatorFinishingModal() ? "Showing active Finishing services from Service Master." : (isCostCalculatorServiceModal() ? "Showing active General services from Service Master." : "Showing " + escapeHtml(categoryLabel) + " services from Service Master.")}</p>`}
             </div>
+            ${state.modal.collection === "finishing" ? `
+              <div>
+                <label class="form-label" for="modal-finishing-ply">Ply</label>
+                <select id="modal-finishing-ply" class="full-select ${errors.ply ? "input-invalid" : ""}" aria-invalid="${errors.ply ? "true" : "false"}">
+                  <option value="">Select Ply</option>
+                  ${Array.from({ length: getFinishedGoodPly(getSelectedFinishedGood()) }, (_, index) => index + 1).map((ply) => `
+                    <option value="${ply}" ${Number(draft.ply) === ply ? "selected" : ""}>Ply ${ply}</option>
+                  `).join("")}
+                </select>
+                ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
+              </div>
+            ` : ""}
             ${renderUseCustomDimensionBlock(draft, errors, {
               checkId: "modal-service-use-custom-dim",
               lengthId: "modal-service-custom-length",
@@ -19647,8 +19670,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const nextLine = calculateServiceCost({
         id: state.modal.lineId || (isCostCalculatorServiceModal() ? nextCostCalculatorServiceKey() : nextBomLineId()),
         serviceId: Number(draft.serviceId),
-        layer: isAdditional ? "Additional" : ((existingLine && existingLine.layer) || (isFinishing ? "Finishing" : undefined)),
-        ply: existingLine && existingLine.ply ? existingLine.ply : undefined,
+        layer: isAdditional
+          ? "Additional"
+          : (state.modal.collection === "finishing"
+            ? (getStructuralLayers(getFinishedGoodPly(getSelectedFinishedGood()))[Number(draft.ply) - 1] || undefined)
+            : ((existingLine && existingLine.layer) || (isFinishing ? "Finishing" : undefined))),
+        ply: state.modal.collection === "finishing"
+          ? Number(draft.ply)
+          : (existingLine && existingLine.ply ? existingLine.ply : undefined),
         userPicked: Boolean(existingLine && existingLine.userPicked),
         calculationMethod: draft.calculationMethod,
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
@@ -19788,6 +19817,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (draft.calculationMethod === "formula") applyServiceFormulaBinding(draft);
       }
       else if (target.id === "modal-service-formula") draft.formulaId = target.value ? Number(target.value) : null;
+      else if (target.id === "modal-finishing-ply") draft.ply = target.value ? Number(target.value) : null;
       else if (target.id === "modal-service-use-custom-dim") {
         draft.useCustomDimensions = target.checked;
         if (target.checked) fillCustomDimensionsFromAuto(draft);
