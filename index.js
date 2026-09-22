@@ -3494,7 +3494,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function getCoveredAreaStyleFormulas() {
-      return formulas.filter((item) => item.type === "Style" && item.isActive !== false);
+      return formulas.filter((item) => item.type === "Style" && item.isActive !== false && Boolean(item.coveredArea));
     }
 
     function buildStyleFormulaVariables(finishedGood) {
@@ -15707,7 +15707,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const canAdd = Boolean(availableFormulas.length && availablePlys.length);
       const triggerLabel = selectedFormula
         ? `${selectedFormula.name} (${selectedFormula.code})`
-        : (availableFormulas.length ? "Select a Style formula..." : "No Style formulas");
+        : (availableFormulas.length ? "Select a Style formula..." : "No Covered Area formulas");
       const unusedMenu = availableFormulas.map((item) => {
         const selected = item.id === selectedFormulaId;
         return `<button type="button" class="pretty-select-option${selected ? " selected" : ""}" role="option" aria-selected="${selected ? "true" : "false"}" data-pretty-select="style-formula-select" data-pretty-value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</button>`;
@@ -15747,7 +15747,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <input id="style-formula-search" class="full-search" type="search" placeholder="Search formula..." autocomplete="off" />
                 </div>
                 <div id="style-formula-option-list">
-                  ${unusedMenu || `<div class="style-form-formula-empty">No Style formulas.</div>`}
+                  ${unusedMenu || `<div class="style-form-formula-empty">No Covered Area formulas.</div>`}
                 </div>
                 <div class="style-formula-search-empty" id="style-formula-search-empty" hidden>No matching formulas.</div>
               </div>
@@ -16143,8 +16143,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formulaId = select && select.value ? Number(select.value) : null;
       const ply = Number(plySelect && plySelect.value);
       const formula = getFormula(formulaId);
-      if (!formula || formula.type !== "Style" || formula.isActive === false) {
-        showNotification("Select an active Style formula.", "error");
+      if (!formula || formula.type !== "Style" || !formula.coveredArea) {
+        showNotification("Select a Covered Area formula.", "error");
         return;
       }
       if (![1, 2, 3].includes(ply)) {
