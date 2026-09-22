@@ -777,10 +777,12 @@
     #page-bom-costing .btn-icon-dims,
     #page-bom-costing .btn-icon-rate,
     #page-bom-costing .btn-icon-calc,
+    #page-bom-costing .btn-icon-formula,
     #page-bom-costing .btn-icon-edit,
     #page-cost-calculator .btn-icon-dims,
     #page-cost-calculator .btn-icon-rate,
     #page-cost-calculator .btn-icon-calc,
+    #page-cost-calculator .btn-icon-formula,
     #page-cost-calculator .btn-icon-edit {
       border-width: 1px;
     }
@@ -835,6 +837,20 @@
     #page-cost-calculator .btn-icon-edit:hover {
       background: #ede9fe;
       border-color: #a78bfa;
+    }
+
+    #page-bom-costing .btn-icon-formula,
+    #page-cost-calculator .btn-icon-formula {
+      color: #047857;
+      background: #ecfdf5;
+      border-color: #6ee7b7;
+      border-radius: 999px;
+    }
+
+    #page-bom-costing .btn-icon-formula:hover,
+    #page-cost-calculator .btn-icon-formula:hover {
+      background: #d1fae5;
+      border-color: #34d399;
     }
 
     .modal.compact-line {

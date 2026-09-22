@@ -1,5 +1,6 @@
 import { BomProductInfo } from "./BomProductInfo.jsx";
 import { BomStyleFormulas } from "./BomStyleFormulas.jsx";
+import { BomMaterialFormula } from "./BomMaterialFormula.jsx";
 
 export function BomInfoPopupBody({ model }) {
   if (!model) return null;
@@ -15,6 +16,19 @@ export function BomInfoPopupBody({ model }) {
         dimensions={model.dimensions}
         plyAriaLabel={model.plyAriaLabel}
         plyLayers={model.plyLayers}
+      />
+    );
+  }
+  if (model.kind === "material-formula") {
+    return (
+      <BomMaterialFormula
+        styleName={model.styleName}
+        materialLabel={model.materialLabel}
+        layerLabel={model.layerLabel}
+        lengthRow={model.lengthRow}
+        widthRow={model.widthRow}
+        coveredGroup={model.coveredGroup}
+        qtyRow={model.qtyRow}
       />
     );
   }

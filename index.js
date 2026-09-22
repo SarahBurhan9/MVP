@@ -670,6 +670,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       showProductInformationDetails: false,
       showStyleFormulasDetails: false,
       bomInfoPopup: null,
+      bomInfoPopupLineId: null,
       costBreakdownDrawer: null,
       ccStyleSelectorOpen: false,
       ccStyleSearch: "",
@@ -11452,9 +11453,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       refreshIcons();
     }
 
-    function openBomInfoPopup(kind) {
-      if ((kind !== "product" && kind !== "style") || !getSelectedFinishedGood()) return;
+    function openBomInfoPopup(kind, lineId) {
+      if (!getSelectedFinishedGood()) return;
+      if (kind === "material-formula") {
+        const line = state.bomMaterials.find((item) => item.id === Number(lineId));
+        if (!line) return;
+        state.bomInfoPopup = "material-formula";
+        state.bomInfoPopupLineId = Number(lineId);
+        renderBomInfoPopup();
+        refreshIcons();
+        return;
+      }
+      if (kind !== "product" && kind !== "style") return;
       state.bomInfoPopup = kind;
+      state.bomInfoPopupLineId = null;
       renderBomInfoPopup();
       refreshIcons();
     }
@@ -11547,6 +11559,186 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { empty: false, independent, coveredGroup, perimeter };
     }
 
+    function materialAxisFormulaDisplayModel(axis, fg, line, resolved, override, snap, dim) {
+      const isLength = axis === "L";
+      const label = isLength ? "Area Length" : "Area Width";
+      const customVal = isLength ? override.L : override.W;
+      const usedStyle = isLength ? resolved.useL : resolved.useW;
+      const styleRow = isLength ? snap.lengthRow : snap.widthRow;
+      const value = customVal !== null ? customVal : (isLength ? resolved.L : resolved.W);
+      const n = numericOrNull(value);
+      const explainKind = isLength ? "material-l" : "material-w";
+      const explainLine = String(line.id);
+      if (isUseCustomDimensions(line)) {
+        const ok = n !== null && n > 0;
+        return {
+          key: axis + "-custom",
+          className: "style-formula-row",
+          stepLabel: "",
+          code: axis,
+          title: label + " (custom on this line)",
+          expression: "Entered " + (isLength ? "length" : "width") + " on this material line",
+          hint: ok ? (label + " = " + formatFormulaResult(n)) : "",
+          success: ok,
+          valueText: formatFormulaResult(n),
+          errorText: override.error || "Enter custom Length and Width.",
+          explainKind,
+          explainLine,
+          explainAriaLabel: "Explain " + label
+        };
+      }
+      if (usedStyle && styleRow) {
+        const model = styleFormulaRowDisplayModel(styleRow);
+        model.hint = styleRow.success
+          ? (label + " = " + formatFormulaResult(styleRow.result))
+          : "";
+        return model;
+      }
+      const dimVal = dim ? numericOrNull(dim[axis]) : null;
+      const fromDim = dimVal !== null;
+      const ok = n !== null;
+      return {
+        key: axis + "-source",
+        className: "style-formula-row",
+        stepLabel: "",
+        code: axis,
+        title: label + (fromDim ? " — from linked dimension" : " — from finished good"),
+        expression: fromDim
+          ? ("Dimension " + axis + (dim.name || dim.code ? " (" + (dim.name || dim.code) + ")" : ""))
+          : ("Finished good " + axis),
+        hint: ok ? (label + " = " + formatFormulaResult(n)) : "",
+        success: ok,
+        valueText: formatFormulaResult(n),
+        errorText: label + " is not available.",
+        explainKind,
+        explainLine,
+        explainAriaLabel: "Explain " + label
+      };
+    }
+
+    function materialCoveredFormulaDisplayGroup(fg, line, snap, styleRows) {
+      const ply = styleFormulaPlyForBomLine(fg, line);
+      const coveredRow = coveredAreaRowForPly(snap, ply);
+      const coveredEval = evaluateCoveredAreaValue(fg, null, snap, ply);
+      if (coveredRow) {
+        const lengthCode = snap.lengthRow && snap.lengthRow.code;
+        const widthCode = snap.widthRow && snap.widthRow.code;
+        const deps = coveredAreaDependentStyleRows(coveredRow, styleRows).filter((row) => {
+          const code = row && row.code;
+          if (!code) return false;
+          if (code === coveredRow.code) return false;
+          if (code === lengthCode || code === widthCode) return false;
+          return true;
+        });
+        const nestedRows = deps.map((row, index) => styleFormulaRowDisplayModel(row, {
+          nested: true,
+          stepIndex: index + 1
+        }));
+        nestedRows.push(styleFormulaRowDisplayModel(coveredRow, {
+          primary: true,
+          stepIndex: nestedRows.length ? nestedRows.length + 1 : undefined
+        }));
+        return { hasNested: deps.length > 0, rows: nestedRows };
+      }
+      return {
+        hasNested: false,
+        rows: [{
+          key: "covered-area",
+          className: "style-formula-row is-primary",
+          stepLabel: "",
+          code: coveredEval.code || "COVERED_AREA",
+          title: "Covered Area",
+          expression: coveredEval.source === "covered_area"
+            ? ((getFormulaByCode("COVERED_AREA") && getFormulaByCode("COVERED_AREA").expression) || "COVERED_AREA")
+            : "Style covered area for this ply",
+          hint: coveredEval.success ? ("Covered Area = " + formatFormulaResult(coveredEval.result)) : "",
+          success: Boolean(coveredEval.success),
+          valueText: formatFormulaResult(coveredEval.result),
+          errorText: coveredEval.error || "Covered Area is not available.",
+          explainKind: "material-covered",
+          explainLine: String(line.id),
+          explainAriaLabel: "Explain covered area"
+        }]
+      };
+    }
+
+    function materialQtyFormulaDisplayModel(line, material) {
+      const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : null;
+      const uom = (material && material.uom) || "";
+      if (line.calculationMethod === "manual") {
+        return {
+          key: "qty-manual",
+          className: "style-formula-row",
+          stepLabel: "",
+          code: "MANUAL",
+          title: "Manual quantity",
+          expression: "Entered quantity on this material line",
+          hint: line.error ? "" : ("Net Qty = " + formatQty(line.netQty) + (uom ? " " + uom : "")),
+          success: !line.error,
+          valueText: formatQty(line.netQty),
+          errorText: line.error || "Manual quantity is not available.",
+          explainKind: "material",
+          explainLine: String(line.id),
+          explainAriaLabel: "Explain quantity"
+        };
+      }
+      if (!formula) {
+        return {
+          key: "qty-missing",
+          className: "style-formula-row",
+          stepLabel: "",
+          code: "QTY",
+          title: "Quantity formula",
+          expression: "—",
+          hint: "",
+          success: false,
+          valueText: "—",
+          errorText: line.error || "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.",
+          explainKind: "material",
+          explainLine: String(line.id),
+          explainAriaLabel: "Explain quantity"
+        };
+      }
+      return {
+        key: "qty-formula",
+        className: "style-formula-row",
+        stepLabel: "",
+        code: formula.code || "QTY",
+        title: formula.description || formula.name || "Quantity formula",
+        expression: formula.expression || "—",
+        hint: line.error ? "" : ("Net Qty = " + formatQty(line.netQty) + (uom ? " " + uom : "")),
+        success: !line.error,
+        valueText: formatQty(line.netQty),
+        errorText: line.error || "Could not evaluate",
+        explainKind: "material",
+        explainLine: String(line.id),
+        explainAriaLabel: "Explain quantity"
+      };
+    }
+
+    function materialLineFormulaPopupDisplayModel(fg, line) {
+      const material = getRawMaterial(line.rawMaterialId);
+      const dim = getDimension(line.dimensionId);
+      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults());
+      const override = getCustomDimensionOverride(line);
+      const snap = getStyleFormulaMetrics(fg);
+      const styleRows = Array.isArray(state.bomStyleResults) && state.bomStyleResults.length
+        ? state.bomStyleResults
+        : evaluateStyleFormulasForFinishedGood(fg);
+      return {
+        kind: "material-formula",
+        styleName: fg?.style ?? "—",
+        materialLabel: material
+          ? (material.name + (material.code ? " (" + material.code + ")" : ""))
+          : "Material",
+        layerLabel: line.layer || "",
+        lengthRow: materialAxisFormulaDisplayModel("L", fg, line, resolved, override, snap, dim),
+        widthRow: materialAxisFormulaDisplayModel("W", fg, line, resolved, override, snap, dim),
+        coveredGroup: materialCoveredFormulaDisplayGroup(fg, line, snap, styleRows),
+        qtyRow: materialQtyFormulaDisplayModel(line, material)
+      };
+    }
+
     function bomInfoPopupDisplayModel(fg) {
       if (state.bomInfoPopup === "product") {
         const ply = fg?.ply ?? "—";
@@ -11564,6 +11756,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           plyLayers: plyVis.layers
         };
       }
+      if (state.bomInfoPopup === "material-formula") {
+        const line = state.bomMaterials.find((item) => item.id === Number(state.bomInfoPopupLineId));
+        if (!line) {
+          return {
+            kind: "material-formula",
+            styleName: fg?.style ?? "—",
+            materialLabel: "Material",
+            layerLabel: "",
+            lengthRow: null,
+            widthRow: null,
+            coveredGroup: null,
+            qtyRow: null
+          };
+        }
+        return materialLineFormulaPopupDisplayModel(fg, line);
+      }
       const styleModel = styleFormulasPopupDisplayModel(Array.isArray(state.bomStyleResults) ? state.bomStyleResults : []);
       return {
         kind: "style",
@@ -11578,6 +11786,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function closeBomInfoPopup() {
       unmountBomInfoPopup();
       state.bomInfoPopup = null;
+      state.bomInfoPopupLineId = null;
       const backdrop = document.getElementById("bom-info-backdrop");
       const dialog = document.getElementById("bom-info-dialog");
       if (backdrop) {
@@ -11597,13 +11806,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         closeBomInfoPopup();
         return;
       }
+      if (state.bomInfoPopup === "material-formula") {
+        const line = state.bomMaterials.find((item) => item.id === Number(state.bomInfoPopupLineId));
+        if (!line) {
+          closeBomInfoPopup();
+          return;
+        }
+      }
       const isProduct = state.bomInfoPopup === "product";
-      const title = isProduct ? "Product Information" : "Style Formulas";
-      const kicker = isProduct ? "Finished Good" : "Auto-calculated";
+      const isMaterialFormula = state.bomInfoPopup === "material-formula";
       const model = bomInfoPopupDisplayModel(fg);
+      const title = isProduct
+        ? "Product Information"
+        : (isMaterialFormula ? (model.materialLabel || "Quantity Formula") : "Style Formulas");
+      const kicker = isProduct ? "Finished Good" : "Auto-calculated";
       const body = isProduct
         ? renderProductInformationCard(fg, { kicker: "Finished Good", detailsVisible: true })
-        : `
+        : isMaterialFormula
+          ? ""
+          : `
           <p class="stat-hint" style="margin:0 0 12px;">Linked to style <strong>${escapeHtml(fg?.style ?? "—")}</strong>. Values update when the finished good or style variables change.</p>
           ${renderStyleFormulaResultRows(Array.isArray(state.bomStyleResults) ? state.bomStyleResults : [])}
         `;
@@ -11738,6 +11959,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
                     <td class="step-col-actions">
                       <div class="row-actions">
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
+                          <i data-lucide="sigma"></i>
+                        </button>
                         <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
                           <i data-lucide="calculator"></i>
                         </button>
@@ -11818,6 +12042,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         "bom-material-cost-total",
         bomSectionTotalDisplayModel(hasCalcErrors, state.totalMaterialCost)
       );
+      if (state.bomInfoPopup === "material-formula") renderBomInfoPopup();
     }
 
     function renderBomAdditionalServiceCard(line, index) {
@@ -17069,12 +17294,105 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
     }
 
+    function buildFormulaExplainModel_MaterialAxis(kind, lineId) {
+      const axis = kind === "material-w" ? "W" : "L";
+      const label = axis === "L" ? "Area Length" : "Area Width";
+      const fg = getSelectedFinishedGood();
+      const line = state.bomMaterials.find((item) => item.id === Number(lineId));
+      if (!fg || !line) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const dim = getDimension(line.dimensionId);
+      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults());
+      const override = getCustomDimensionOverride(line);
+      const usedStyle = axis === "L" ? resolved.useL : resolved.useW;
+      const snap = getStyleFormulaMetrics(fg);
+      const formulaRow = axis === "L" ? snap.lengthRow : snap.widthRow;
+      if (!isUseCustomDimensions(line) && usedStyle && formulaRow && formulaRow.code) {
+        return buildFormulaExplainModel_StyleFormula(formulaRow.code);
+      }
+      const customVal = axis === "L" ? override.L : override.W;
+      const value = isUseCustomDimensions(line) ? customVal : (axis === "L" ? resolved.L : resolved.W);
+      const shown = formatFormulaResult(value);
+      let expression = "Finished good " + axis;
+      let sourceNote = "This value is the finished-good " + (axis === "L" ? "length" : "width") + ".";
+      if (isUseCustomDimensions(line)) {
+        expression = "Custom " + (axis === "L" ? "length" : "width") + " on this material line";
+        sourceNote = "This value was entered on this material line and replaces the style or product " + axis + ".";
+      } else if (dim && numericOrNull(dim[axis]) !== null) {
+        expression = "Linked dimension " + axis + (dim.name || dim.code ? " (" + (dim.name || dim.code) + ")" : "");
+        sourceNote = "This style has no " + label + " formula, so " + axis + " is taken from the linked dimension.";
+      } else {
+        sourceNote = "This style has no " + label + " formula, so " + axis + " is taken from the finished good.";
+      }
+      return {
+        title: label,
+        subtitle: sourceNote,
+        formulaName: label,
+        sourceType: "formula",
+        summaryHtml: sourceNote,
+        steps: [{
+          index: 1,
+          heading: label,
+          expression,
+          pluggedHtml: "= <strong class=\"formula-val\">" + escapeHtml(shown) + "</strong>"
+        }],
+        finalHtml: label + ": <strong>" + escapeHtml(shown) + "</strong>"
+      };
+    }
+
+    function buildFormulaExplainModel_MaterialCovered(lineId) {
+      const fg = getSelectedFinishedGood();
+      const line = state.bomMaterials.find((item) => item.id === Number(lineId));
+      if (!fg || !line) {
+        return { error: "Calculation details are unavailable." };
+      }
+      const snap = getStyleFormulaMetrics(fg);
+      const ply = styleFormulaPlyForBomLine(fg, line);
+      const coveredRow = coveredAreaRowForPly(snap, ply);
+      if (coveredRow && coveredRow.code) {
+        return buildFormulaExplainModel_StyleFormula(coveredRow.code);
+      }
+      const material = getRawMaterial(line.rawMaterialId);
+      const formula = getFormulaByCode("COVERED_AREA");
+      const variables = material
+        ? buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, getMaterialQtyFormula(material), line)
+        : {};
+      const areaEval = evaluateCoveredAreaValue(fg, variables, snap, ply);
+      if (!formula) {
+        return {
+          title: "Covered Area",
+          formulaName: "Covered Area",
+          sourceType: "formula",
+          summaryHtml: areaEval.error || "Covered Area is not available.",
+          steps: [],
+          finalHtml: "Covered Area: <strong>" + escapeHtml(areaEval.success ? formatFormulaResult(areaEval.result) : "—") + "</strong>"
+        };
+      }
+      return buildFormulaExplainCore({
+        formula,
+        variables,
+        finishedGood: fg,
+        extraByCode: extraFormulasFromStyleRows(evaluateStyleFormulasForFinishedGood(fg)),
+        resultValue: areaEval.result,
+        resultDisplay: areaEval.success ? formatFormulaResult(areaEval.result) : "—",
+        uom: "",
+        title: "Covered Area",
+        sourceType: inferExplainSourceType(formula),
+        includeGrossQty: false,
+        resultLabel: "Covered Area",
+        finalHtml: `Covered Area: <strong>${escapeHtml(areaEval.success ? formatFormulaResult(areaEval.result) : (areaEval.error || "—"))}</strong>`
+      });
+    }
+
     function buildFormulaExplainModel(kind, lineId) {
       if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
       if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
       if (kind === "style") return buildFormulaExplainModel_StyleFormula(lineId);
       if (kind === "style-perimeter") return buildFormulaExplainModel_StylePerimeter();
+      if (kind === "material-l" || kind === "material-w") return buildFormulaExplainModel_MaterialAxis(kind, lineId);
+      if (kind === "material-covered") return buildFormulaExplainModel_MaterialCovered(lineId);
       return buildFormulaExplainModel_BOMLine(kind, lineId);
     }
 
@@ -17144,9 +17462,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
@@ -19943,6 +20261,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const explainBtn = event.target.closest("[data-explain-kind]");
         if (explainBtn) {
           openFormulaExplainerModal(explainBtn.dataset.explainKind, explainBtn.dataset.explainLine);
+          return;
+        }
+
+        const formulaLineBtn = event.target.closest("[data-formula-line]");
+        if (formulaLineBtn) {
+          openBomInfoPopup("material-formula", formulaLineBtn.dataset.formulaLine);
           return;
         }
 
