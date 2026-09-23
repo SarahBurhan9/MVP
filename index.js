@@ -2802,7 +2802,23 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return roundTo(evaluation.result * factor, 4);
     }
 
+    function manualEnteredRequiredQty(line) {
+      if (!line || line.calculationMethod !== "manual") return null;
+      const typed = Number(line.manualQty);
+      if (Number.isFinite(typed) && typed > 0) return typed;
+      const net = Number(line.netQty);
+      if (Number.isFinite(net) && net > 0) return net;
+      const qty = Number(line.quantity);
+      if (Number.isFinite(qty) && qty > 0) return qty;
+      return null;
+    }
+
     function formatMasterRequiredQty(kind, item, line, finishedGood, options) {
+      if (line && line.calculationMethod === "manual") {
+        const manualQty = manualEnteredRequiredQty(line);
+        if (manualQty === null) return "—";
+        return formatQty(manualQty);
+      }
       const scaled = scaledMasterRequiredQty(
         evaluateMasterRequiredQty(kind, item, line, finishedGood, options),
         finishedGood
@@ -17682,7 +17698,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!isManual && !formula) {
         return { error: line.error || "A valid formula is required." };
       }
-      const serviceQtyHtml = `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong><br>Required Qty: <strong>${escapeHtml(formatMasterRequiredQty("service", item, line, fg))}</strong> <span class="formula-src">(Default Required Quantity Formula)</span>`;
+      const requiredQtyLabel = line.calculationMethod === "manual" ? "Manual quantity" : "Default Required Quantity Formula";
+      const serviceQtyHtml = `Qty: <strong>${escapeHtml(formatQty(line.quantity))} ${escapeHtml(uom)}</strong><br>Required Qty: <strong>${escapeHtml(formatMasterRequiredQty("service", item, line, fg))}</strong> <span class="formula-src">(${escapeHtml(requiredQtyLabel)})</span>`;
       return buildFormulaExplainCore({
         formula: isManual ? null : formula,
         variables,
@@ -17765,7 +17782,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = service
         ? buildServiceFormulaVariables(fg, service, null, row, formula)
         : {};
-      const serviceQtyHtml = `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong><br>Required Qty: <strong>${escapeHtml(formatMasterRequiredQty("service", service, row, fg, { useEnteredDimensions: true }))}</strong> <span class="formula-src">(Default Required Quantity Formula)</span>`;
+      const requiredQtyLabel = row.calculationMethod === "manual" ? "Manual quantity" : "Default Required Quantity Formula";
+      const serviceQtyHtml = `Qty: <strong>${escapeHtml(formatQty(calc.qty))} ${escapeHtml(uom)}</strong><br>Required Qty: <strong>${escapeHtml(formatMasterRequiredQty("service", service, row, fg, { useEnteredDimensions: true }))}</strong> <span class="formula-src">(${escapeHtml(requiredQtyLabel)})</span>`;
       return buildFormulaExplainCore({
         formula,
         variables,
@@ -18076,7 +18094,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         sourceType: "formula",
         summaryHtml: "Each value below is the input that formula uses, and where that input comes from.",
         steps,
-        finalHtml: `Order Quantity entered here: <strong>${escapeHtml(formatQty(bomOrderQuantityValue()))}</strong>. Required Qty on each line is that formula result × this Order Quantity.`
+        finalHtml: `Order Quantity entered here: <strong>${escapeHtml(formatQty(bomOrderQuantityValue()))}</strong>. Formula lines use that result × this Order Quantity. Manual lines use the quantity you entered.`
       };
     }
 
@@ -18105,6 +18123,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!target || !target.item || !fg) {
         return { error: "Required quantity details are unavailable." };
+      }
+      if (target.line && target.line.calculationMethod === "manual") {
+        const manualQty = manualEnteredRequiredQty(target.line);
+        const shown = manualQty === null ? "—" : formatQty(manualQty);
+        return {
+          title: "Required Qty",
+          subtitle: (target.item.name || target.item.code || "") + " · Manual quantity",
+          formulaName: "Manual quantity",
+          sourceType: "manual",
+          summaryHtml: "This line is set to Manual. Required Qty is the quantity you entered. The Default Required Quantity Formula is not used.",
+          steps: [{
+            index: 1,
+            heading: "Manual quantity",
+            expression: "Entered quantity",
+            pluggedHtml: manualQty === null
+              ? "No manual quantity is entered."
+              : `Required Qty: <strong class="formula-val">${escapeHtml(formatExplainNumber(manualQty))}</strong>`
+          }],
+          finalHtml: `Required Qty: <strong>${escapeHtml(shown)}</strong>`
+        };
       }
       const evaluation = evaluateMasterRequiredQty(target.kind, target.item, target.line, fg);
       if (!evaluation) {
