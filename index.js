@@ -2682,6 +2682,66 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Number.isFinite(qty) && qty > 0 ? qty : null;
     }
 
+    function collectBomRequiredQtyEvaluations() {
+      const finishedGood = getSelectedFinishedGood();
+      const entries = [];
+      function pushEntry(kindLabel, item, line, formula, variables) {
+        if (!formula || !formula.isActive || !formula.expression) return;
+        const evaluated = evaluateFormula(formula.expression, variables, [formula.code]);
+        entries.push({
+          kindLabel,
+          item,
+          material: kindLabel === "Raw material" ? item : null,
+          service: kindLabel === "Service" ? item : null,
+          line,
+          formula,
+          variables,
+          finishedGood,
+          result: evaluated.success ? numericOrNull(evaluated.result) : null,
+          error: evaluated.success ? null : (evaluated.error || "Formula could not be evaluated.")
+        });
+      }
+      (state.bomMaterials || []).forEach((line) => {
+        if (!line || !line.rawMaterialId) return;
+        const material = getRawMaterial(line.rawMaterialId);
+        if (!material || !material.requiredQtyFormulaId) return;
+        const formula = getFormula(material.requiredQtyFormulaId);
+        const variables = buildFormulaVariables(
+          finishedGood,
+          material,
+          Number(line.wastagePercent) || 0,
+          line.dimensionId,
+          formula,
+          line
+        );
+        pushEntry("Raw material", material, line, formula, variables);
+      });
+      []
+        .concat(state.bomServices || [])
+        .concat(state.bomAdditionalServices || [])
+        .concat(state.bomFinishingServices || [])
+        .forEach((line) => {
+          if (!line || !line.serviceId) return;
+          const service = getService(line.serviceId);
+          if (!service || !service.requiredQtyFormulaId) return;
+          const formula = getFormula(service.requiredQtyFormulaId);
+          const variables = buildServiceFormulaVariables(finishedGood, service, line.dimensionId, line, formula);
+          pushEntry("Service", service, line, formula, variables);
+        });
+      return entries;
+    }
+
+    function requiredQtyFromSystem() {
+      const hit = collectBomRequiredQtyEvaluations().find((entry) => entry.result !== null && entry.result > 0);
+      return hit ? hit.result : null;
+    }
+
+    function applyRequiredQtyToOrderQuantity() {
+      const qty = requiredQtyFromSystem();
+      if (qty == null) return;
+      state.bomOrderQuantity = qty;
+    }
+
     function bomOrderQuantityValue() {
       return positiveOrderQuantity(state.bomOrderQuantity) ?? 1;
     }
@@ -6089,6 +6149,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function recalculateBOMCosts() {
+      applyRequiredQtyToOrderQuantity();
       const fg = getSelectedFinishedGood();
       if (fg) state.bomMaterials = syncFinishedGoodAccessoryLine(fg, state.bomMaterials);
       state.bomMaterials = state.bomMaterials.map((line) => calculateMaterialCost(line));
@@ -13067,6 +13128,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const colorRateValue = state.bomColorRate == null || state.bomColorRate === ""
         ? ""
         : formatDecimal(state.bomColorRate, 2, false);
+      const orderQtyValue = state.bomOrderQuantity == null || state.bomOrderQuantity === ""
+        ? ""
+        : formatDecimal(state.bomOrderQuantity, 4, false);
       const finalCostDisplay = hasCalcErrors
         ? `<span class="cost-metric-error">Error calculating cost</span>`
         : model.finalCost;
@@ -13094,6 +13158,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         <div class="cost-optional-field">
                           <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
                           <input class="wastage-input" type="number" min="0.01" max="999999.99" step="0.01" id="bom-color-rate" value="${escapeHtml(colorRateValue)}" placeholder="Optional" aria-label="Rate per color in rupees" />
+                        </div>
+                      </div>
+                      <div class="cost-optional-row">
+                        <div class="cost-optional-field">
+                          <label class="form-label" for="bom-order-quantity">Order Quantity ${formulaHelpButton("order-qty", "bom", "How order quantity was calculated")}</label>
+                          <input class="wastage-input" type="text" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" readonly aria-label="Order quantity" />
                         </div>
                       </div>
                     </div>
@@ -17848,7 +17918,103 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       });
     }
 
+    function orderQtyInputOrigin(code, entry) {
+      const catalog = getFormulaVariableByCode(code);
+      const label = catalog && catalog.name ? catalog.name : code;
+      const finishedGood = entry.finishedGood;
+      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
+      const ply = finishedGood ? getFinishedGoodPly(finishedGood) : null;
+      if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, code)) {
+        const fixed = ENGINE_CONSTANT_LABELS[code] || "fixed variable";
+        return label + " comes from the fixed variable " + code + " (" + fixed + ")";
+      }
+      const nested = getFormulaByCode(code);
+      if (nested && nested.expression && nested.code !== (entry.formula && entry.formula.code)) {
+        return label + " comes from the formula " + nested.code + ": " + prettyExpressionText(nested.expression);
+      }
+      if (code === "GSM" && entry.material && entry.material.gsm != null) {
+        return label + " comes from raw material " + (entry.material.name || entry.material.code);
+      }
+      if (code === "WASTAGE") {
+        return label + " comes from the BOM line wastage";
+      }
+      if (code === "MATERIAL_RATE" && entry.material) {
+        return label + " comes from the material rate for " + (entry.material.name || entry.material.code);
+      }
+      if (code === "SERVICE_RATE" && entry.service) {
+        return label + " comes from the service rate for " + (entry.service.name || entry.service.code);
+      }
+      if ((code === "L" || code === "W" || code === "H") && finishedGood) {
+        const dim = getDimension(entry.line && entry.line.dimensionId);
+        if (dim) return label + " comes from dimension " + (dim.name || dim.code || "");
+        return label + " comes from the finished good dimensions";
+      }
+      if (style && ply != null && getStyleVariableValue(style.id, code, ply) !== null) {
+        return label + " comes from style " + (style.name || "") + ", ply " + ply;
+      }
+      if (catalog) return label + " comes from variable " + code + " in Variables";
+      return label;
+    }
+
+    function orderQtyExplainInputs(entry) {
+      const lines = [];
+      const seen = new Set();
+      function addCode(code) {
+        if (!code || seen.has(code)) return;
+        seen.add(code);
+        const value = resolveExplainIdentifier(code, entry.variables, {});
+        lines.push({
+          code,
+          origin: orderQtyInputOrigin(code, entry),
+          shown: formatPreviewVariableDisplay(code, value)
+        });
+        const nested = getFormulaByCode(code);
+        if (nested && nested.expression && nested.code !== (entry.formula && entry.formula.code)) {
+          extractIdentifiers(nested.expression).forEach(addCode);
+        }
+      }
+      extractIdentifiers(entry.formula.expression).forEach(addCode);
+      return lines;
+    }
+
+    function buildFormulaExplainModel_OrderQty() {
+      const entries = collectBomRequiredQtyEvaluations();
+      if (!entries.length) {
+        return { error: "No Default Required Quantity Formula is set on the raw materials or services in this BOM." };
+      }
+      const used = entries.find((entry) => entry.result !== null && entry.result > 0) || null;
+      const steps = entries.map((entry, index) => {
+        const itemName = (entry.item && (entry.item.name || entry.item.code)) || entry.kindLabel;
+        const inputs = orderQtyExplainInputs(entry);
+        const inputHtml = inputs.map((input) =>
+          `<div><strong>${escapeHtml(input.code)}</strong> — ${escapeHtml(input.origin)}: <strong class="formula-val">${escapeHtml(input.shown)}</strong></div>`
+        ).join("");
+        const resultHtml = entry.error
+          ? `<div>${escapeHtml(entry.error)}</div>`
+          : `<div>Result: <strong class="formula-val">${escapeHtml(formatExplainNumber(entry.result))}</strong>${used === entry ? " — this result is Order Quantity" : ""}</div>`;
+        return {
+          index: index + 1,
+          heading: entry.kindLabel + " " + itemName + " — " + (entry.formula.name || entry.formula.code),
+          expression: prettyExpressionText(entry.formula.expression),
+          pluggedHtml: inputHtml + resultHtml
+        };
+      });
+      const usedName = used && used.item ? (used.item.name || used.item.code) : "";
+      return {
+        title: "Order Quantity",
+        subtitle: "Default Required Quantity Formula",
+        formulaName: used ? (used.formula.name || used.formula.code) : "Required quantity",
+        sourceType: "formula",
+        summaryHtml: "Each value below is the input that formula uses, and where that input comes from.",
+        steps,
+        finalHtml: used
+          ? `Order Quantity: <strong>${escapeHtml(formatExplainNumber(used.result))}</strong> from ${escapeHtml(used.kindLabel.toLowerCase())} ${escapeHtml(usedName)}`
+          : "Order Quantity could not be calculated from the Default Required Quantity Formula."
+      };
+    }
+
     function buildFormulaExplainModel(kind, lineId) {
+      if (kind === "order-qty") return buildFormulaExplainModel_OrderQty();
       if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
       if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
@@ -17925,7 +18091,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty"];
       const resolved = allowed.includes(kind) ? kind : "material";
       const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered";
       state.modal = {
