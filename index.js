@@ -391,12 +391,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         value: ENGINE_CONSTANTS.CONVERSION_FACTOR,
         formula: "1 / (SQ_IN_TO_SQ_M × GRAM_TO_KG)",
         description: "Fixed. Combined unit conversion factor used by the formula engine."
-      },
-      {
-        code: "ORDER_QTY",
-        value: 1,
-        formula: "1",
-        description: "Fixed. Pieces to manufacture."
       }
     ];
 
@@ -450,6 +444,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function ensureFixedVariables() {
+      for (let i = fixedVariables.length - 1; i >= 0; i -= 1) {
+        if (String(fixedVariables[i].code || "").toUpperCase() === "ORDER_QTY") {
+          fixedVariables.splice(i, 1);
+        }
+      }
       FIXED_IMPLEMENTATION_VARIABLES.forEach((seed) => {
         if (!getFixedVariableByCode(seed.code)) {
           fixedVariables.push({
@@ -13068,9 +13067,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const colorRateValue = state.bomColorRate == null || state.bomColorRate === ""
         ? ""
         : formatDecimal(state.bomColorRate, 2, false);
-      const orderQtyValue = state.bomOrderQuantity == null || state.bomOrderQuantity === ""
-        ? ""
-        : formatDecimal(state.bomOrderQuantity, 4, false);
       const finalCostDisplay = hasCalcErrors
         ? `<span class="cost-metric-error">Error calculating cost</span>`
         : model.finalCost;
@@ -13098,18 +13094,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                         <div class="cost-optional-field">
                           <label class="form-label" for="bom-color-rate">Rate per Color (Rs.)</label>
                           <input class="wastage-input" type="number" min="0.01" max="999999.99" step="0.01" id="bom-color-rate" value="${escapeHtml(colorRateValue)}" placeholder="Optional" aria-label="Rate per color in rupees" />
-                        </div>
-                      </div>
-                      <div class="cost-optional-row">
-                        <div class="cost-optional-field">
-                          <label class="form-label" for="bom-order-quantity">Order Quantity</label>
-                          <input class="wastage-input" type="number" min="0.0001" max="999999" step="0.0001" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" placeholder="Optional" aria-label="Order quantity" />
-                        </div>
-                        <div class="cost-optional-field">
-                          <label class="form-label" for="bom-order-quantity-uom">UOM</label>
-                          <select id="bom-order-quantity-uom" class="full-select" aria-label="Order quantity unit">
-                            ${finishedGoodUomOptions(state.bomOrderQuantityUOM || "pieces")}
-                          </select>
                         </div>
                       </div>
                     </div>
