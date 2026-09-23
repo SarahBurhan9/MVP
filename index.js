@@ -2855,6 +2855,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       services.forEach((item) => {
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
         item.categories = normalizeServiceCategories(item.categories);
+        item.qtyFormulaId = normalizeFormulaBinding(item.qtyFormulaId);
+        item.requiredQtyFormulaId = normalizeFormulaBinding(item.requiredQtyFormulaId);
         delete item.serviceRate;
         delete item.rateUOM;
         delete item.formulaId;
@@ -11074,7 +11076,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = getFormula(formulaId);
       const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.requiredQtyFormulaId, formula))
         || otherRawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
-        || services.some((item) => bindingUsesFormula(item.formulaId, formula) || bindingUsesFormula(item.qtyFormulaId, formula))
+        || services.some((item) => bindingUsesFormula(item.formulaId, formula) || bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.requiredQtyFormulaId, formula))
         || materialRates.some((item) => bindingUsesFormula(item.formulaId, formula))
         || otherMaterialRates.some((item) => bindingUsesFormula(item.formulaId, formula))
         || serviceRates.some((item) => bindingUsesFormula(item.formulaId, formula))
@@ -15014,6 +15016,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: "",
         name: "",
         uom: "piece",
+        qtyFormulaId: null,
+        requiredQtyFormulaId: null,
         dimensionIds: [],
         categories: ["general"],
         plies: [],
@@ -15056,6 +15060,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <label class="form-label" for="srv-uom">UOM</label>
               <select id="srv-uom" class="full-select">
                 ${["piece", "sq.inch", "sq.meter", "meter", "kg", "hour", "pieces", "job"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="srv-qty-formula">Default Weight Formula</label>
+              <select id="srv-qty-formula" class="full-select">
+                ${renderBoundFormulaOptions("Service", draft.qtyFormulaId, "Quantity")}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" for="srv-required-qty-formula">Default Required Quantity Formula</label>
+              <select id="srv-required-qty-formula" class="full-select">
+                ${renderBoundFormulaOptions("Service", draft.requiredQtyFormulaId)}
               </select>
             </div>
             <div>
@@ -15158,6 +15174,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: item.code,
         name: item.name,
         uom: item.uom,
+        qtyFormulaId: normalizeFormulaBinding(item.qtyFormulaId),
+        requiredQtyFormulaId: normalizeFormulaBinding(item.requiredQtyFormulaId),
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
         categories: normalizeServiceCategories(item.categories),
         plies: normalizeServicePlies(item.plies),
@@ -15193,6 +15211,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: String(draft.code).trim().toUpperCase(),
         name: String(draft.name).trim(),
         uom: draft.uom,
+        qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
+        requiredQtyFormulaId: normalizeFormulaBinding(draft.requiredQtyFormulaId),
         categories: normalizeServiceCategories(draft.categories),
         plies: normalizeServicePlies(draft.plies),
         status: draft.status
@@ -15227,6 +15247,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (target.id === "srv-code") draft.code = target.value.toUpperCase();
       else if (target.id === "srv-name") draft.name = target.value;
       else if (target.id === "srv-uom") draft.uom = target.value;
+      else if (target.id === "srv-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "srv-required-qty-formula") draft.requiredQtyFormulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "srv-status") draft.status = target.value;
       else if (target.id && target.id.startsWith("srv-cat-")) {
         const categoryId = target.id.slice("srv-cat-".length);
