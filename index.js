@@ -4968,12 +4968,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Boolean(material && getMaterialDimensionLinks(material.id).length);
     }
 
-    function materialMissingPlyFormula(material) {
-      return !getMaterialQtyFormula(material);
+    function masterFormulaOwnerLabel(kind) {
+      return kind === "service" ? "Service" : "Raw Material";
     }
 
-    function getMaterialQtyFormula(material) {
-      return getFormula(material && material.qtyFormulaId);
+    function missingBothMasterFormulasError(kind) {
+      return "Default Weight Formula and Default Required Quantity Formula are both None on the " + masterFormulaOwnerLabel(kind) + " master. Set at least one so quantity can be calculated.";
+    }
+
+    function resolveMasterCostFormula(item, kind) {
+      const owner = masterFormulaOwnerLabel(kind);
+      const weightId = normalizeFormulaBinding(item && item.qtyFormulaId);
+      const requiredId = normalizeFormulaBinding(item && item.requiredQtyFormulaId);
+      function accept(formula, fieldName) {
+        if (!formula) {
+          return { formula: null, error: fieldName + " is not a valid formula. Choose another formula on the " + owner + " master." };
+        }
+        if (!formula.isActive) {
+          return { formula: null, error: fieldName + " is inactive. Activate it or choose another formula on the " + owner + " master." };
+        }
+        if (kind === "service" && formula.type !== "Service") {
+          return { formula: null, error: fieldName + " must be a service formula." };
+        }
+        return { formula: formula, error: null };
+      }
+      if (weightId) return accept(getFormula(weightId), "Default Weight Formula");
+      if (requiredId) return accept(getFormula(requiredId), "Default Required Quantity Formula");
+      return { formula: null, error: missingBothMasterFormulasError(kind) };
     }
 
     function getOtherMaterialQtyFormula(material) {
@@ -5255,9 +5276,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applyMaterialDimensionFormula(draft) {
       const material = getRawMaterial(draft.rawMaterialId);
       if (!material || draft.calculationMethod !== "formula") return;
-      // Qty formula comes only from the material Default Quantity Formula (qtyFormulaId).
+      // Cost quantity uses Default Weight Formula, then Default Required Quantity Formula.
       // materialDimensions.formulaId is no longer read for costing; dimension+ply mapping is still used.
-      draft.formulaId = material.qtyFormulaId ? Number(material.qtyFormulaId) : null;
+      const resolved = resolveMasterCostFormula(material, "material");
+      draft.formulaId = resolved.formula ? Number(resolved.formula.id) : null;
     }
 
     function applyServiceFormulaBinding(draft) {
@@ -5277,9 +5299,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applyServiceDimensionFormula(draft) {
       const service = getService(draft.serviceId);
       if (!service || draft.calculationMethod !== "formula") return;
-      // Qty formula comes only from the active Service Rate (serviceRates.formulaId via getServiceDefaultFormulaId).
+      // Cost quantity uses Default Weight Formula, then Default Required Quantity Formula.
       // serviceDimensions.formulaId is no longer read for costing; dimension+ply mapping is still used.
-      draft.formulaId = getServiceDefaultFormulaId(service.id);
+      const resolved = resolveMasterCostFormula(service, "service");
+      draft.formulaId = resolved.formula ? Number(resolved.formula.id) : null;
     }
 
     function nextFormulaId() {
@@ -5800,12 +5823,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
       } else {
-        const formula = getMaterialQtyFormula(material);
+        const resolved = resolveMasterCostFormula(material, "material");
+        const formula = resolved.formula;
         if (formula) line.formulaId = formula.id;
-        if (!formula || !formula.isActive) {
-          line.error = formula && !formula.isActive
-            ? "The selected material formula is inactive."
-            : "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.";
+        if (!formula) {
+          line.error = resolved.error;
           line.netQty = 0;
           line.grossQty = 0;
           line.costPerPiece = 0;
@@ -5843,7 +5865,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         netQty = calculated.result;
       }
 
-      const qtyFormula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : null;
+      const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
@@ -6116,12 +6138,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
       } else {
-        const formula = getFormula(getServiceDefaultFormulaId(service.id));
+        const resolved = resolveMasterCostFormula(service, "service");
+        const formula = resolved.formula;
         if (formula) line.formulaId = formula.id;
-        if (!formula || !formula.isActive || formula.type !== "Service") {
-          line.error = formula && !formula.isActive
-            ? "The selected service formula is inactive."
-            : "A valid service formula is required. Set a formula on the active Service Rate.";
+        if (!formula) {
+          line.error = resolved.error;
           line.quantity = 0;
           line.costPerPiece = 0;
           return line;
@@ -6615,16 +6636,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function defaultGeneralServiceFields(service, finishedGood) {
-      const formulaId = getServiceDefaultFormulaId(service && service.id);
-      const hasFormula = Boolean(formulaId && getFormula(formulaId));
+      const resolved = resolveMasterCostFormula(service, "service");
       const linkedIds = getServiceLinkedDimensionIds(service);
       const dimensionId = pickBomDimensionId(linkedIds, null, finishedGood);
       return {
         serviceId: Number(service.id),
-        calculationMethod: hasFormula ? "formula" : "manual",
-        formulaId: hasFormula ? formulaId : null,
+        calculationMethod: "formula",
+        formulaId: resolved.formula ? resolved.formula.id : null,
         dimensionId: dimensionId ? Number(dimensionId) : null,
-        manualQty: hasFormula ? null : 1,
+        manualQty: null,
         manualRate: null,
         useCustomDimensions: false,
         customLength: null,
@@ -7350,9 +7370,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { ...empty, error: "This material does not exist in the Raw Material Master." };
       }
       const link = findCostCalculatorMaterialLink(material.id, ply, fg);
-      const formula = getMaterialQtyFormula(material);
-      if (!formula || !formula.isActive) {
-        return { ...empty, error: "Formula not configured for " + material.name + ". Set Default Quantity Formula on the Raw Material master." };
+      const resolved = resolveMasterCostFormula(material, "material");
+      const formula = resolved.formula;
+      if (!formula) {
+        return { ...empty, error: resolved.error };
       }
       const rateRow = getMaterialRate(material.id);
       const masterRate = Number(rateRow?.rate);
@@ -8387,8 +8408,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function createAdditionalServiceLine(serviceId, prev) {
       const service = getService(serviceId);
-      const formulaId = getServiceDefaultFormulaId(service && service.id);
-      const hasFormula = Boolean(formulaId && getFormula(formulaId));
+      const resolved = resolveMasterCostFormula(service, "service");
       const linkedIds = getServiceLinkedDimensionIds(service);
       const dimensionId = prev && Object.prototype.hasOwnProperty.call(prev, "dimensionId")
         ? prev.dimensionId
@@ -8397,11 +8417,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: prev && prev.id ? prev.id : nextBomLineId(),
         serviceId: Number(serviceId),
         layer: (prev && prev.layer) || "Additional",
-        calculationMethod: hasFormula ? "formula" : "manual",
-        formulaId: hasFormula ? formulaId : null,
+        calculationMethod: prev && prev.calculationMethod === "manual" ? "manual" : "formula",
+        formulaId: resolved.formula ? resolved.formula.id : null,
         dimensionId: dimensionId ? Number(dimensionId) : null,
-        manualQty: hasFormula ? null : ((prev && prev.manualQty) || 1),
-        manualRate: hasFormula ? null : (prev ? prev.manualRate : null),
+        manualQty: prev && prev.calculationMethod === "manual" ? ((prev && prev.manualQty) || 1) : null,
+        manualRate: prev && prev.calculationMethod === "manual" ? (prev ? prev.manualRate : null) : null,
         useCustomDimensions: Boolean(prev && prev.useCustomDimensions),
         customLength: prev ? prev.customLength : null,
         customWidth: prev ? prev.customWidth : null,
@@ -9059,7 +9079,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       for (const line of state.bomMaterials) {
         if (!getRawMaterial(line.rawMaterialId)) return "A BOM material does not reference a valid raw material master record.";
-        if (line.calculationMethod === "formula" && !getMaterialQtyFormula(getRawMaterial(line.rawMaterialId))) return "A BOM material formula is missing or invalid. Set Default Quantity Formula on the Raw Material master.";
+        if (line.calculationMethod === "formula") {
+          const resolved = resolveMasterCostFormula(getRawMaterial(line.rawMaterialId), "material");
+          if (!resolved.formula) return resolved.error;
+        }
       }
 
       for (const line of state.bomOtherMaterials || []) {
@@ -9069,18 +9092,27 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       for (const line of state.bomServices) {
         if (!getService(line.serviceId)) return "A BOM service does not reference a valid service master record.";
-        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "A BOM service formula is missing or invalid. Set a formula on the active Service Rate.";
+        if (line.calculationMethod === "formula") {
+          const resolved = resolveMasterCostFormula(getService(line.serviceId), "service");
+          if (!resolved.formula) return resolved.error;
+        }
       }
 
       for (const line of state.bomAdditionalServices || []) {
         if (!line.serviceId) continue;
         if (!getService(line.serviceId)) return "An additional material does not reference a valid service master record.";
-        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "An additional material service formula is missing or invalid. Set a formula on the active Service Rate.";
+        if (line.calculationMethod === "formula") {
+          const resolved = resolveMasterCostFormula(getService(line.serviceId), "service");
+          if (!resolved.formula) return resolved.error;
+        }
       }
 
       for (const line of state.bomFinishingServices || []) {
         if (!getService(line.serviceId)) return "A finishing service does not reference a valid service master record.";
-        if (line.calculationMethod === "formula" && !getFormula(getServiceDefaultFormulaId(line.serviceId))) return "A finishing service formula is missing or invalid. Set a formula on the active Service Rate.";
+        if (line.calculationMethod === "formula") {
+          const resolved = resolveMasterCostFormula(getService(line.serviceId), "service");
+          if (!resolved.formula) return resolved.error;
+        }
       }
 
       if (currentBomHasCalculationErrors()) {
@@ -12173,7 +12205,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function materialQtyFormulaDisplayModel(line, material) {
-      const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : null;
+      const resolvedQty = line.calculationMethod === "formula" ? resolveMasterCostFormula(material, "material") : null;
+      const formula = resolvedQty ? resolvedQty.formula : null;
       const uom = (material && material.uom) || "";
       if (line.calculationMethod === "manual") {
         return {
@@ -12203,7 +12236,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           hint: "",
           success: false,
           valueText: "—",
-          errorText: line.error || "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.",
+          errorText: line.error || (resolvedQty && resolvedQty.error) || missingBothMasterFormulasError("material"),
           explainKind: "material",
           explainLine: String(line.id),
           explainAriaLabel: "Explain quantity"
@@ -12426,7 +12459,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
-          ${accessory ? `<p class="stat-hint">Set on the finished good. Required quantity uses this material’s Default Required Quantity Formula. Net quantity uses this material’s Default Quantity Formula.</p>` : ""}
+          ${accessory ? `<p class="stat-hint">Set on the finished good. Required quantity uses this material’s Default Required Quantity Formula. Net quantity uses Default Weight Formula when it is set, otherwise the Required Quantity Formula.</p>` : ""}
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
@@ -12563,7 +12596,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const service = line ? getService(line.serviceId) : null;
       const missingServiceId = line && line.serviceId && !service ? line.serviceId : null;
       const formula = line && line.calculationMethod === "formula"
-        ? getFormula(getServiceDefaultFormulaId(service && service.id))
+        ? resolveMasterCostFormula(service, "service").formula
         : getFormula(line && line.formulaId);
       const methodLabel = line && line.calculationMethod === "manual" ? "Manual" : "Formula";
       const formulaLabel = line && line.calculationMethod === "formula" && formula ? formula.name : "—";
@@ -14070,6 +14103,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <select id="rm-required-qty-formula" class="full-select">
                 ${renderBoundFormulaOptions("Material", draft.requiredQtyFormulaId)}
               </select>
+              <p class="stat-hint" style="margin-top:6px;">Used for Required Qty. Also used for cost quantity when Default Weight Formula is None.</p>
             </div>
             ${showGsm ? `
               <div>
@@ -14106,7 +14140,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="section-head">
           <div>
             <div class="section-kicker">Material dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension to this material. Quantity uses the Default Quantity Formula on Material Info.</p>
+            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension to this material. Quantity uses Default Weight Formula, or Default Required Quantity Formula when Weight Formula is None.</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-material-dimension">
             <i data-lucide="plus"></i> Add Dimension to Material
@@ -15169,12 +15203,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <select id="srv-qty-formula" class="full-select">
                 ${renderBoundFormulaOptions("Service", draft.qtyFormulaId, "Quantity")}
               </select>
+              <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
             </div>
             <div>
               <label class="form-label" for="srv-required-qty-formula">Default Required Quantity Formula</label>
               <select id="srv-required-qty-formula" class="full-select">
                 ${renderBoundFormulaOptions("Service", draft.requiredQtyFormulaId)}
               </select>
+              <p class="stat-hint" style="margin-top:6px;">Used for Required Qty. Also used for cost quantity when Default Weight Formula is None.</p>
             </div>
             <div>
               <label class="form-label" for="srv-status">Status</label>
@@ -15229,7 +15265,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <div class="section-head">
           <div>
             <div class="section-kicker">Service dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">${canLinkDims ? "Link a dimension (and ply) to this service. Quantity uses the formula on the active Service Rate." : "Save the service first, then add dimensions."}</p>
+            <p class="stat-hint" style="margin:4px 0 0;">${canLinkDims ? "Link a dimension (and ply) to this service. Quantity uses Default Weight Formula, or Default Required Quantity Formula when Weight Formula is None." : "Save the service first, then add dimensions."}</p>
           </div>
           <button type="button" class="btn btn-primary btn-sm" id="btn-add-service-dimension" ${canLinkDims ? "" : "disabled"}>
             <i data-lucide="plus"></i> Add Dimension to Service
@@ -17116,7 +17152,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       applyMaterialFormulaBindings(draft);
       const finishedGood = getMaterialModalFinishedGood();
-      const ply = getFinishedGoodPly(finishedGood);
       const fromAdditional = Boolean(state.modal && state.modal.fromAdditional);
       if (!finishedGood) {
         errors.finishedGood = isCostCalculatorAdditionalModal()
@@ -17151,12 +17186,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         errors.dimensionId = "Selected dimension is not valid.";
       }
       if (draft.calculationMethod === "formula") {
-        if (!errors.dimensionId && material && draft.dimensionId && materialMissingPlyFormula(material, draft.dimensionId, ply)) {
-          errors.formulaId = "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.";
-        } else if (!errors.dimensionId) {
-          const selectedFormula = getFormula(draft.formulaId);
-          if (!draft.formulaId) errors.formulaId = "A valid material formula is required. Set Default Quantity Formula on the Raw Material master.";
-          else if (!selectedFormula || !selectedFormula.isActive) errors.formulaId = "Selected formula is not valid or is inactive.";
+        if (material) {
+          const resolved = resolveMasterCostFormula(material, "material");
+          if (!resolved.formula) errors.formulaId = resolved.error;
+          else draft.formulaId = resolved.formula.id;
         }
       } else {
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Manual quantity must be greater than 0." });
@@ -17634,7 +17667,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ? getOtherRawMaterial(line.otherRawMaterialId)
           : getRawMaterial(line.rawMaterialId);
       const formula = line.calculationMethod === "formula"
-        ? (isService ? getFormula(getServiceDefaultFormulaId(item && item.id)) : (isOther ? getOtherMaterialQtyFormula(item) : getMaterialQtyFormula(item)))
+        ? (isService ? resolveMasterCostFormula(item, "service").formula : (isOther ? getOtherMaterialQtyFormula(item) : resolveMasterCostFormula(item, "material").formula))
         : null;
       const uom = isService ? (item && item.uom) || "" : (item && item.uom) || "";
       const title = item ? item.name + " — " + item.code : (isService ? "Service" : (isOther ? "Other Material" : "Material"));
@@ -17836,7 +17869,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const calc = calculateCostCalculatorAdditionalMaterial(row);
       const material = getRawMaterial(row.rawMaterialId);
-      const formula = row.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(row.formulaId || calc.formulaId);
+      const formula = row.calculationMethod === "formula" ? resolveMasterCostFormula(material, "material").formula : getFormula(row.formulaId || calc.formulaId);
       if (!formula && row.calculationMethod !== "manual") {
         return { error: calc.error || "Formula not configured for this material." };
       }
@@ -17926,7 +17959,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const material = getRawMaterial(line.rawMaterialId);
       const formula = getFormulaByCode("COVERED_AREA");
       const variables = material
-        ? buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, getMaterialQtyFormula(material), line)
+        ? buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, resolveMasterCostFormula(material, "material").formula, line)
         : {};
       const areaEval = evaluateCoveredAreaValue(fg, variables, snap, ply);
       if (!formula) {
@@ -18471,7 +18504,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderMaterialQtyMethodFields(draft, errors, qtyLabel) {
       const material = getRawMaterial(draft.rawMaterialId);
-      const formula = draft.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(draft.formulaId);
+      const formula = draft.calculationMethod === "formula" ? resolveMasterCostFormula(material, "material").formula : getFormula(draft.formulaId);
       return `
         <div>
           <label class="form-label" for="modal-method-select">Calculation Method</label>
@@ -18822,7 +18855,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? calculateMaterialCost({ ...stored }, { finishedGood: fg, useEnteredDimensions: true })
         : stored;
       const material = getRawMaterial(line.rawMaterialId);
-      const formula = line.calculationMethod === "formula" ? getMaterialQtyFormula(material) : getFormula(line.formulaId);
+      const formula = line.calculationMethod === "formula" ? resolveMasterCostFormula(material, "material").formula : getFormula(line.formulaId);
       return `
         <div class="modal-header">
           <div>
@@ -19656,10 +19689,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         errors.dimensionId = "Selected dimension is not valid.";
       }
       if (draft.calculationMethod === "formula") {
-        const selectedFormula = getFormula(draft.formulaId) || getFormula(getServiceDefaultFormulaId(service && service.id));
-        if (!selectedFormula) errors.formulaId = "A valid service formula is required. Set a formula on the active Service Rate.";
-        else if (!selectedFormula.isActive || selectedFormula.type !== "Service") {
-          errors.formulaId = "Selected formula is not valid or is inactive.";
+        if (service) {
+          const resolved = resolveMasterCostFormula(service, "service");
+          if (!resolved.formula) errors.formulaId = resolved.error;
+          else draft.formulaId = resolved.formula.id;
         }
       } else {
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Quantity / Piece must be greater than 0." });
@@ -19702,7 +19735,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderServiceQtyMethodFields(draft, errors) {
-      const formula = getFormula(draft.formulaId);
+      const service = getService(draft.serviceId);
+      const resolved = draft.calculationMethod === "formula" ? resolveMasterCostFormula(service, "service") : null;
+      const formula = resolved ? resolved.formula : getFormula(draft.formulaId);
       return `
         <div>
           <label class="form-label" for="modal-service-method">Calculation Method</label>
@@ -19713,17 +19748,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
         ${draft.calculationMethod === "formula" ? `
           <div>
-            <label class="form-label" for="modal-service-formula">Quantity Formula</label>
-            <select id="modal-service-formula" class="full-select ${errors.formulaId ? "input-invalid" : ""}" aria-invalid="${errors.formulaId ? "true" : "false"}">
-              <option value="">Select a formula...</option>
-              ${getServiceFormulas("Quantity").map((item) => `
-                <option value="${item.id}" ${Number(draft.formulaId) === item.id ? "selected" : ""}>
-                  ${escapeHtml(item.name)} (${escapeHtml(item.code)})
-                </option>
-              `).join("")}
-            </select>
+            <div class="field-label">Quantity Formula</div>
+            <div class="field-value">${formula ? escapeHtml(formula.name) + " (" + escapeHtml(formula.code) + ")" : "—"}</div>
             ${formula ? `<p class="stat-hint mono" style="margin-top:8px;">${escapeHtml(formula.expression)}</p>` : ""}
-            ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : ""}
+            ${errors.formulaId ? `<div class="field-error">${escapeHtml(errors.formulaId)}</div>` : (!formula && resolved && resolved.error ? `<div class="field-error">${escapeHtml(resolved.error)}</div>` : "")}
             ${errors.formula ? `<div class="field-error">${escapeHtml(errors.formula)}</div>` : ""}
           </div>
         ` : renderManualQtyAndRateFields("modal-service-qty", "modal-service-rate", draft, errors, "Quantity / Piece")}
@@ -19952,7 +19980,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ? calculateServiceCost({ ...line }, getServiceModalCalcContext())
         : line;
       const formula = live.calculationMethod === "formula"
-        ? getFormula(getServiceDefaultFormulaId(service && service.id))
+        ? resolveMasterCostFormula(service, "service").formula
         : getFormula(live.formulaId);
       return `
         <div class="modal-header">
@@ -19974,7 +20002,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div><span>Quantity / Piece</span><strong>${formatQty(live.quantity)}</strong></div>
             <div><span>Required Qty</span><strong>${formatMasterRequiredQty("service", service, live, fg, isCostCalculatorServiceModal() ? { useEnteredDimensions: true } : null)}</strong></div>
             <div><span>Service Rate</span><strong>${service ? formatRatePkr(getServiceRate(service.id)?.rate, getServiceRate(service.id)?.rateUOM) : "—"}</strong></div>
-            <div><span>Master Formula</span><strong>${escapeHtml(formatBoundFormulaCode(getServiceDefaultFormulaId(service && service.id)))}</strong></div>
             <div><span>Applied Rate</span><strong>${formatRatePkr(live.rate, getServiceRate(live.serviceId)?.rateUOM || "")} (${live.rateSource === "manual" ? "manual" : "master"})</strong></div>
             <div><span>Service Cost / Piece</span><strong>${formatRupees(live.costPerPiece)}</strong></div>
           </div>
