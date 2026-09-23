@@ -5026,6 +5026,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { formula: null, error: missingBothMasterFormulasError(kind) };
     }
 
+    function resolveAccessoryCostFormula(material) {
+      const requiredId = normalizeFormulaBinding(material && material.requiredQtyFormulaId);
+      if (!requiredId) {
+        return {
+          formula: null,
+          error: "Default Required Quantity Formula is None on the Raw Material master. Set it so this accessory quantity can be calculated."
+        };
+      }
+      const formula = getFormula(requiredId);
+      if (!formula) {
+        return { formula: null, error: "Default Required Quantity Formula is not a valid formula. Choose another formula on the Raw Material master." };
+      }
+      if (!formula.isActive) {
+        return { formula: null, error: "Default Required Quantity Formula is inactive. Activate it or choose another formula on the Raw Material master." };
+      }
+      return { formula, error: null };
+    }
+
+    function materialLineCostFormula(material, line) {
+      if (line && isBomAccessoryLine(line)) return resolveAccessoryCostFormula(material);
+      return resolveMasterCostFormula(material, "material");
+    }
+
     function getOtherMaterialQtyFormula(material) {
       return getFormula(material && material.qtyFormulaId);
     }
@@ -5305,9 +5328,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function applyMaterialDimensionFormula(draft) {
       const material = getRawMaterial(draft.rawMaterialId);
       if (!material || draft.calculationMethod !== "formula") return;
-      // Cost quantity uses Default Weight Formula, then Default Required Quantity Formula.
-      // materialDimensions.formulaId is no longer read for costing; dimension+ply mapping is still used.
-      const resolved = resolveMasterCostFormula(material, "material");
+      // Structural materials use Default Weight Formula, then Default Required Quantity Formula.
+      // Accessories use Default Required Quantity Formula only. Wastage and net quantity are not applied.
+      const resolved = materialLineCostFormula(material, draft);
       draft.formulaId = resolved.formula ? Number(resolved.formula.id) : null;
     }
 
@@ -5832,7 +5855,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         line.costPerPiece = 0;
         return line;
       }
-      const wastage = Number(line.wastagePercent);
+      const accessoryLine = isBomAccessoryLine(line);
+      const wastage = accessoryLine ? 0 : Number(line.wastagePercent);
+      if (accessoryLine) line.wastagePercent = 0;
       if (Number.isNaN(wastage) || wastage < 0) {
         line.error = "Wastage cannot be negative.";
         line.netQty = 0;
@@ -5852,7 +5877,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
       } else {
-        const resolved = resolveMasterCostFormula(material, "material");
+        const resolved = materialLineCostFormula(material, line);
         const formula = resolved.formula;
         if (formula) line.formulaId = formula.id;
         if (!formula) {
@@ -5898,7 +5923,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
       const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
-      if (grossFormula && grossFormula.isActive) {
+      if (accessoryLine) {
+        grossQty = netQty;
+      } else if (grossFormula && grossFormula.isActive) {
         const grossEval = evaluateFormula(
           grossFormula.expression,
           { ...variables, NET_QTY: netQty, WASTAGE: wastage },
@@ -9116,7 +9143,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       for (const line of state.bomMaterials) {
         if (!getRawMaterial(line.rawMaterialId)) return "A BOM material does not reference a valid raw material master record.";
         if (line.calculationMethod === "formula") {
-          const resolved = resolveMasterCostFormula(getRawMaterial(line.rawMaterialId), "material");
+          const resolved = materialLineCostFormula(getRawMaterial(line.rawMaterialId), line);
           if (!resolved.formula) return resolved.error;
         }
       }
@@ -12241,7 +12268,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function materialQtyFormulaDisplayModel(line, material) {
-      const resolvedQty = line.calculationMethod === "formula" ? resolveMasterCostFormula(material, "material") : null;
+      const accessoryLine = isBomAccessoryLine(line);
+      const resolvedQty = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
+      const qtyLabel = accessoryLine ? "Required Qty" : "Net Qty";
       const formula = resolvedQty ? resolvedQty.formula : null;
       const uom = (material && material.uom) || "";
       if (line.calculationMethod === "manual") {
@@ -12252,7 +12281,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           code: "MANUAL",
           title: "Manual quantity",
           expression: "Entered quantity on this material line",
-          hint: line.error ? "" : ("Net Qty = " + formatQty(line.netQty) + (uom ? " " + uom : "")),
+          hint: line.error ? "" : (qtyLabel + " = " + formatQty(line.netQty) + (uom ? " " + uom : "")),
           success: !line.error,
           valueText: formatQty(line.netQty),
           errorText: line.error || "Manual quantity is not available.",
@@ -12285,7 +12314,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         code: formula.code || "QTY",
         title: formula.description || formula.name || "Quantity formula",
         expression: formula.expression || "—",
-        hint: line.error ? "" : ("Net Qty = " + formatQty(line.netQty) + (uom ? " " + uom : "")),
+        hint: line.error ? "" : (qtyLabel + " = " + formatQty(line.netQty) + (uom ? " " + uom : "")),
         success: !line.error,
         valueText: formatQty(line.netQty),
         errorText: line.error || "Could not evaluate",
@@ -12496,7 +12525,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <option value="${item.id}" ${line && Number(line.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
-          ${accessory ? `<p class="stat-hint">Set on the finished good. Required quantity uses this material’s Default Required Quantity Formula. Net quantity uses Default Weight Formula when it is set, otherwise the Required Quantity Formula.</p>` : ""}
+          ${accessory ? `<p class="stat-hint">Set on the finished good. Cost uses this material’s Default Required Quantity Formula.</p>` : ""}
           ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
           ${line && line.error ? `<div class="field-error">⚠ ${escapeHtml(line.error)}</div>` : ""}
           ${line ? `
@@ -17223,9 +17252,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       } else if (draft.dimensionId && !getDimension(draft.dimensionId)) {
         errors.dimensionId = "Selected dimension is not valid.";
       }
+      const accessoryLine = isBomAccessoryLine(draft);
       if (draft.calculationMethod === "formula") {
         if (material) {
-          const resolved = resolveMasterCostFormula(material, "material");
+          const resolved = materialLineCostFormula(material, draft);
           if (!resolved.formula) errors.formulaId = resolved.error;
           else draft.formulaId = resolved.formula.id;
         }
@@ -17233,11 +17263,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Manual quantity must be greater than 0." });
         if (!qty.ok) errors.manualQty = qty.error;
       }
-      const wastageInput = draft.wastagePercent == null || draft.wastagePercent === ""
-        ? 0
-        : draft.wastagePercent;
-      const wastage = parseByRule(wastageInput, "wastage", { requiredError: "Wastage cannot be negative." });
-      if (!wastage.ok) errors.wastagePercent = wastage.error;
+      if (accessoryLine) {
+        draft.wastagePercent = 0;
+      } else {
+        const wastageInput = draft.wastagePercent == null || draft.wastagePercent === ""
+          ? 0
+          : draft.wastagePercent;
+        const wastage = parseByRule(wastageInput, "wastage", { requiredError: "Wastage cannot be negative." });
+        if (!wastage.ok) errors.wastagePercent = wastage.error;
+      }
       if (draft.rawMaterialId && draft.layer && findDuplicateMaterial(draft.rawMaterialId, draft.layer, lineId)) {
         errors.duplicate = "This material is already added to the selected layer.";
       }
@@ -17704,8 +17738,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : isOther
           ? getOtherRawMaterial(line.otherRawMaterialId)
           : getRawMaterial(line.rawMaterialId);
+      const accessoryLine = !isService && !isOther && isBomAccessoryLine(line);
       const formula = line.calculationMethod === "formula"
-        ? (isService ? resolveMasterCostFormula(item, "service").formula : (isOther ? getOtherMaterialQtyFormula(item) : resolveMasterCostFormula(item, "material").formula))
+        ? (isService ? resolveMasterCostFormula(item, "service").formula : (isOther ? getOtherMaterialQtyFormula(item) : materialLineCostFormula(item, line).formula))
         : null;
       const uom = isService ? (item && item.uom) || "" : (item && item.uom) || "";
       const title = item ? item.name + " — " + item.code : (isService ? "Service" : (isOther ? "Other Material" : "Material"));
@@ -17714,7 +17749,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ? buildServiceFormulaVariables(fg, item, line.dimensionId, line, formula)
           : isOther
             ? buildOtherMaterialFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula)
-            : buildFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula, line))
+            : buildFormulaVariables(fg, item, accessoryLine ? 0 : (Number(line.wastagePercent) || 0), line.dimensionId, formula, line))
         : {};
       const isManual = line.calculationMethod === "manual";
       if (!isManual && !formula) {
@@ -17735,11 +17770,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         uom,
         title,
         sourceType: isManual ? "manual" : inferExplainSourceType(formula),
-        includeGrossQty: !isService,
+        includeGrossQty: !isService && !accessoryLine,
         tagHints: { WASTAGE: "manual" },
         finalHtml: isService
           ? serviceQtyHtml
-          : `Net Qty: <strong>${escapeHtml(formatQty(line.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(line.grossQty))} ${escapeHtml(uom)}</strong>`
+          : accessoryLine
+            ? `Required Qty: <strong>${escapeHtml(formatQty(line.grossQty))} ${escapeHtml(uom)}</strong>`
+            : `Net Qty: <strong>${escapeHtml(formatQty(line.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(line.grossQty))} ${escapeHtml(uom)}</strong>`
       });
     }
 
@@ -18683,11 +18720,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               `}
             `}
             ${renderMaterialQtyMethodFields(draft, errors)}
+            ${isBomAccessoryLine(draft) ? "" : `
             <div>
               <label class="form-label" for="modal-wastage">Wastage % <span class="stat-hint">(Optional)</span></label>
               <input id="modal-wastage" class="full-search ${errors.wastagePercent ? "input-invalid" : ""}" type="number" min="0" max="100" step="0.01" value="${draft.wastagePercent == null || draft.wastagePercent === "" ? "" : escapeHtml(formatDecimal(draft.wastagePercent, 2, false))}" placeholder="0" aria-invalid="${errors.wastagePercent ? "true" : "false"}" />
               ${errors.wastagePercent ? `<div class="field-error">${escapeHtml(errors.wastagePercent)}</div>` : ""}
             </div>
+            `}
           </div>
           ${errors.formulaId ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formulaId)}</div>` : ""}
           ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
@@ -18746,8 +18785,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
           ` : ""}
           ${preview && !preview.error ? `
-            ${renderPreviewField("Calculated qty", escapeHtml(formatQty(preview.netQty) + " " + material.uom))}
-            ${renderPreviewField(
+            ${renderPreviewField(isBomAccessoryLine(state.modal.draft) ? "Required qty" : "Calculated qty", escapeHtml(formatQty(preview.netQty) + " " + material.uom))}
+            ${isBomAccessoryLine(state.modal.draft) ? "" : renderPreviewField(
               "Gross qty (with wastage)",
               escapeHtml(
                 Number.isFinite(preview.netQty) && Number.isFinite(preview.grossQty) && factor != null
@@ -18762,7 +18801,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${renderPreviewField("Material", escapeHtml(material.name))}
           ${renderPreviewField("Layer", escapeHtml(state.modal.draft.layer || "—"))}
           ${preview && !preview.error ? `
-            ${renderPreviewField("Gross qty", escapeHtml(formatQty(preview.grossQty) + " " + material.uom))}
+            ${isBomAccessoryLine(state.modal.draft) ? "" : renderPreviewField("Gross qty", escapeHtml(formatQty(preview.grossQty) + " " + material.uom))}
             ${renderPreviewField("Rate", escapeHtml(formatRatePkr(preview.rate, getMaterialRate(material.id)?.rateUOM)))}
             ${renderPreviewField("Net cost", escapeHtml(formatCurrency(preview.costPerPiece)) + ' <span class="stat-hint">(per 1 piece)</span>')}
             <div class="summary-highlight">
