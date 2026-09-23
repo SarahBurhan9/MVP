@@ -2830,6 +2830,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       rawMaterials.forEach((item) => {
         if (item.gsm != null && item.gsm !== "") item.gsm = roundTo(item.gsm, 1);
         item.qtyFormulaId = normalizeFormulaBinding(item.qtyFormulaId);
+        item.requiredQtyFormulaId = normalizeFormulaBinding(item.requiredQtyFormulaId);
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
         delete item.rateFormulaId;
       });
@@ -11071,7 +11072,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function isFormulaUsed(formulaId) {
       const formula = getFormula(formulaId);
-      const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
+      const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.requiredQtyFormulaId, formula))
         || otherRawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
         || services.some((item) => bindingUsesFormula(item.formulaId, formula) || bindingUsesFormula(item.qtyFormulaId, formula))
         || materialRates.some((item) => bindingUsesFormula(item.formulaId, formula))
@@ -13900,6 +13901,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         uom: "kg",
         gsm: "",
         qtyFormulaId: null,
+        requiredQtyFormulaId: null,
         dimensionIds: [],
         status: "Active"
       };
@@ -13953,11 +13955,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
             </div>
             <div>
-              <label class="form-label" for="rm-qty-formula">Default Quantity Formula</label>
+              <label class="form-label" for="rm-qty-formula">Default Weight Formula</label>
               <select id="rm-qty-formula" class="full-select">
                 ${renderBoundFormulaOptions("Material", draft.qtyFormulaId, "Quantity")}
               </select>
               <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
+            </div>
+            <div>
+              <label class="form-label" for="rm-required-qty-formula">Default Required Quantity Formula</label>
+              <select id="rm-required-qty-formula" class="full-select">
+                ${renderBoundFormulaOptions("Material", draft.requiredQtyFormulaId)}
+              </select>
             </div>
             ${showGsm ? `
               <div>
@@ -14046,6 +14054,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         uom: item.uom,
         gsm: item.gsm == null ? "" : formatDecimal(item.gsm, 1, false),
         qtyFormulaId: normalizeFormulaBinding(item.qtyFormulaId),
+        requiredQtyFormulaId: normalizeFormulaBinding(item.requiredQtyFormulaId),
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
         status: item.status
       };
@@ -14084,6 +14093,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         uom: draft.uom,
         gsm: parsedGsm && parsedGsm.ok ? parsedGsm.value : null,
         qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
+        requiredQtyFormulaId: normalizeFormulaBinding(draft.requiredQtyFormulaId),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -14120,6 +14130,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "rm-uom") draft.uom = target.value;
       else if (target.id === "rm-gsm") draft.gsm = target.value;
       else if (target.id === "rm-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "rm-required-qty-formula") draft.requiredQtyFormulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "rm-status") draft.status = target.value;
       else return false;
       return true;
