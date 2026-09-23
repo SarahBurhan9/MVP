@@ -2828,7 +2828,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBomRequiredQtyDisplay(kind, item, line, finishedGood) {
-      const value = formatMasterRequiredQty(kind, item, line, finishedGood);
+      const value = appendHtmlUnit(formatMasterRequiredQty(kind, item, line, finishedGood), item && item.uom, " ");
       const lineId = line && (line.id != null ? line.id : line.key);
       if (lineId == null || lineId === "") return value;
       return `${value}${formulaHelpButton("required-qty", lineId, "How required quantity was calculated")}`;
@@ -4023,25 +4023,38 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderCompactLW(L, W) {
+    function appendHtmlUnit(text, uom, separator) {
+      const unit = String(uom || "").trim();
+      if (!unit || text == null || text === "" || text === "—") return text;
+      return text + separator + escapeHtml(unit);
+    }
+
+    function appendPlainUnit(text, uom, separator) {
+      const unit = String(uom || "").trim();
+      if (!unit || text == null || text === "" || text === "—") return text;
+      return text + separator + unit;
+    }
+
+    function renderCompactLW(L, W, uom) {
       const length = Number(L);
       const width = Number(W);
       if (!Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) return "";
-      return `L = ${escapeHtml(formatQty(length))}, W = ${escapeHtml(formatQty(width))}`;
+      const suffix = String(uom || "").trim() ? " " + escapeHtml(String(uom).trim()) : "";
+      return `L = ${escapeHtml(formatQty(length))}${suffix}, W = ${escapeHtml(formatQty(width))}${suffix}`;
     }
 
-    function formatBreakdownMaterialDimensions(finishedGood, line) {
+    function formatBreakdownMaterialDimensions(finishedGood, line, uom) {
       if (isUseCustomDimensions(line)) {
-        const custom = renderCompactLW(line.customLength, line.customWidth);
+        const custom = renderCompactLW(line.customLength, line.customWidth, uom);
         if (custom) return custom;
       }
       const auto = getAutoQuantityLW(finishedGood, line && line.dimensionId, styleFormulaPlyForBomLine(finishedGood, line));
-      return (auto && renderCompactLW(auto.L, auto.W)) || "—";
+      return (auto && renderCompactLW(auto.L, auto.W, uom)) || "—";
     }
 
-    function renderStepTableDimCell(autoDims, customL, customW) {
-      const autoLine = autoDims ? renderCompactLW(autoDims.L, autoDims.W) : "";
-      const customLine = renderCompactLW(customL, customW);
+    function renderStepTableDimCell(autoDims, customL, customW, uom) {
+      const autoLine = autoDims ? renderCompactLW(autoDims.L, autoDims.W, uom) : "";
+      const customLine = renderCompactLW(customL, customW, uom);
       if (!autoLine && !customLine) return "—";
       return `
         <div class="step-dim-cell">
@@ -4104,7 +4117,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderFinishingDimensionCell(finishedGood, line, dataAttr) {
       if (!line) return "—";
       return renderStepValueWithEdit(
-        formatBreakdownMaterialDimensions(finishedGood, line),
+        formatBreakdownMaterialDimensions(finishedGood, line, finishedGood && finishedGood.dimensionUOM),
         dataAttr || "data-edit-service-dims",
         line.id || line.key,
         "Edit dimensions",
@@ -4635,7 +4648,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly) {
+    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom) {
       if (requiredQtyOnly) {
         return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>`;
       }
@@ -4646,8 +4659,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `
         <td class="step-num step-col-compact">${requiredQtyHtml}</td>
         <td class="step-num step-col-compact">${wastageCell}</td>
-        <td class="step-num step-col-compact">${formatWastageQty(netQty, grossQty, hasError)}</td>
-        <td class="step-num step-col-compact">${hasError ? "—" : formatQty(netQty)}</td>
+        <td class="step-num step-col-compact">${appendHtmlUnit(formatWastageQty(netQty, grossQty, hasError), qtyUom, " ")}</td>
+        <td class="step-num step-col-compact">${appendHtmlUnit(hasError ? "—" : formatQty(netQty), qtyUom, " ")}</td>
       `;
     }
 
@@ -7027,6 +7040,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCostCalculatorAdditionalMaterials(summary) {
       const materials = summary.additionalMaterials || [];
       const services = summary.additionalServices || [];
+      const costUom = (getCostCalculatorFinishedGood() || {}).uom;
       const materialBody = materials.map((row, index) => {
         const material = getRawMaterial(row.rawMaterialId);
         const calc = row.calc || {};
@@ -7038,9 +7052,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${renderRequiredQtyWithEdit(formatMasterRequiredQty("material", material, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), "data-edit-required-qty-line", lineId)}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("material", material, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), material && material.uom, " "), "data-edit-required-qty-line", lineId)}</td>
             <td class="step-num">${renderLineRateWithEdit(material, material ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—", "data-bom-material-rate", material && material.id)}</td>
-            <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+            <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-additional-material="${lineId}" title="Calculation breakdown">
@@ -7068,9 +7082,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${renderRequiredQtyWithEdit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), "data-edit-required-qty-additional", lineId)}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " "), "data-edit-required-qty-additional", lineId)}</td>
             <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
-            <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+            <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-additional-service="${lineId}" title="Calculation breakdown">
@@ -7110,6 +7124,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderCostCalculatorServices(summary, steps) {
+      const costUom = (getCostCalculatorFinishedGood() || {}).uom;
       const body = (summary.services || []).map((row, index) => {
         const ply = row.ply || styleFormulaPlyForLayer(row.layer, steps.ply);
         const service = row.serviceId ? getService(row.serviceId) : null;
@@ -7123,9 +7138,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="stat-hint">${escapeHtml(row.layer || "")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${row.serviceId ? renderRequiredQtyWithEdit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), "data-edit-required-qty-service", lineId) : "—"}</td>
+            <td class="step-num">${row.serviceId ? renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " "), "data-edit-required-qty-service", lineId) : "—"}</td>
             <td class="step-num">${row.serviceId ? renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
-            <td class="step-num">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)) : "—"}</td>
+            <td class="step-num">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")) : "—"}</td>
             <td>
               ${row.serviceId ? `
                 <div class="row-actions">
@@ -7164,6 +7179,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderCostCalculatorFinishingServices(summary, steps) {
+      const costUom = (getCostCalculatorFinishedGood() || {}).uom;
       const active = (summary.finishingServices || []).filter((row) => row.serviceId);
       const hasFinishingErrors = active.some((row) => row.calc && row.calc.error);
       const body = (summary.finishingServices || []).map((row, index) => {
@@ -7184,9 +7200,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${row.serviceId && calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
             <td class="step-col-dim">${row.serviceId ? renderFinishingDimensionCell(getCostCalculatorFinishedGood(), row, "data-edit-cc-service-dims") : "—"}</td>
-            <td class="step-num step-col-compact">${row.serviceId ? formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }) : "—"}</td>
+            <td class="step-num step-col-compact">${row.serviceId ? appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " ") : "—"}</td>
             <td class="step-num">${row.serviceId && service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
-            <td class="step-num step-col-compact">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)) : "—"}</td>
+            <td class="step-num step-col-compact">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")) : "—"}</td>
             <td>
               ${row.serviceId ? `
                 <div class="row-actions">
@@ -7783,8 +7799,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderCostCalculatorLayerCard(row, index, materials, steps) {
       const material = getRawMaterial(row.rawMaterialId);
       const calc = row.calc || {};
+      const ccFinishedGood = getCostCalculatorFinishedGood();
       const autoDims = getAutoQuantityLW(
-        getCostCalculatorFinishedGood(),
+        ccFinishedGood,
         calc.dimensionId,
         styleFormulaPlyForLayer(row.layer, steps && steps.ply)
       );
@@ -7821,16 +7838,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>
                   <tr>
                     <td>1</td>
-                    <td class="step-col-dim">${renderStepTableDimCell(autoDims, null, null)}</td>
+                    <td class="step-col-dim">${renderStepTableDimCell(autoDims, null, null, ccFinishedGood && ccFinishedGood.dimensionUOM)}</td>
                     ${renderPlyMaterialQtyCells(
-                      formatMasterRequiredQty("material", material, { layer: row.layer, rawMaterialId: row.rawMaterialId, wastagePercent: calc.wastagePercent }, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }),
+                      appendHtmlUnit(formatMasterRequiredQty("material", material, { layer: row.layer, rawMaterialId: row.rawMaterialId, wastagePercent: calc.wastagePercent }, ccFinishedGood, { useEnteredDimensions: true }), material && material.uom, " "),
                       calc.netQty,
                       calc.grossQty,
                       calc.wastagePercent,
-                      Boolean(calc.error)
+                      Boolean(calc.error),
+                      null,
+                      false,
+                      material && material.uom
                     )}
                     <td class="step-num step-col-compact">${material && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM)) : "—"}</td>
-                    <td class="step-num step-col-compact">${calc.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(calc.cost)}</td>
+                    <td class="step-num step-col-compact">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), ccFinishedGood && ccFinishedGood.uom, " / ")}</td>
                   </tr>
                 </tbody>
               </table>
@@ -12418,9 +12438,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function bomLineCostDisplayModel(line) {
       const hasError = Boolean(line && line.error);
+      const fg = getSelectedFinishedGood();
       return {
         hasError,
-        displayValue: hasError ? "Error" : formatRupees(line.costPerPiece)
+        displayValue: hasError ? "Error" : appendPlainUnit(formatRupees(line.costPerPiece), fg && fg.uom, " / ")
       };
     }
 
@@ -12495,7 +12516,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <td>1</td>
                     <td class="step-col-dim">${renderStepValueWithEdit(
-                      formatBreakdownMaterialDimensions(getSelectedFinishedGood(), line),
+                      formatBreakdownMaterialDimensions(getSelectedFinishedGood(), line, (getSelectedFinishedGood() || {}).dimensionUOM),
                       "data-edit-material-dims",
                       line.id,
                       "Edit dimensions",
@@ -12509,7 +12530,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       line.wastagePercent,
                       Boolean(line.error),
                       line.id,
-                      accessory
+                      accessory,
+                      material && material.uom
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
@@ -12519,7 +12541,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "pencil",
                       "rate"
                     ) : "—"}</td>
-                    <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+                    <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
                     <td class="step-col-actions">
                       <div class="row-actions">
                         <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
@@ -12760,7 +12782,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </td>
             <td class="step-num">${renderRequiredQtyWithEdit(renderBomRequiredQtyDisplay("material", material, line, getSelectedFinishedGood()), "data-edit-required-qty-line", line.id)}</td>
             <td class="step-num">${renderLineRateWithEdit(material, material ? formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—", "data-bom-material-rate", material && material.id)}</td>
-            <td class="step-num" data-bom-line-cost="additional-material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num" data-bom-line-cost="additional-material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
@@ -12788,7 +12810,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </td>
             <td class="step-num">${renderRequiredQtyWithEdit(renderBomRequiredQtyDisplay("service", service, line, getSelectedFinishedGood()), "data-edit-required-qty-additional", line.id)}</td>
             <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
-            <td class="step-num" data-bom-line-cost="additional-service:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num" data-bom-line-cost="additional-service:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-additional-service="${line.id}" title="Calculation breakdown">
@@ -12884,7 +12906,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </td>
             <td class="step-num">${line.serviceId ? renderBomRequiredQtyDisplay("service", service, line, getSelectedFinishedGood()) : "—"}</td>
             <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
-            <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)) : "—"}</td>
+            <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")) : "—"}</td>
             <td>
               <div class="row-actions">
                 ${line.serviceId ? `
@@ -12988,7 +13010,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 "pencil",
                 "rate"
               ) : "—"}</td>
-            <td class="step-num step-col-compact" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)}</td>
+            <td class="step-num step-col-compact" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (fg || {}).uom, " / ")}</td>
             <td>
               <div class="row-actions">
                 <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-finishing-service="${line.id}" title="Calculation breakdown">
