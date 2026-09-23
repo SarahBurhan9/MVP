@@ -3175,17 +3175,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `${code} ${item?.dimensionUOM || item?.uom || ""}`.trim();
     }
 
-    function formatPackagingPieceCost(value) {
-      const n = Number(value);
-      if (!Number.isFinite(n)) return "—";
-      const decimals = Math.abs(n) > 0 && Math.abs(n) < 0.01 ? 4 : 2;
-      const rounded = roundTo(n, decimals);
-      return "Rs. " + rounded.toLocaleString("en-US", {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: decimals
-      });
-    }
-
     function formatRupees(value) {
       return formatCurrency(value);
     }
@@ -6121,9 +6110,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       state.totalOtherMaterialCost = roundTo(calculateTotalOtherMaterialCost(), 2);
       state.bomServices = state.bomServices.map((line) => {
         if (!line || !line.serviceId) return { ...line, error: null, quantity: 0, rate: 0, costPerPiece: 0 };
-        const next = calculateServiceCost(line);
-        if (next.error || packagingLineUsesOrderQty(next)) return next;
-        return { ...next, costPerPiece: roundTo(Number(next.costPerPiece) / 1000, 4) };
+        return calculateServiceCost(line);
       });
       state.bomAdditionalServices = (state.bomAdditionalServices || []).map((line) => {
         if (!line.serviceId) {
@@ -12752,7 +12739,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </td>
             <td class="step-num">${line.serviceId ? formatBomPackagingRequiredQty(line) : "—"}</td>
             <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
-            <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatPackagingPieceCost(line.costPerPiece)) : "—"}</td>
+            <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : formatRupees(line.costPerPiece)) : "—"}</td>
             <td>
               <div class="row-actions">
                 ${line.serviceId ? `
@@ -12801,25 +12788,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>${body || emptyRow(6, "Select a packaging service.")}</tbody>
               </table>
             </div>
-            ${activeRows.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong id="bom-service-cost-total">${hasServiceErrors ? "Error" : formatPackagingPieceCost(state.totalServiceCost)}</strong></div>` : ""}
+            ${activeRows.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong id="bom-service-cost-total">${hasServiceErrors ? "Error" : formatRupees(state.totalServiceCost)}</strong></div>` : ""}
           </div>
         </div>
       `;
       const lineModels = {};
       activeRows.forEach((line) => {
-        lineModels["service:" + line.id] = {
-          hasError: Boolean(line.error),
-          displayValue: line.error ? "Error" : formatPackagingPieceCost(line.costPerPiece)
-        };
+        lineModels["service:" + line.id] = bomLineCostDisplayModel(line);
       });
       mountBomCostCellHosts(
         root,
         lineModels,
         activeRows.length ? "bom-service-cost-total" : null,
-        activeRows.length ? {
-          hasError: hasServiceErrors,
-          displayValue: hasServiceErrors ? "Error" : formatPackagingPieceCost(state.totalServiceCost)
-        } : null
+        activeRows.length ? bomSectionTotalDisplayModel(hasServiceErrors, state.totalServiceCost) : null
       );
     }
 
