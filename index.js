@@ -317,6 +317,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       2: ["Top Liner", "Bottom Liner"],
       3: ["Top Liner", "Inner Liner", "Bottom Liner"]
     };
+    for (let plyCount = 4; plyCount <= 10; plyCount += 1) {
+      STRUCTURAL_PLY_LAYERS[plyCount] = Array.from({ length: plyCount }, (_, index) => "Ply " + (index + 1));
+    }
 
     let bomLineSeq = 1;
     let bomSeq = 1;
@@ -3366,9 +3369,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         .sort((a, b) => String(a.variableCode).localeCompare(String(b.variableCode)) || Number(a.ply) - Number(b.ply) || a.id - b.id);
     }
 
+    const STYLE_PLY_VALUES = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+
+    function isStylePly(value) {
+      const n = Number(value);
+      return STYLE_PLY_VALUES.includes(n);
+    }
+
     function normalizeStylePly(value, fallback) {
       const n = Number(value);
-      if (n === 1 || n === 2 || n === 3) return n;
+      if (isStylePly(n)) return n;
       return fallback == null ? 3 : fallback;
     }
 
@@ -3396,7 +3406,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderStylePlyOptions(selected) {
       const current = normalizeStylePly(selected, 1);
-      return [1, 2, 3].map((ply) => `<option value="${ply}" ${current === ply ? "selected" : ""}>${ply}</option>`).join("");
+      return STYLE_PLY_VALUES.map((ply) => `<option value="${ply}" ${current === ply ? "selected" : ""}>${ply}</option>`).join("");
     }
 
     const BOM_DIMENSION_DISPLAY = [
@@ -3496,8 +3506,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       delete vars.W;
       delete vars.H;
       const ply = plyOverride != null ? Number(plyOverride) : getFinishedGoodPly(finishedGood);
+      if (style && isStylePly(ply) && ![1, 2, 3].includes(ply)) {
+        const productPly = getFinishedGoodPly(finishedGood);
+        if (productPly !== ply) {
+          const defaults = getFormulaVariableDefaults();
+          getStyleVariablesForPly(style.id, productPly).forEach((row) => {
+            const code = row.variableCode;
+            if (code === "L" || code === "W" || code === "H") return;
+            if (Object.prototype.hasOwnProperty.call(defaults, code)) vars[code] = defaults[code];
+            else delete vars[code];
+          });
+        }
+      }
       if (style) {
-        getStyleVariablesForPly(style.id, [1, 2, 3].includes(ply) ? ply : getFinishedGoodPly(finishedGood)).forEach((row) => {
+        getStyleVariablesForPly(style.id, isStylePly(ply) ? ply : getFinishedGoodPly(finishedGood)).forEach((row) => {
           const n = numericOrNull(row.value);
           if (n !== null && row.variableCode !== "L" && row.variableCode !== "W" && row.variableCode !== "H") {
             vars[row.variableCode] = n;
@@ -3636,7 +3658,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         linkId: linkId,
         formulaId: formula.id,
-        ply: [1, 2, 3].includes(Number(ply)) ? Number(ply) : null,
+        ply: isStylePly(Number(ply)) ? Number(ply) : null,
         code: formula.code,
         name: formula.name,
         description: formula.description || formula.name,
@@ -3657,11 +3679,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       coveredRows.forEach((covered) => {
         const formula = getFormula(covered.formulaId) || getFormulaByCode(covered.code);
         if (!formula) return;
-        const ply = [1, 2, 3].includes(Number(covered.ply)) ? Number(covered.ply) : null;
+        const ply = isStylePly(Number(covered.ply)) ? Number(covered.ply) : null;
         const vars = buildFlatStyleFormulaVariables(finishedGood, ply || getFinishedGoodPly(finishedGood));
         list.forEach((row) => {
           if (!row.success || !row.code || row.code === "—") return;
-          if (ply != null && [1, 2, 3].includes(Number(row.ply)) && Number(row.ply) !== ply) return;
+          if (ply != null && isStylePly(Number(row.ply)) && Number(row.ply) !== ply) return;
           vars[row.code] = row.result;
         });
         const nested = collectNestedFormulas(formula, extraFormulasFromStyleRows(list));
@@ -3684,10 +3706,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const productPly = getFinishedGoodPly(finishedGood);
       const rows = getStyleFormulaLinks(style.id).filter((link) => {
         const linkPly = Number(link.ply);
-        if (![1, 2, 3].includes(linkPly)) return true;
+        if (!isStylePly(linkPly)) return true;
         return linkPly <= productPly;
       }).map((link) => {
-        const linkPly = [1, 2, 3].includes(Number(link.ply)) ? Number(link.ply) : null;
+        const linkPly = isStylePly(Number(link.ply)) ? Number(link.ply) : null;
         const variables = buildFlatStyleFormulaVariables(finishedGood, linkPly || productPly);
         const formula = getFormula(link.formulaId);
         if (!formula) {
@@ -3793,7 +3815,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return nested.map((item) => {
         if (!item || !item.code || item.code === formula.code) return null;
         const matches = (allRows || []).filter((row) => row && row.code === item.code);
-        if ([1, 2, 3].includes(ply)) {
+        if (isStylePly(ply)) {
           const samePly = matches.find((row) => Number(row.ply) === ply);
           if (samePly) return samePly;
         }
@@ -3837,7 +3859,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const list = snap && Array.isArray(snap.coveredRows) ? snap.coveredRows : [];
       const match = list.find((row) => Number(row.ply) === Number(ply));
       if (match) return match;
-      if (![1, 2, 3].includes(Number(ply))) return snap && snap.coveredRow ? snap.coveredRow : null;
+      if (!isStylePly(Number(ply))) return snap && snap.coveredRow ? snap.coveredRow : null;
       return list.find((row) => row.ply == null) || null;
     }
 
@@ -3853,11 +3875,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           error: plyRow.success ? null : plyRow.error,
           source: "style_covered_area",
           code: plyRow.code,
-          ply: [1, 2, 3].includes(Number(plyRow.ply)) ? Number(plyRow.ply) : ply
+          ply: isStylePly(Number(plyRow.ply)) ? Number(plyRow.ply) : ply
         };
       }
       const style = finishedGood ? findStyleByName(finishedGood.style) : null;
-      if (style && styleHasPlyCoveredAreaFormulas(style.id) && [1, 2, 3].includes(ply)) {
+      if (style && styleHasPlyCoveredAreaFormulas(style.id) && isStylePly(ply)) {
         return {
           success: false,
           result: null,
@@ -3890,7 +3912,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const ply = plyOverride != null ? Number(plyOverride) : getFinishedGoodPly(finishedGood);
       snap.rows.forEach((row) => {
         if (!row.success || !row.code || row.code === "—") return;
-        if ([1, 2, 3].includes(Number(row.ply)) && Number(row.ply) !== ply) return;
+        if (isStylePly(Number(row.ply)) && Number(row.ply) !== ply) return;
         variables[row.code] = row.result;
       });
       const covered = evaluateCoveredAreaValue(finishedGood, variables, snap, ply);
@@ -4219,7 +4241,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function styleHasPlyCoveredAreaFormulas(styleId) {
       return getStyleFormulaLinks(styleId).some((link) => {
-        if (![1, 2, 3].includes(Number(link.ply))) return false;
+        if (!isStylePly(Number(link.ply))) return false;
         const formula = getFormula(link.formulaId);
         return Boolean(formula && formula.coveredArea);
       });
@@ -4779,7 +4801,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const next = [];
       raw.forEach((item) => {
         const ply = Number(item);
-        if (![1, 2, 3].includes(ply) || seen.has(ply)) return;
+        if (!isStylePly(ply) || seen.has(ply)) return;
         seen.add(ply);
         next.push(ply);
       });
@@ -4906,6 +4928,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (targetPly != null) {
         const exact = matches.find((item) => Number(item.ply) === targetPly);
         if (exact) return exact;
+        if (isStylePly(targetPly) && targetPly > 3) return null;
       }
       return matches[0];
     }
@@ -4957,6 +4980,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (targetPly != null) {
         const exact = matches.find((item) => Number(item.ply) === targetPly);
         if (exact) return exact;
+        if (isStylePly(targetPly) && targetPly > 3) return null;
       }
       return matches[0];
     }
@@ -5073,6 +5097,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (targetPly != null) {
         const exact = matches.find((item) => Number(item.ply) === targetPly);
         if (exact) return exact;
+        if (isStylePly(targetPly) && targetPly > 3) return null;
       }
       return matches[0];
     }
@@ -6106,7 +6131,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function finishingServiceMaterialPly(line) {
       if (!line) return null;
       const ply = Number(line.ply);
-      if (![1, 2, 3].includes(ply)) return null;
+      if (!isStylePly(ply)) return null;
       if (line.finishing === true) return ply;
       const id = Number(line.id);
       if (id && (state.bomFinishingServices || []).some((row) => Number(row.id) === id)) return ply;
@@ -6370,7 +6395,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const styleId = Number(merged.styleId);
       merged.styleId = styles.some((item) => item.id === styleId) ? styleId : "";
       const ply = Number(merged.ply);
-      merged.ply = ply === 1 || ply === 2 || ply === 3 ? ply : "";
+      merged.ply = isStylePly(ply) ? ply : "";
       merged.L = storedCostCalculatorDimension(merged.L);
       merged.W = storedCostCalculatorDimension(merged.W);
       merged.H = storedCostCalculatorDimension(merged.H);
@@ -6527,7 +6552,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (opts.nested) classes.push("is-nested");
       if (opts.primary) classes.push("is-primary");
       const stepLabel = opts.stepIndex != null ? `<span class="style-formula-step">Step ${opts.stepIndex}</span>` : "";
-      const plyLabel = [1, 2, 3].includes(Number(row.ply)) ? `Ply ${row.ply} · ` : "";
+      const plyLabel = isStylePly(Number(row.ply)) ? `Ply ${row.ply} · ` : "";
       return `
         <div class="${classes.join(" ")}">
           <div>
@@ -7271,7 +7296,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!links.length) return null;
       const ids = links.map((row) => Number(row.dimensionId));
       const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
-      return getMaterialDimensionLink(rawMaterialId, picked, ply) || links[0];
+      const link = getMaterialDimensionLink(rawMaterialId, picked, ply);
+      if (link) return link;
+      if (isStylePly(Number(ply)) && Number(ply) > 3) return null;
+      return links[0];
     }
 
     function findCostCalculatorOtherMaterialLink(otherRawMaterialId, ply, finishedGood) {
@@ -7279,7 +7307,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!links.length) return null;
       const ids = links.map((row) => Number(row.dimensionId));
       const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
-      return getOtherMaterialDimensionLink(otherRawMaterialId, picked, ply) || links[0];
+      const link = getOtherMaterialDimensionLink(otherRawMaterialId, picked, ply);
+      if (link) return link;
+      if (isStylePly(Number(ply)) && Number(ply) > 3) return null;
+      return links[0];
     }
 
     function findCostCalculatorServiceLink(serviceId, ply, finishedGood) {
@@ -7287,7 +7318,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!links.length) return null;
       const ids = links.map((row) => Number(row.dimensionId));
       const picked = pickBomDimensionId(ids, links[0].dimensionId, finishedGood);
-      return getServiceDimensionLink(serviceId, picked, ply) || links[0];
+      const link = getServiceDimensionLink(serviceId, picked, ply);
+      if (link) return link;
+      if (isStylePly(Number(ply)) && Number(ply) > 3) return null;
+      return links[0];
     }
 
     function formatCostCalculatorFormulaError(error) {
@@ -8019,7 +8053,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="card-body">
                 <div class="cc-step">Step 3: Select Ply</div>
                 <div class="cc-ply-tabs" role="radiogroup" aria-label="Ply count">
-                  ${[1, 2, 3].map((ply) => `
+                  ${STYLE_PLY_VALUES.map((ply) => `
                     <button type="button" class="cc-ply-btn ${Number(cc.ply) === ply ? "active" : ""}" role="radio" aria-checked="${Number(cc.ply) === ply ? "true" : "false"}" data-cc-ply="${ply}" ${steps.hasDims ? "" : "disabled"}>${ply}-Ply</button>
                   `).join("")}
                 </div>
@@ -12103,7 +12137,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         key: String(row.linkId || row.code || "") + ":" + String(opts.stepIndex || ""),
         className: classes.join(" "),
         stepLabel: opts.stepIndex != null ? "Step " + opts.stepIndex : "",
-        code: ([1, 2, 3].includes(Number(row.ply)) ? ("Ply " + row.ply + " · ") : "") + (row.code || ""),
+        code: (isStylePly(Number(row.ply)) ? ("Ply " + row.ply + " · ") : "") + (row.code || ""),
         title: row.description || row.name || "",
         expression: row.expression || "—",
         hint,
@@ -13812,7 +13846,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!String(draft.product || "").trim()) errors.product = "Product Name is required.";
       if (!String(draft.style || "").trim()) errors.style = "Style is required.";
       if (!String(draft.variant || "").trim()) errors.variant = "Variant is required.";
-      if (![1, 2, 3].includes(Number(draft.ply))) errors.ply = "Ply must be 1, 2, or 3.";
+      if (!isStylePly(draft.ply)) errors.ply = "Ply must be 1 through 10.";
       const L = parseByRule(draft.L, "dimension", { requiredError: "Length must be greater than 0.", minError: "Length must be at least 0.1." });
       const W = parseByRule(draft.W, "dimension", { requiredError: "Width must be greater than 0.", minError: "Width must be at least 0.1." });
       const H = parseByRule(draft.H, "dimension", { requiredError: "Height must be greater than 0.", minError: "Height must be at least 0.1." });
@@ -13897,7 +13931,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="form-span-2">
               <label class="form-label" for="fg-ply">Ply Selection</label>
               <select id="fg-ply" class="full-select ${errors.ply ? "input-invalid" : ""}">
-                ${[1, 2, 3].map((ply) => `<option value="${ply}" ${Number(draft.ply) === ply ? "selected" : ""}>${ply}</option>`).join("")}
+                ${STYLE_PLY_VALUES.map((ply) => `<option value="${ply}" ${Number(draft.ply) === ply ? "selected" : ""}>${ply}</option>`).join("")}
               </select>
               ${errors.ply ? `<div class="field-error">${escapeHtml(errors.ply)}</div>` : ""}
             </div>
@@ -15304,7 +15338,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="form-span-2">
               <label class="form-label">Ply</label>
               <div class="service-category-row">
-                ${[1, 2, 3].map((ply) => `
+                ${STYLE_PLY_VALUES.map((ply) => `
                   <label class="custom-dim-flag" for="srv-ply-${ply}">
                     <input id="srv-ply-${ply}" type="checkbox" ${normalizeServicePlies(draft.plies).includes(ply) ? "checked" : ""} />
                     <span>Ply ${ply}</span>
@@ -15465,11 +15499,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       else if (target.id && target.id.startsWith("srv-ply-")) {
         const ply = Number(target.id.slice("srv-ply-".length));
-        if (![1, 2, 3].includes(ply)) return false;
+        if (!isStylePly(ply)) return false;
         const selected = new Set(normalizeServicePlies(draft.plies));
         if (target.checked) selected.add(ply);
         else selected.delete(ply);
-        draft.plies = [1, 2, 3].filter((item) => selected.has(item));
+        draft.plies = STYLE_PLY_VALUES.filter((item) => selected.has(item));
       }
       else return false;
       return true;
@@ -15946,8 +15980,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
       `;
       const linkedFormulas = editing && draft.id ? getStyleFormulaLinks(draft.id) : [];
-      const usedPlys = new Set(linkedFormulas.map((row) => Number(row.ply)).filter((ply) => ply === 1 || ply === 2 || ply === 3));
-      const availablePlys = [1, 2, 3].filter((ply) => !usedPlys.has(ply));
+      const usedPlys = new Set(linkedFormulas.map((row) => Number(row.ply)).filter((ply) => isStylePly(ply)));
+      const availablePlys = STYLE_PLY_VALUES.filter((ply) => !usedPlys.has(ply));
       const availableFormulas = getCoveredAreaStyleFormulas();
       const selectedFormulaId = Number(state.modal.styleFormulaId) || "";
       const selectedFormula = selectedFormulaId ? availableFormulas.find((item) => item.id === selectedFormulaId) : null;
@@ -15964,7 +15998,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const gridBody = linkedFormulas.length
         ? linkedFormulas.map((row) => {
             const formula = getFormula(row.formulaId);
-            const plyLabel = [1, 2, 3].includes(Number(row.ply)) ? String(row.ply) : "—";
+            const plyLabel = isStylePly(row.ply) ? String(row.ply) : "—";
             return `
               <tr>
                 <td>${escapeHtml(formula ? formula.name : "Missing formula")}</td>
@@ -16125,16 +16159,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         row.errors = {};
         if (!row.variableCode) row.errors.variableCode = "Variable is required.";
         const ply = normalizeStylePly(row.ply, NaN);
-        if (![1, 2, 3].includes(ply)) row.errors.ply = "Ply must be 1, 2, or 3.";
+        if (!isStylePly(ply)) row.errors.ply = "Ply must be 1 through 10.";
         const parsed = parseByRule(row.value, "variable", { requiredError: "Value is required." });
         if (!parsed.ok) row.errors.value = parsed.error;
-        if (row.variableCode && [1, 2, 3].includes(ply)) {
+        if (row.variableCode && isStylePly(ply)) {
           const key = styleVariableComboKey(row.variableCode, ply);
           if (usedCombos.has(key)) row.errors.ply = "This variable is already set for this ply.";
           usedCombos.add(key);
         }
         row.parsedValue = parsed.ok ? parsed.value : null;
-        row.ply = [1, 2, 3].includes(ply) ? ply : row.ply;
+        row.ply = isStylePly(ply) ? ply : row.ply;
         if (Object.keys(row.errors).length) pendingInvalid = true;
       });
       if (pendingInvalid) {
@@ -16299,10 +16333,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const errors = {};
       if (!draft.variableCode) errors.variableCode = "Variable is required.";
       const ply = normalizeStylePly(draft.ply, NaN);
-      if (![1, 2, 3].includes(ply)) errors.ply = "Ply must be 1, 2, or 3.";
+      if (!isStylePly(ply)) errors.ply = "Ply must be 1 through 10.";
       const parsedValue = parseByRule(draft.value, "variable", { requiredError: "Value is required." });
       if (!parsedValue.ok) errors.value = parsedValue.error;
-      if (draft.variableCode && [1, 2, 3].includes(ply) && findStyleVariable(state.modal.draft.id, draft.variableCode, ply, draft.id)) {
+      if (draft.variableCode && isStylePly(ply) && findStyleVariable(state.modal.draft.id, draft.variableCode, ply, draft.id)) {
         errors.ply = "This variable is already set for this ply.";
       }
       sub.errors = errors;
@@ -16396,8 +16430,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         showNotification("Select a Covered Area formula.", "error");
         return;
       }
-      if (![1, 2, 3].includes(ply)) {
-        showNotification("Select ply 1, 2, or 3.", "error");
+      if (!isStylePly(ply)) {
+        showNotification("Select ply 1 through 10.", "error");
         return;
       }
       const styleId = Number(state.modal.draft.id);
@@ -17896,7 +17930,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { error: "Calculation details are unavailable." };
       }
       const rows = evaluateStyleFormulasForFinishedGood(fg);
-      const ply = plyOverride != null && [1, 2, 3].includes(Number(plyOverride)) ? Number(plyOverride) : null;
+      const ply = plyOverride != null && isStylePly(Number(plyOverride)) ? Number(plyOverride) : null;
       const matches = rows.filter((item) => item.code === formulaCode || String(item.formulaId) === String(formulaCode));
       const row = (ply != null && matches.find((item) => Number(item.ply) === ply))
         || matches.find((item) => item.ply == null)
@@ -17909,7 +17943,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = ply != null ? buildFlatStyleFormulaVariables(fg, ply) : buildStyleFormulaVariables(fg);
       rows.forEach((item) => {
         if (!item.success || !item.code || item.code === "—") return;
-        if (ply != null && [1, 2, 3].includes(Number(item.ply)) && Number(item.ply) !== ply) return;
+        if (ply != null && isStylePly(Number(item.ply)) && Number(item.ply) !== ply) return;
         variables[item.code] = item.result;
       });
       const result = row && row.success ? row.result : null;
@@ -19810,7 +19844,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (state.modal.collection === "finishing") {
         const maxPly = getFinishedGoodPly(getSelectedFinishedGood());
         const ply = Number(draft.ply);
-        if (![1, 2, 3].includes(ply) || ply > maxPly) errors.ply = "Select a ply.";
+        if (!isStylePly(ply) || ply > maxPly) errors.ply = "Select a ply.";
       }
       if (!Object.keys(errors).length) {
         const preview = calculateServiceCost({
