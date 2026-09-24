@@ -71,9 +71,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 5, styleId: 103, variableCode: "GLUE_FLAP", ply: 2, value: 15.0, unit: "mm" },
       { id: 6, styleId: 101, variableCode: "GLUE_FLAP", ply: 2, value: 12, unit: "mm" },
       { id: 7, styleId: 101, variableCode: "GLUE_FLAP", ply: 3, value: 15, unit: "mm" },
-      { id: 8, styleId: 101, variableCode: "WASTAGE", ply: 1, value: 5, unit: "%" },
-      { id: 9, styleId: 101, variableCode: "WASTAGE", ply: 2, value: 5, unit: "%" },
-      { id: 10, styleId: 101, variableCode: "WASTAGE", ply: 3, value: 5, unit: "%" },
+      { id: 8, styleId: 101, variableCode: "WASTAGE", ply: 1, value: 1, unit: "%", wastageDefaultApplied: true },
+      { id: 9, styleId: 101, variableCode: "WASTAGE", ply: 2, value: 1, unit: "%", wastageDefaultApplied: true },
+      { id: 10, styleId: 101, variableCode: "WASTAGE", ply: 3, value: 1, unit: "%", wastageDefaultApplied: true },
       { id: 11, styleId: 101, variableCode: "SHEET_WIDTH", ply: 2, value: 50, unit: "inch" },
       { id: 12, styleId: 101, variableCode: "SHEET_WIDTH", ply: 3, value: 50, unit: "inch" },
       { id: 13, styleId: 101, variableCode: "SHEET_LENGTH", ply: 1, value: 50, unit: "inch" },
@@ -100,7 +100,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       { id: 4, code: "GSM", name: "Basis Weight", description: "Paper Basis Weight", dataType: "numeric", defaultValue: 150, unit: "gsm", category: "Material", isActive: true },
       { id: 5, code: "PLY", name: "Ply Count", description: "Number of Plies", dataType: "numeric", defaultValue: 3, unit: "", category: "Material", isActive: true },
       { id: 6, code: "GLUE_FLAP", name: "Glue Flap Width", description: "Width of glue overlap", dataType: "numeric", defaultValue: 12.5, unit: "mm", category: "Costing", isActive: true },
-      { id: 7, code: "WASTAGE", name: "Wastage Percentage", description: "Material wastage percentage", dataType: "numeric", defaultValue: 5, unit: "%", category: "Costing", isActive: true },
+      { id: 7, code: "WASTAGE", name: "Wastage Percentage", description: "Material wastage percentage", dataType: "numeric", defaultValue: 1, unit: "%", category: "Costing", isActive: true, wastageDefaultApplied: true },
       { id: 8, code: "SHEET_WIDTH", name: "Sheet Width", description: "Standard sheet width", dataType: "numeric", defaultValue: 40, unit: "inch", category: "Sheet", isActive: true },
       { id: 9, code: "SHEET_LENGTH", name: "Sheet Length", description: "Standard sheet length", dataType: "numeric", defaultValue: 48, unit: "inch", category: "Sheet", isActive: true },
       { id: 10, code: "ORDER_QTY", name: "Order Quantity", description: "Pieces to manufacture", dataType: "numeric", defaultValue: 1, unit: "pieces", category: "Costing", isActive: true },
@@ -310,7 +310,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const SQ_IN_TO_SQ_M = 0.00064516;
     const GRAM_TO_KG = 0.001;
     const DEFAULT_GLUE_FLAP = 1;
-    const DEFAULT_WASTAGE_PERCENT = 5;
+    const DEFAULT_WASTAGE_PERCENT = 1;
     const SERVICE_CUSTOM_DIM_ERROR = "Enter custom Length and Width.";
     const STRUCTURAL_PLY_LAYERS = {
       1: ["Single Layer"],
@@ -557,7 +557,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       GSM: 125,
       PLY: 3,
       GLUE_FLAP: 1,
-      WASTAGE: 5,
+      WASTAGE: 1,
       NET_QTY: 1,
       ORDER_QTY: 1,
       SHEET_WIDTH: 40,
@@ -1722,6 +1722,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               syncSequencesFromData();
               await persistAllCollections();
               await persistSequencesNow();
+              if (seededWastage) await persistEditorNow();
             }
           }
 
@@ -1867,24 +1868,59 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return added;
     }
 
+    function stampDefaultWastage(line) {
+      if (!line || typeof line !== "object" || line.wastageDefaultApplied) return false;
+      if (Number(line.wastagePercent) === 5) line.wastagePercent = DEFAULT_WASTAGE_PERCENT;
+      line.wastageDefaultApplied = true;
+      return true;
+    }
+
+    function stampDefaultWastageList(lines) {
+      let changed = false;
+      (Array.isArray(lines) ? lines : []).forEach((line) => {
+        if (stampDefaultWastage(line)) changed = true;
+      });
+      return changed;
+    }
+
     function ensureSeedStyleWastageVariables() {
       if (seedCatalogBlocked()) return false;
-      const style = styles.find((item) => item.id === 101) || findStyleByName("WINDOW LID");
-      if (!style) return false;
       let added = false;
-      [1, 2, 3].forEach((ply) => {
-        if (findStyleVariable(style.id, "WASTAGE", ply)) return;
-        const catalog = getFormulaVariableByCode("WASTAGE");
-        styleVariables.push({
-          id: nextMasterId(styleVariables),
-          styleId: style.id,
-          variableCode: "WASTAGE",
-          ply,
-          value: 5,
-          unit: (catalog && catalog.unit) || "%"
-        });
+      const catalog = getFormulaVariableByCode("WASTAGE");
+      if (catalog && !catalog.wastageDefaultApplied) {
+        if (Number(catalog.defaultValue) === 5) catalog.defaultValue = DEFAULT_WASTAGE_PERCENT;
+        catalog.wastageDefaultApplied = true;
         added = true;
+      }
+      const style = styles.find((item) => item.id === 101) || findStyleByName("WINDOW LID");
+      if (style) [1, 2, 3].forEach((ply) => {
+        const existing = findStyleVariable(style.id, "WASTAGE", ply);
+        if (!existing) {
+          styleVariables.push({
+            id: nextMasterId(styleVariables),
+            styleId: style.id,
+            variableCode: "WASTAGE",
+            ply,
+            value: DEFAULT_WASTAGE_PERCENT,
+            unit: (catalog && catalog.unit) || "%",
+            wastageDefaultApplied: true
+          });
+          added = true;
+          return;
+        }
+        if (!existing.wastageDefaultApplied) {
+          if (Number(existing.value) === 5) existing.value = DEFAULT_WASTAGE_PERCENT;
+          existing.wastageDefaultApplied = true;
+          added = true;
+        }
       });
+      (boms || []).forEach((record) => {
+        if (stampDefaultWastageList(record && record.materials)) added = true;
+        if (stampDefaultWastageList(record && record.otherMaterials)) added = true;
+      });
+      if (stampDefaultWastageList(state.bomMaterials)) added = true;
+      if (stampDefaultWastageList(state.bomOtherMaterials)) added = true;
+      if (state.costCalculator && stampDefaultWastageList(state.costCalculator.additionalMaterials)) added = true;
       return added;
     }
 
@@ -17242,7 +17278,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: null,
         manualQty: 1,
         manualRate: null,
-        wastagePercent: "",
+        wastagePercent: DEFAULT_WASTAGE_PERCENT,
         useCustomDimensions: false,
         customLength: "",
         customWidth: ""
@@ -17301,7 +17337,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         draft.wastagePercent = 0;
       } else {
         const wastageInput = draft.wastagePercent == null || draft.wastagePercent === ""
-          ? 0
+          ? DEFAULT_WASTAGE_PERCENT
           : draft.wastagePercent;
         const wastage = parseByRule(wastageInput, "wastage", { requiredError: "Wastage cannot be negative." });
         if (!wastage.ok) errors.wastagePercent = wastage.error;
@@ -19290,7 +19326,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function saveMaterialWastageFromModal() {
       const draft = state.modal.draft;
-      const wastageInput = draft.wastagePercent == null || draft.wastagePercent === "" ? 0 : draft.wastagePercent;
+      const wastageInput = draft.wastagePercent == null || draft.wastagePercent === "" ? DEFAULT_WASTAGE_PERCENT : draft.wastagePercent;
       const wastage = parseByRule(wastageInput, "wastage", { requiredError: "Wastage cannot be negative." });
       if (!wastage.ok) {
         state.modal.errors = { wastagePercent: wastage.error };
@@ -19356,7 +19392,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
         manualRate: storedManualRateFromDraft(draft),
         wastagePercent: parseByRule(
-          draft.wastagePercent == null || draft.wastagePercent === "" ? 0 : draft.wastagePercent,
+          draft.wastagePercent == null || draft.wastagePercent === "" ? DEFAULT_WASTAGE_PERCENT : draft.wastagePercent,
           "wastage"
         ).value,
         ...customDimensionFields(draft),
