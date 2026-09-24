@@ -5381,7 +5381,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         draft.dimensionId = null;
       }
       if (!draft.dimensionId) {
-        draft.dimensionId = pickBomDimensionId(linkedIds, null, getSelectedFinishedGood());
+        const dimFinishedGood = (isCostCalculatorAdditionalModal() || isCostCalculatorLayerModal())
+          ? getCostCalculatorFinishedGood()
+          : getSelectedFinishedGood();
+        draft.dimensionId = pickBomDimensionId(linkedIds, null, dimFinishedGood);
       }
       applyMaterialDimensionFormula(draft);
     }
@@ -7059,12 +7062,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return Boolean(state.modal && state.modal.collection === "cc-additional-service");
     }
 
+    function isCostCalculatorMaterialModal() {
+      return isCostCalculatorAdditionalModal() || isCostCalculatorLayerModal();
+    }
+
     function getMaterialModalFinishedGood() {
-      return isCostCalculatorAdditionalModal() ? getCostCalculatorFinishedGood() : getSelectedFinishedGood();
+      return isCostCalculatorMaterialModal() ? getCostCalculatorFinishedGood() : getSelectedFinishedGood();
     }
 
     function getMaterialModalCalcContext() {
-      if (!isCostCalculatorAdditionalModal()) return undefined;
+      if (!isCostCalculatorMaterialModal()) return undefined;
       return { finishedGood: getCostCalculatorFinishedGood(), useEnteredDimensions: true };
     }
 
@@ -7151,15 +7158,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(material ? material.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("material", material, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), material && material.uom, " "), "data-edit-required-qty-line", lineId)}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(renderCostCalculatorQtyWithHelp("material", material, row), "data-edit-required-qty-line", lineId)}</td>
             <td class="step-num">${renderLineRateWithEdit(material, material ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || "") : "—", "data-bom-material-rate", material && material.id)}</td>
             <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")}</td>
             <td>
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-additional-material="${lineId}" title="Calculation breakdown">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-cc-additional-material="${lineId}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-cc-additional-material="${lineId}" title="Edit">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-cc-additional-material="${lineId}" title="Edit">
                   <i data-lucide="pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-cc-additional-material="${lineId}" title="Delete">
@@ -7181,15 +7188,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div>${escapeHtml(service ? service.name : "Unknown material")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " "), "data-edit-required-qty-additional", lineId)}</td>
+            <td class="step-num">${renderRequiredQtyWithEdit(renderCostCalculatorQtyWithHelp("service", service, row), "data-edit-required-qty-additional", lineId)}</td>
             <td class="step-num">${renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id)}</td>
             <td class="step-num">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")}</td>
             <td>
               <div class="row-actions">
-                <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-additional-service="${lineId}" title="Calculation breakdown">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-cc-additional-service="${lineId}" title="Calculation breakdown">
                   <i data-lucide="calculator"></i>
                 </button>
-                <button type="button" class="btn btn-sm btn-icon" data-edit-cc-additional-service="${lineId}" title="Edit">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-cc-additional-service="${lineId}" title="Edit">
                   <i data-lucide="pencil"></i>
                 </button>
                 <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-cc-additional-service="${lineId}" title="Delete">
@@ -7234,23 +7241,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td>${index + 1}</td>
             <td>
               <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
-              <div class="stat-hint">${escapeHtml(row.layer || "")}</div>
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-num">${row.serviceId ? renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " "), "data-edit-required-qty-service", lineId) : "—"}</td>
+            <td class="step-num">${row.serviceId ? renderCostCalculatorQtyWithHelp("service", service, row) : "—"}</td>
             <td class="step-num">${row.serviceId ? renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (row.rateLocked && row.rateUOM) || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-cc-packaging-line-rate", lineId) : "—"}</td>
             <td class="step-num">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")) : "—"}</td>
             <td>
-              ${row.serviceId ? `
-                <div class="row-actions">
-                  <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-service="${lineId}" title="Calculation breakdown">
+              <div class="row-actions">
+                ${row.serviceId ? `
+                  <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-cc-service="${lineId}" title="Calculation breakdown">
                     <i data-lucide="calculator"></i>
                   </button>
-                  <button type="button" class="btn btn-sm btn-icon" data-edit-cc-service="${lineId}" title="Edit">
+                  <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-cc-service="${lineId}" title="Edit">
                     <i data-lucide="pencil"></i>
                   </button>
-                </div>
-              ` : "—"}
+                ` : ""}
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-cc-service="${lineId}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -7270,7 +7279,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody>${body || emptyRow(6, "Select ply to load service rows.")}</tbody>
+            <tbody>${body || emptyRow(6, "Select a packaging service.")}</tbody>
           </table>
         </div>
         ${active.length ? `<div class="cc-total-line"><span>Total Service Cost</span><strong>${hasServiceErrors ? "Error" : formatRupees(summary.serviceCost)}</strong></div>` : ""}
@@ -7279,40 +7288,43 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderCostCalculatorFinishingServices(summary, steps) {
       const costUom = (getCostCalculatorFinishedGood() || {}).uom;
-      const active = (summary.finishingServices || []).filter((row) => row.serviceId);
-      const hasFinishingErrors = active.some((row) => row.calc && row.calc.error);
-      const body = (summary.finishingServices || []).map((row, index) => {
-        const ply = styleFormulaPlyForLayer(row.layer, steps && steps.ply);
-        const options = servicesForPlySlot("finishing", ply, row.serviceId);
-        const service = row.serviceId ? getService(row.serviceId) : null;
+      const rows = (summary.finishingServices || []).filter((row) => row.serviceId);
+      const hasFinishingErrors = rows.some((row) => row.calc && row.calc.error);
+      const body = rows.map((row, index) => {
+        const ply = row.ply || styleFormulaPlyForLayer(row.layer, steps && steps.ply);
+        const service = getService(row.serviceId);
         const calc = row.calc || {};
         const lineId = row.id || row.key;
         return `
           <tr>
             <td>${index + 1}</td>
             <td>
-              <div class="step-liner-title">${escapeHtml(row.layer || ("Ply " + ply))} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
-              <select class="full-select" data-cc-finishing-slot="${escapeHtml(row.layer)}" aria-label="${escapeHtml(row.layer)} finishing service">
-                <option value="">Select service</option>
-                ${options.map((item) => `<option value="${item.id}" ${Number(row.serviceId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
-              </select>
-              ${row.serviceId && calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
+              <div class="step-liner-title">${escapeHtml(service ? service.name : "Service")} <span class="badge badge-muted">Ply ${escapeHtml(String(ply))}</span></div>
+              ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
-            <td class="step-col-dim">${row.serviceId ? renderFinishingDimensionCell(getCostCalculatorFinishedGood(), row, "data-edit-cc-service-dims") : "—"}</td>
-            <td class="step-num step-col-compact">${row.serviceId ? appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " ") : "—"}</td>
-            <td class="step-num">${row.serviceId && service ? formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || "") : "—"}</td>
-            <td class="step-num step-col-compact">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")) : "—"}</td>
+            <td class="step-col-dim">${renderFinishingDimensionCell(getCostCalculatorFinishedGood(), row, "data-edit-cc-service-dims")}</td>
+            <td class="step-num step-col-compact">${renderCostCalculatorQtyWithHelp("service", service, row)}</td>
+            <td class="step-num">${service ? renderStepValueWithEdit(
+              formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""),
+              "data-bom-service-rate",
+              service.id,
+              "Edit rate",
+              "pencil",
+              "rate"
+            ) : "—"}</td>
+            <td class="step-num step-col-compact">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")}</td>
             <td>
-              ${row.serviceId ? `
-                <div class="row-actions">
-                  <button type="button" class="btn btn-sm btn-icon" data-breakdown-cc-finishing-service="${lineId}" title="Calculation breakdown">
-                    <i data-lucide="calculator"></i>
-                  </button>
-                  <button type="button" class="btn btn-sm btn-icon" data-edit-cc-finishing-service="${lineId}" title="Edit">
-                    <i data-lucide="pencil"></i>
-                  </button>
-                </div>
-              ` : "—"}
+              <div class="row-actions">
+                <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-cc-finishing-service="${lineId}" title="Calculation breakdown">
+                  <i data-lucide="calculator"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-cc-finishing-service="${lineId}" title="Edit">
+                  <i data-lucide="pencil"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-cc-finishing-service="${lineId}" title="Delete">
+                  <i data-lucide="trash-2"></i>
+                </button>
+              </div>
             </td>
           </tr>
         `;
@@ -7331,10 +7343,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <th>Action</th>
               </tr>
             </thead>
-            <tbody>${body || emptyRow(7, "Select ply to load finishing rows.")}</tbody>
+            <tbody>${body || emptyRow(7, "No finishing services yet. Use Add Finishing Service.")}</tbody>
           </table>
         </div>
-        ${active.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong>${hasFinishingErrors ? "Error" : formatRupees(summary.finishingCost)}</strong></div>` : ""}
+        ${rows.length ? `<div class="cc-total-line"><span>Total Finishing Services Cost</span><strong>${hasFinishingErrors ? "Error" : formatRupees(summary.finishingCost)}</strong></div>` : ""}
       `;
     }
 
@@ -7387,11 +7399,175 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const prev = Array.isArray(state.costCalculator.layers) ? state.costCalculator.layers : [];
       state.costCalculator.layers = names.map((layer) => {
         const existing = prev.find((row) => row.layer === layer);
-        return { layer, rawMaterialId: existing && existing.rawMaterialId ? existing.rawMaterialId : "" };
+        const rawId = existing && (existing.id || existing.key);
+        const id = rawId || nextCostCalculatorServiceKey();
+        if (!existing) return { id, key: id, layer, rawMaterialId: "" };
+        return {
+          ...existing,
+          id,
+          key: id,
+          layer,
+          rawMaterialId: existing.rawMaterialId || ""
+        };
       });
       if (options && options.notify && !getCostCalculatorMaterials().length) {
         showNotification("No active raw materials found.", "error");
       }
+    }
+
+    function ensureCostCalculatorLayerIds() {
+      const steps = getCostCalculatorStepState();
+      if (!steps.hasPly) return false;
+      const names = getStructuralLayers(steps.ply);
+      const prev = Array.isArray(state.costCalculator.layers) ? state.costCalculator.layers : [];
+      let changed = prev.length !== names.length;
+      const next = names.map((layer) => {
+        const existing = prev.find((row) => row && row.layer === layer);
+        const rawId = existing && (existing.id || existing.key);
+        const id = rawId || nextCostCalculatorServiceKey();
+        if (!existing || Number(rawId) !== Number(id)) changed = true;
+        if (!existing) return { id, key: id, layer, rawMaterialId: "" };
+        return { ...existing, id, key: id, layer, rawMaterialId: existing.rawMaterialId || "" };
+      });
+      if (!changed) return false;
+      state.costCalculator.layers = next;
+      return true;
+    }
+
+    function pruneCostCalculatorAutoServiceRows() {
+      let changed = false;
+      const services = (state.costCalculator.services || []).filter((row) => row && row.userPicked && row.serviceId);
+      if (services.length !== (state.costCalculator.services || []).length) {
+        state.costCalculator.services = services;
+        changed = true;
+      }
+      const finishing = (state.costCalculator.finishingServices || []).filter((row) => row && row.serviceId);
+      if (finishing.length !== (state.costCalculator.finishingServices || []).length) {
+        state.costCalculator.finishingServices = finishing;
+        changed = true;
+      }
+      return changed;
+    }
+
+    function findCostCalculatorLayerById(lineId) {
+      const id = Number(lineId);
+      return (state.costCalculator.layers || []).find((item) => Number(item.id || item.key) === id) || null;
+    }
+
+    function isCostCalculatorLayerModal() {
+      return Boolean(state.modal && state.modal.collection === "cc-layer");
+    }
+
+    function assignCostCalculatorLayerMaterial(layer, rawMaterialId) {
+      const steps = getCostCalculatorStepState();
+      const rows = Array.isArray(state.costCalculator.layers) ? state.costCalculator.layers.slice() : [];
+      const index = rows.findIndex((item) => item.layer === layer);
+      if (index < 0) return;
+      const prev = rows[index];
+      const id = prev.id || prev.key || nextCostCalculatorServiceKey();
+      if (!rawMaterialId) {
+        rows[index] = { id, key: id, layer, rawMaterialId: "" };
+        state.costCalculator.layers = rows;
+        persistCostCalculatorState();
+        renderCostCalculator();
+        refreshIcons();
+        return;
+      }
+      const fg = getCostCalculatorFinishedGood();
+      const draft = {
+        rawMaterialId: Number(rawMaterialId),
+        layer,
+        calculationMethod: prev.calculationMethod === "manual" ? "manual" : "formula",
+        formulaId: null,
+        dimensionId: null,
+        manualQty: prev.manualQty,
+        manualRate: prev.manualRate,
+        wastagePercent: prev.wastagePercent != null && prev.wastagePercent !== "" ? prev.wastagePercent : DEFAULT_WASTAGE_PERCENT,
+        useCustomDimensions: Boolean(prev.useCustomDimensions),
+        customLength: prev.customLength != null ? prev.customLength : "",
+        customWidth: prev.customWidth != null ? prev.customWidth : ""
+      };
+      applyMaterialFormulaBindings(draft);
+      const link = findCostCalculatorMaterialLink(draft.rawMaterialId, steps.ply, fg);
+      if (link) draft.dimensionId = link.dimensionId;
+      if (prev.wastagePercent == null || prev.wastagePercent === "") {
+        const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
+        draft.wastagePercent = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
+      }
+      const next = calculateMaterialCost({
+        id,
+        rawMaterialId: Number(draft.rawMaterialId),
+        layer,
+        calculationMethod: draft.calculationMethod,
+        formulaId: draft.calculationMethod === "formula" ? draft.formulaId : null,
+        dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
+        manualQty: draft.calculationMethod === "manual" ? draft.manualQty : null,
+        manualRate: storedManualRateFromDraft(draft),
+        wastagePercent: draft.wastagePercent,
+        ...customDimensionFields(draft),
+        netQty: 0,
+        grossQty: 0,
+        rate: 0,
+        costPerPiece: 0
+      }, { finishedGood: fg, useEnteredDimensions: true });
+      rows[index] = {
+        id,
+        key: id,
+        layer,
+        rawMaterialId: Number(draft.rawMaterialId),
+        calculationMethod: draft.calculationMethod,
+        formulaId: next.formulaId || draft.formulaId || null,
+        dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
+        manualQty: draft.calculationMethod === "manual" ? draft.manualQty : null,
+        manualRate: storedManualRateFromDraft(draft),
+        wastagePercent: next.wastagePercent != null ? next.wastagePercent : draft.wastagePercent,
+        useCustomDimensions: Boolean(draft.useCustomDimensions),
+        customLength: draft.customLength,
+        customWidth: draft.customWidth
+      };
+      state.costCalculator.layers = rows;
+      persistCostCalculatorState();
+      renderCostCalculator();
+      refreshIcons();
+      if (next.error) showNotification(next.error, "error");
+      else {
+        const material = getRawMaterial(draft.rawMaterialId);
+        showNotification((material ? material.name : "Material") + " selected for " + layer);
+      }
+    }
+
+    function addCostCalculatorPackagingService(serviceId) {
+      const steps = getCostCalculatorStepState();
+      const fg = getCostCalculatorFinishedGood();
+      const service = getService(serviceId);
+      if (!steps.hasPly || !fg || !service) return;
+      const layers = getStructuralLayers(steps.ply);
+      const existing = state.costCalculator.services || [];
+      const additions = [];
+      layers.forEach((layer) => {
+        const ply = styleFormulaPlyForLayer(layer, steps.ply);
+        if (!serviceMatchesPly(service, ply)) return;
+        const already = existing.concat(additions).some((row) => Number(row.serviceId) === Number(service.id) && canonicalPlyLayerName(row.layer) === layer);
+        if (already) return;
+        const key = nextCostCalculatorServiceKey();
+        additions.push({
+          id: key,
+          key,
+          layer,
+          ply,
+          userPicked: true,
+          ...defaultGeneralServiceFields(service, fg)
+        });
+      });
+      if (!additions.length) {
+        showNotification((service.name || "Service") + " is already added");
+        return;
+      }
+      state.costCalculator.services = existing.concat(additions);
+      persistCostCalculatorState();
+      renderCostCalculator();
+      refreshIcons();
+      showNotification((service.name || "Service") + " added");
     }
 
     function loadCostCalculatorOtherLayers() {
@@ -7509,10 +7685,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!material) {
         return { ...empty, error: "This material does not exist in the Raw Material Master." };
       }
+      const method = layerRow.calculationMethod === "manual" ? "manual" : "formula";
       const link = findCostCalculatorMaterialLink(material.id, ply, fg);
       const resolved = resolveMasterCostFormula(material, "material");
-      const formula = resolved.formula;
-      if (!formula) {
+      const formula = method === "formula"
+        ? (getFormula(layerRow.formulaId) || resolved.formula)
+        : null;
+      if (method === "formula" && !formula) {
         return { ...empty, error: resolved.error };
       }
       const rateRow = getMaterialRate(material.id);
@@ -7523,18 +7702,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!Number.isFinite(masterRate) || masterRate <= 0) {
         return { ...empty, error: "Invalid rate: " + (rateRow?.rate ?? "missing") + ". Rate must be > 0." };
       }
+      const storedWastage = layerRow.wastagePercent != null && layerRow.wastagePercent !== ""
+        ? Number(layerRow.wastagePercent)
+        : null;
       const wastageRaw = resolveVariableValue("WASTAGE", fg, DEFAULT_WASTAGE_PERCENT);
-      const wastage = Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT;
+      const wastage = Number.isFinite(storedWastage)
+        ? storedWastage
+        : (Number.isFinite(Number(wastageRaw)) ? Number(wastageRaw) : DEFAULT_WASTAGE_PERCENT);
+      const dimensionId = layerRow.dimensionId != null && layerRow.dimensionId !== ""
+        ? layerRow.dimensionId
+        : (link ? link.dimensionId : null);
       const styleUsage = resolveStyleServiceDimUsage(fg);
       const calcContext = { finishedGood: fg, useEnteredDimensions: true };
       const line = calculateMaterialCost({
         rawMaterialId: material.id,
         layer: layerRow.layer,
-        calculationMethod: "formula",
-        formulaId: formula.id,
-        dimensionId: link ? link.dimensionId : null,
-        manualQty: null,
+        calculationMethod: method,
+        formulaId: formula ? formula.id : null,
+        dimensionId: dimensionId ? Number(dimensionId) : null,
+        manualQty: method === "manual" ? layerRow.manualQty : null,
+        manualRate: layerRow.manualRate,
         wastagePercent: wastage,
+        useCustomDimensions: Boolean(layerRow.useCustomDimensions),
+        customLength: layerRow.customLength,
+        customWidth: layerRow.customWidth,
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -7544,13 +7735,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return {
           ...empty,
           error: formatCostCalculatorFormulaError(line.error),
-          formulaId: formula.id,
-          dimensionId: link ? link.dimensionId : null,
+          formulaId: formula ? formula.id : null,
+          dimensionId: dimensionId ? Number(dimensionId) : null,
           wastagePercent: wastage,
           dimWarnings: styleUsage.warnings
         };
       }
-      const variables = buildFormulaVariables(fg, material, wastage, null, formula, { layer: layerRow.layer, rawMaterialId: material.id });
       const areaEval = evaluateCoveredAreaValue(fg, null, null, styleFormulaPlyForLayer(layerRow.layer, ply));
       return {
         qty: line.grossQty,
@@ -7560,9 +7750,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         cost: line.costPerPiece,
         coveredArea: areaEval.success ? roundTo(areaEval.result, 2) : 0,
         error: null,
-        formulaId: formula.id,
-        dimensionId: link ? link.dimensionId : null,
-        wastagePercent: wastage,
+        formulaId: line.formulaId || (formula ? formula.id : null),
+        dimensionId: dimensionId ? Number(dimensionId) : null,
+        wastagePercent: line.wastagePercent != null ? line.wastagePercent : wastage,
         rateUOM: rateRow?.rateUOM || "",
         uom: material.uom,
         usedServiceL: styleUsage.useL,
@@ -7906,18 +8096,38 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function renderCostCalculatorQtyWithHelp(kind, item, row) {
+      const fg = getCostCalculatorFinishedGood();
+      const value = appendHtmlUnit(
+        formatMasterRequiredQty(kind, item, row, fg, { useEnteredDimensions: true }),
+        item && item.uom,
+        " "
+      );
+      const lineId = row && (row.id != null ? row.id : row.key);
+      const explainKind = kind === "material"
+        ? (row && row.layer && row.layer !== "Additional" ? "cc-material" : "cc-additional-material")
+        : "cc-service";
+      const explainId = explainKind === "cc-material" ? row.layer : lineId;
+      if (explainId == null || explainId === "") return value;
+      return value + formulaHelpButton(explainKind, explainId, "How required quantity was calculated");
+    }
+
     function renderCostCalculatorLayerCard(row, index, materials, steps) {
+      materials = getBomSlotMaterialOptions(steps && steps.ply, row.rawMaterialId);
       const material = getRawMaterial(row.rawMaterialId);
       const calc = row.calc || {};
       const ccFinishedGood = getCostCalculatorFinishedGood();
-      const autoDims = getAutoQuantityLW(
-        ccFinishedGood,
-        calc.dimensionId,
-        styleFormulaPlyForLayer(row.layer, steps && steps.ply)
-      );
+      const missingMaterialId = row.rawMaterialId && !material ? row.rawMaterialId : null;
       const materialTitle = material
         ? `${material.name}${material.code ? ` (${material.code})` : ""}`
-        : "Select material";
+        : (missingMaterialId ? `Missing material (ID: ${missingMaterialId})` : "Select material");
+      const lineForDims = {
+        layer: row.layer,
+        dimensionId: calc.dimensionId,
+        useCustomDimensions: row.useCustomDimensions,
+        customLength: row.customLength,
+        customWidth: row.customWidth
+      };
       return `
         <div class="cc-layer step-liner-block">
           <div class="step-liner-head">
@@ -7927,11 +8137,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <label class="form-label" for="cc-layer-mat-${index}">Material</label>
           <select id="cc-layer-mat-${index}" class="full-select" data-cc-layer-material="${escapeHtml(row.layer)}" ${steps.hasPly ? "" : "disabled"} aria-label="${escapeHtml(row.layer)} material">
             <option value="">Select Material</option>
+            ${missingMaterialId ? `<option value="${escapeHtml(String(missingMaterialId))}" selected>Missing material (ID: ${escapeHtml(String(missingMaterialId))})</option>` : ""}
             ${materials.map((item) => `
               <option value="${item.id}" ${Number(row.rawMaterialId) === item.id ? "selected" : ""}>${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>
             `).join("")}
           </select>
-          ${calc.error ? `<div class="field-error">${escapeHtml(calc.error)}</div>` : ""}
+          ${missingMaterialId ? `<p class="stat-hint">Missing material (ID: ${escapeHtml(String(missingMaterialId))}). Re-select a valid raw material to continue.</p>` : ""}
+          ${calc.error ? `<div class="field-error">⚠ ${escapeHtml(calc.error)}</div>` : ""}
           ${(calc.dimWarnings || []).map((msg) => `<div class="field-error cc-dim-warn">${escapeHtml(msg)}</div>`).join("")}
           ${row.rawMaterialId ? `
             <div class="table-wrap">
@@ -7943,24 +8155,52 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     ${renderPlyMaterialQtyHeaders()}
                     <th class="step-col-compact">Rate</th>
                     <th class="step-col-compact">Cost / Piece</th>
+                    <th class="step-col-actions">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
                     <td>1</td>
-                    <td class="step-col-dim">${renderStepTableDimCell(autoDims, null, null, ccFinishedGood && ccFinishedGood.dimensionUOM)}</td>
+                    <td class="step-col-dim">${renderStepValueWithEdit(
+                      formatBreakdownMaterialDimensions(ccFinishedGood, lineForDims, ccFinishedGood && ccFinishedGood.dimensionUOM),
+                      "data-edit-cc-layer-dims",
+                      row.id || row.key,
+                      "Edit dimensions",
+                      "ruler",
+                      "dims"
+                    )}</td>
                     ${renderPlyMaterialQtyCells(
-                      appendHtmlUnit(formatMasterRequiredQty("material", material, { layer: row.layer, rawMaterialId: row.rawMaterialId, wastagePercent: calc.wastagePercent }, ccFinishedGood, { useEnteredDimensions: true }), material && material.uom, " "),
+                      renderCostCalculatorQtyWithHelp("material", material, row),
                       calc.netQty,
                       calc.grossQty,
                       calc.wastagePercent,
                       Boolean(calc.error),
-                      null,
+                      row.id || row.key,
                       false,
                       material && material.uom
                     )}
-                    <td class="step-num step-col-compact">${material && !calc.error ? formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM)) : "—"}</td>
+                    <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
+                      formatRatePkr(calc.rate, calc.rateUOM || (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
+                      "data-bom-material-rate",
+                      material.id,
+                      "Edit rate",
+                      "pencil",
+                      "rate"
+                    ) : "—"}</td>
                     <td class="step-num step-col-compact">${calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), ccFinishedGood && ccFinishedGood.uom, " / ")}</td>
+                    <td class="step-col-actions">
+                      <div class="row-actions">
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-cc-layer="${escapeHtml(row.layer)}" title="Quantity formula" aria-label="Quantity formula">
+                          <i data-lucide="sigma"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-cc-layer="${row.id || row.key}" title="Calculation breakdown">
+                          <i data-lucide="calculator"></i>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-cc-layer="${row.id || row.key}" title="Edit calculation details">
+                          <i data-lucide="pencil"></i>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 </tbody>
               </table>
@@ -7978,7 +8218,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (steps.hasPly) {
         loadCostCalculatorOtherLayers();
       }
-      if (syncCostCalculatorGeneralServices() || syncCostCalculatorServiceSlots("finishingServices")) persistCostCalculatorState();
+      if (ensureCostCalculatorLayerIds() || pruneCostCalculatorAutoServiceRows()) persistCostCalculatorState();
       const summary = updateCostCalculatorSummary();
       const ccHasCalcErrors = summary.layers.some((row) => row.calc.error)
         || summary.otherLayers.some((row) => row.calc.error)
@@ -8116,7 +8356,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="cc-step">Step 4: Select Raw Materials</div>
                 <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(steps.ply || ""))}-ply structural layer.</p>
                 ${steps.hasPly ? (layerRows || `<p class="stat-hint">No layers for this ply.</p>`) : `<p class="stat-hint">Complete style, dimensions, and ply to load material layers.</p>`}
-                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Material Cost</span><strong>${formatRupees(summary.materialCost)}</strong></div>` : ""}
+                ${steps.hasPly ? `<div class="cc-total-line"><span>Total Material Cost</span><strong>${summary.layers.some((row) => row.rawMaterialId && row.calc && row.calc.error) ? "Error" : formatRupees(summary.materialCost)}</strong></div>` : ""}
               </div>
             </section>
 
@@ -8125,8 +8365,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="cc-step">Step 5: Additional materials</div>
                 <div class="section-head" style="margin-top:0;">
                   <div>
-                    <div class="section-title">Additional materials</div>
-                    <p class="stat-hint" style="margin:0;">Add Block, Film, Plate, and similar items here. New lines load from Raw Material Master. Leftover raw-material lines that are not ply slots stay until you delete them.</p>
+                    <div class="section-title">Additional Materials</div>
                   </div>
                   <button type="button" class="btn btn-primary" id="btn-cc-add-additional-material" ${steps.hasPly ? "" : "disabled"}>
                     <i data-lucide="plus"></i> Add Material
@@ -8142,9 +8381,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="section-head" style="margin-top:0;">
                   <div>
                     <div class="cc-step">Step 6: Select Packaging Services</div>
-                    <div class="section-title">Conversion steps</div>
-                    <p class="stat-hint" style="margin:4px 0 0;">Each packaging service loads once for every ply it is linked to.</p>
+                    <div class="section-title">Conversion Steps</div>
+                    <p class="stat-hint" style="margin:4px 0 0;">Select a service. It loads once for each ply. Delete removes that row.</p>
                   </div>
+                  <select id="cc-add-packaging-service" class="full-select" style="max-width:280px;" aria-label="Select packaging service" ${steps.hasPly ? "" : "disabled"}>
+                    <option value="">Select service</option>
+                    ${getActiveGeneralServices().map((item) => `<option value="${item.id}">${escapeHtml(item.name)} (${escapeHtml(item.code)})</option>`).join("")}
+                  </select>
                 </div>
                 ${serviceRows}
               </div>
@@ -8155,9 +8398,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <div class="section-head" style="margin-top:0;">
                   <div>
                     <div class="cc-step">Step 7: Finishing Services</div>
-                    <div class="section-title">Finishing steps</div>
-                    <p class="stat-hint" style="margin:4px 0 0;">One finishing row per ply layer.</p>
+                    <div class="section-title">Finishing Steps</div>
+                    <p class="stat-hint" style="margin:4px 0 0;">Add a service and choose its ply. The same service can be added again on the same ply.</p>
                   </div>
+                  <button type="button" class="btn btn-primary" id="btn-cc-add-finishing-service" ${steps.hasPly ? "" : "disabled"}>
+                    <i data-lucide="plus"></i> Add Finishing Service
+                  </button>
                 </div>
                 ${finishingRows}
               </div>
@@ -8808,11 +9054,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         id: nextBomLineId(),
         rawMaterialId: Number(row.rawMaterialId),
         layer: row.layer,
-        calculationMethod: "formula",
-        formulaId: row.calc.formulaId,
-        dimensionId: row.calc.dimensionId,
-        manualQty: null,
-        wastagePercent: row.calc.wastagePercent,
+        calculationMethod: row.calculationMethod === "manual" ? "manual" : "formula",
+        formulaId: row.calculationMethod === "manual" ? null : (row.formulaId || (row.calc && row.calc.formulaId)),
+        dimensionId: row.dimensionId || (row.calc && row.calc.dimensionId) || null,
+        manualQty: row.calculationMethod === "manual" ? row.manualQty : null,
+        manualRate: row.manualRate,
+        wastagePercent: row.wastagePercent != null ? row.wastagePercent : (row.calc && row.calc.wastagePercent),
+        useCustomDimensions: Boolean(row.useCustomDimensions),
+        customLength: row.customLength,
+        customWidth: row.customWidth,
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -17565,7 +17815,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const finishedGood = getMaterialModalFinishedGood();
       const fromAdditional = Boolean(state.modal && state.modal.fromAdditional);
       if (!finishedGood) {
-        errors.finishedGood = isCostCalculatorAdditionalModal()
+        errors.finishedGood = isCostCalculatorMaterialModal()
           ? "Complete style, dimensions, and ply before adding materials."
           : "Select a Finished Good before adding materials.";
       }
@@ -18801,8 +19051,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const preview = calculateServiceCost({
         id: (state.modal && state.modal.lineId) || 0,
         serviceId: draft.serviceId,
-        finishing: state.modal && state.modal.collection === "finishing",
-        ply: state.modal && state.modal.collection === "finishing" ? Number(draft.ply) : undefined,
+        finishing: state.modal && isFinishingServiceCollection(state.modal.collection),
+        ply: state.modal && isFinishingServiceCollection(state.modal.collection) ? Number(draft.ply) : undefined,
         calculationMethod: draft.calculationMethod,
         formulaId: draft.formulaId,
         dimensionId: draft.dimensionId,
@@ -18983,7 +19233,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         "Edit Required Qty",
         body,
         "btn-save-material",
-        isCostCalculatorAdditionalModal() ? "Cost Calculator" : "BOM line"
+        isCostCalculatorMaterialModal() ? "Cost Calculator" : "BOM line"
       );
     }
 
@@ -19010,7 +19260,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         "Edit Wastage %",
         body,
         "btn-save-material",
-        isCostCalculatorAdditionalModal() ? "Cost Calculator" : "BOM line"
+        isCostCalculatorMaterialModal() ? "Cost Calculator" : "BOM line"
       );
     }
 
@@ -19170,7 +19420,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         title,
         renderMaterialModalLeft(),
         renderMaterialModalRight(),
-        isCostCalculatorAdditionalModal() ? "Cost Calculator" : "BOM line"
+        isCostCalculatorMaterialModal() ? "Cost Calculator" : "BOM line"
       );
     }
 
@@ -19287,9 +19537,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBreakdownModal() {
-      const stored = state.bomMaterials.find((item) => item.id === state.modal.lineId)
+      const layerLine = state.modal.collection === "cc-layer" ? findCostCalculatorLayerById(state.modal.lineId) : null;
+      const stored = layerLine
+        || state.bomMaterials.find((item) => item.id === state.modal.lineId)
         || findCostCalculatorAdditionalMaterialById(state.modal.lineId);
-      const fromCalculator = Boolean(findCostCalculatorAdditionalMaterialById(state.modal.lineId));
+      const fromCalculator = Boolean(layerLine || findCostCalculatorAdditionalMaterialById(state.modal.lineId));
       const fg = fromCalculator ? getCostCalculatorFinishedGood() : getSelectedFinishedGood();
       if (!stored || !fg) {
         return `<div class="modal-body"><p>Calculation details are unavailable.</p></div>`;
@@ -19523,6 +19775,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openMaterialModal(lineId, panel) {
       const viewPanel = panel || "full";
+      const ccLayer = state.currentPage === "cost-calculator" ? findCostCalculatorLayerById(lineId) : null;
+      if (ccLayer && ccLayer.rawMaterialId) {
+        const draft = defaultMaterialDraft(ccLayer);
+        if (!draft.calculationMethod) draft.calculationMethod = "formula";
+        if (draft.wastagePercent === "" || draft.wastagePercent == null) {
+          draft.wastagePercent = calculateCostCalculatorMaterial(ccLayer).wastagePercent;
+        }
+        if (draft.rawMaterialId) applyMaterialFormulaBindings(draft);
+        state.modal = {
+          type: "material",
+          collection: "cc-layer",
+          selectedId: ccLayer.rawMaterialId,
+          mode: "edit",
+          lineId: Number(ccLayer.id || ccLayer.key),
+          slotLocked: true,
+          fromAdditional: false,
+          panel: viewPanel,
+          draft,
+          errors: {}
+        };
+        renderModal();
+        refreshIcons();
+        return;
+      }
       const ccLine = findCostCalculatorAdditionalMaterialById(lineId);
       if (ccLine) {
         const draft = defaultMaterialDraft(ccLine);
@@ -19567,10 +19843,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openBreakdownModal(lineId) {
+      const layerLine = state.currentPage === "cost-calculator" ? findCostCalculatorLayerById(lineId) : null;
       const fromCalculator = Boolean(findCostCalculatorAdditionalMaterialById(lineId));
       state.modal = {
         type: "breakdown",
-        collection: fromCalculator ? "cc-additional" : null,
+        collection: layerLine ? "cc-layer" : (fromCalculator ? "cc-additional" : null),
         selectedId: null,
         mode: "view",
         lineId: Number(lineId),
@@ -19610,6 +19887,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       const lineId = Number(state.modal.lineId);
+      if (isCostCalculatorLayerModal()) {
+        const lineId = Number(state.modal.lineId);
+        const rows = state.costCalculator.layers || [];
+        const prev = rows.find((line) => Number(line.id || line.key) === lineId);
+        if (!prev) return;
+        const nextLine = calculateMaterialCost({
+          ...prev,
+          wastagePercent: wastage.value
+        }, getMaterialModalCalcContext());
+        state.costCalculator.layers = rows.map((line) => Number(line.id || line.key) === lineId ? {
+          ...prev,
+          wastagePercent: nextLine.wastagePercent
+        } : line);
+        closeModal();
+        persistCostCalculatorState();
+        renderCostCalculator();
+        refreshIcons();
+        showNotification("Wastage updated");
+        return;
+      }
       if (isCostCalculatorAdditionalModal()) {
         const rows = state.costCalculator.additionalMaterials || [];
         const prev = rows.find((line) => Number(line.id || line.key) === lineId);
@@ -19676,6 +19973,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         rate: 0,
         costPerPiece: 0
       }, getMaterialModalCalcContext());
+
+      if (isCostCalculatorLayerModal()) {
+        const id = Number(nextLine.id || state.modal.lineId);
+        state.costCalculator.layers = (state.costCalculator.layers || []).map((line) => {
+          if (Number(line.id || line.key) !== id) return line;
+          return {
+            ...line,
+            rawMaterialId: nextLine.rawMaterialId,
+            calculationMethod: nextLine.calculationMethod,
+            formulaId: nextLine.formulaId,
+            dimensionId: nextLine.dimensionId,
+            manualQty: nextLine.manualQty,
+            manualRate: nextLine.manualRate,
+            wastagePercent: nextLine.wastagePercent,
+            useCustomDimensions: nextLine.useCustomDimensions,
+            customLength: nextLine.customLength,
+            customWidth: nextLine.customWidth
+          };
+        });
+        closeModal();
+        persistCostCalculatorState();
+        renderCostCalculator();
+        refreshIcons();
+        showNotification("Material updated");
+        return;
+      }
 
       if (isCostCalculatorAdditionalModal()) {
         const editing = state.modal.mode === "edit";
@@ -20142,7 +20465,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const qty = parseByRule(draft.manualQty, "quantity", { requiredError: "Quantity / Piece must be greater than 0." });
         if (!qty.ok) errors.manualQty = qty.error;
       }
-      if (state.modal.collection !== "additional" && state.modal.collection !== "cc-additional-service" && state.modal.collection !== "finishing" && draft.serviceId && findDuplicateService(draft.serviceId, lineId, state.modal.collection)) {
+      if (state.modal.collection !== "additional" && state.modal.collection !== "cc-additional-service" && !isFinishingServiceCollection(state.modal.collection) && draft.serviceId && findDuplicateService(draft.serviceId, lineId, state.modal.collection)) {
         errors.duplicate = isFinishingServiceCollection(state.modal.collection)
           ? (isCostCalculatorFinishingModal()
             ? "This finishing service is already added to the Cost Calculator."
@@ -20152,8 +20475,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             : "This service is already added to the BOM.");
       }
       validateCustomDimensionDraft(draft, errors);
-      if (state.modal.collection === "finishing") {
-        const maxPly = getFinishedGoodPly(getSelectedFinishedGood());
+      if (isFinishingServiceCollection(state.modal.collection)) {
+        const finishingGood = isCostCalculatorFinishingModal() ? getCostCalculatorFinishedGood() : getSelectedFinishedGood();
+        const maxPly = getFinishedGoodPly(finishingGood);
         const ply = Number(draft.ply);
         if (!isStylePly(ply) || ply > maxPly) errors.ply = "Select a ply.";
       }
@@ -20161,8 +20485,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const preview = calculateServiceCost({
           id: lineId || 0,
           serviceId: draft.serviceId,
-          finishing: state.modal.collection === "finishing",
-          ply: state.modal.collection === "finishing" ? Number(draft.ply) : undefined,
+          finishing: isFinishingServiceCollection(state.modal.collection),
+          ply: isFinishingServiceCollection(state.modal.collection) ? Number(draft.ply) : undefined,
           calculationMethod: draft.calculationMethod,
           formulaId: draft.formulaId,
           dimensionId: draft.dimensionId,
@@ -20306,12 +20630,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </select>
               ${errors.serviceId ? `<div class="field-error">${escapeHtml(errors.serviceId)}</div>` : `<p class="stat-hint" style="margin-top:6px;">${isCostCalculatorFinishingModal() ? "Showing active Finishing services from Service Master." : (isCostCalculatorServiceModal() ? "Showing active General services from Service Master." : "Showing " + escapeHtml(categoryLabel) + " services from Service Master.")}</p>`}
             </div>
-            ${state.modal.collection === "finishing" ? `
+            ${isFinishingServiceCollection(state.modal.collection) ? `
               <div>
                 <label class="form-label" for="modal-finishing-ply">Ply</label>
                 <select id="modal-finishing-ply" class="full-select ${errors.ply ? "input-invalid" : ""}" aria-invalid="${errors.ply ? "true" : "false"}">
                   <option value="">Select Ply</option>
-                  ${Array.from({ length: getFinishedGoodPly(getSelectedFinishedGood()) }, (_, index) => index + 1).map((ply) => `
+                  ${Array.from({ length: getFinishedGoodPly(isCostCalculatorFinishingModal() ? getCostCalculatorFinishedGood() : getSelectedFinishedGood()) }, (_, index) => index + 1).map((ply) => `
                     <option value="${ply}" ${Number(draft.ply) === ply ? "selected" : ""}>Ply ${ply}</option>
                   `).join("")}
                 </select>
@@ -20479,7 +20803,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const viewPanel = panel || "full";
       if ((viewPanel === "dims" || viewPanel === "qty") && !line) return;
       const draft = defaultServiceDraft(line);
-      if (resolved === "finishing") draft.finishing = true;
+      if (isFinishingServiceCollection(resolved)) draft.finishing = true;
       if (viewPanel === "dims" && draft.serviceId) applyServiceFormulaBinding(draft);
       state.modal = {
         type: "service",
@@ -20549,14 +20873,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         serviceId: Number(draft.serviceId),
         layer: isAdditional
           ? "Additional"
-          : (state.modal.collection === "finishing"
-            ? (getStructuralLayers(getFinishedGoodPly(getSelectedFinishedGood()))[Number(draft.ply) - 1] || undefined)
-            : ((existingLine && existingLine.layer) || (isFinishing ? "Finishing" : undefined))),
-        ply: state.modal.collection === "finishing"
+          : (isFinishing
+            ? (getStructuralLayers(getFinishedGoodPly(isCostCalculatorFinishingModal() ? getCostCalculatorFinishedGood() : getSelectedFinishedGood()))[Number(draft.ply) - 1] || ("Ply " + draft.ply))
+            : ((existingLine && existingLine.layer) || undefined)),
+        ply: isFinishing
           ? Number(draft.ply)
           : (existingLine && existingLine.ply ? existingLine.ply : undefined),
-        finishing: state.modal.collection === "finishing",
-        userPicked: Boolean(existingLine && existingLine.userPicked),
+        finishing: isFinishing,
+        userPicked: state.modal.collection === "cost-calculator" ? true : Boolean(existingLine && existingLine.userPicked),
         calculationMethod: draft.calculationMethod,
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
@@ -21026,17 +21350,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         const layerSelect = event.target.dataset && event.target.dataset.ccLayerMaterial;
         if (layerSelect) {
-          const row = (state.costCalculator.layers || []).find((item) => item.layer === layerSelect);
-          if (row) row.rawMaterialId = event.target.value ? Number(event.target.value) : "";
-          persistCostCalculatorState();
-          renderCostCalculator();
-          refreshIcons();
-          if (row && row.rawMaterialId) {
-            const material = getRawMaterial(row.rawMaterialId);
-            const calc = calculateCostCalculatorMaterial(row);
-            if (calc.error) showNotification(calc.error, "error");
-            else showNotification((material ? material.name : "Material") + " selected for " + row.layer);
-          }
+          assignCostCalculatorLayerMaterial(layerSelect, event.target.value);
+          return;
         }
         const otherLayerSelect = event.target.dataset && event.target.dataset.ccOtherLayerMaterial;
         if (otherLayerSelect) {
@@ -21059,6 +21374,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (event.target.id === "bom-add-packaging-service") {
           const selectedId = event.target.value;
           if (selectedId) addBomPackagingService(selectedId);
+          return;
+        }
+        if (event.target.id === "cc-add-packaging-service") {
+          const selectedId = event.target.value;
+          if (selectedId) addCostCalculatorPackagingService(selectedId);
           return;
         }
         const bomServiceSlot = event.target.dataset && event.target.dataset.bomServiceSlot;
@@ -21632,6 +21952,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const formulaLineBtn = event.target.closest("[data-formula-line]");
         if (formulaLineBtn) {
           openBomInfoPopup("material-formula", formulaLineBtn.dataset.formulaLine);
+          return;
+        }
+        const formulaCcLayer = event.target.closest("[data-formula-cc-layer]");
+        if (formulaCcLayer) {
+          openFormulaExplainerModal("cc-material", formulaCcLayer.dataset.formulaCcLayer);
+          return;
+        }
+        const editCcLayerDims = event.target.closest("[data-edit-cc-layer-dims]");
+        if (editCcLayerDims) {
+          openMaterialModal(editCcLayerDims.dataset.editCcLayerDims, "dims");
+          return;
+        }
+        const editCcLayer = event.target.closest("[data-edit-cc-layer]");
+        if (editCcLayer) {
+          openMaterialModal(editCcLayer.dataset.editCcLayer);
+          return;
+        }
+        const breakdownCcLayer = event.target.closest("[data-breakdown-cc-layer]");
+        if (breakdownCcLayer) {
+          openBreakdownModal(breakdownCcLayer.dataset.breakdownCcLayer);
           return;
         }
 
