@@ -5830,9 +5830,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function normalizeStoredManualRate(line) {
-      if (!line || line.calculationMethod !== "manual") return null;
-      const parsed = parseOptionalManualRate(line.manualRate);
-      return parsed.ok && !parsed.empty ? roundTo(parsed.value, 2) : null;
+      if (!line) return null;
+      if (line.rateLocked || line.calculationMethod === "manual") {
+        const parsed = parseOptionalManualRate(line.manualRate);
+        return parsed.ok && !parsed.empty ? roundTo(parsed.value, 2) : null;
+      }
+      return null;
     }
 
     function applyManualRateDraftValidation(draft, errors, masterRateRow, missingMsg, invalidMsg) {
@@ -5849,6 +5852,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function resolveLineAppliedRate(line, masterRate) {
+      if (line && line.rateLocked) {
+        const parsed = parseOptionalManualRate(line.manualRate);
+        if (parsed.empty || !parsed.ok) {
+          return { ok: false, rate: 0, source: "manual", error: parsed.error || "Rate must be greater than 0." };
+        }
+        return { ok: true, rate: roundTo(parsed.value, 2), source: "manual" };
+      }
       if (line && line.calculationMethod === "manual") {
         const parsed = parseOptionalManualRate(line.manualRate);
         if (!parsed.empty) {
@@ -5864,7 +5874,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function applyResolvedLineRate(line, rateRow, missingError) {
-      const wantsManualRate = line.calculationMethod === "manual" && !parseOptionalManualRate(line.manualRate).empty;
+      const wantsManualRate = (line.rateLocked || line.calculationMethod === "manual") && !parseOptionalManualRate(line.manualRate).empty;
       if (!wantsManualRate && !rateRow) {
         line.error = missingError;
         line.rate = 0;
@@ -6293,7 +6303,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       line.quantity = roundTo(quantity, 4);
       try {
-        const qtyForRate = convertQuantity(quantity, service?.uom, formatRateUnit(rateRow?.rateUOM) || service?.uom, {});
+        const rateUom = line.rateLocked && line.rateUOM ? line.rateUOM : rateRow?.rateUOM;
+        const qtyForRate = convertQuantity(quantity, service?.uom, formatRateUnit(rateUom) || service?.uom, {});
         if (!Number.isFinite(qtyForRate) || qtyForRate < 0) {
           throw new Error("Quantity could not be converted to the service rate unit.");
         }
@@ -7227,7 +7238,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${calc.error ? `<div class="field-error">${calc.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(calc.error) : "⚠ " + escapeHtml(calc.error)}</div>` : ""}
             </td>
             <td class="step-num">${row.serviceId ? renderRequiredQtyWithEdit(appendHtmlUnit(formatMasterRequiredQty("service", service, row, getCostCalculatorFinishedGood(), { useEnteredDimensions: true }), service && service.uom, " "), "data-edit-required-qty-service", lineId) : "—"}</td>
-            <td class="step-num">${row.serviceId ? renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
+            <td class="step-num">${row.serviceId ? renderLineRateWithEdit(service, formatRatePkr(calc.rate, calc.rateUOM || (row.rateLocked && row.rateUOM) || (getServiceRate(row.serviceId) && getServiceRate(row.serviceId).rateUOM) || ""), "data-cc-packaging-line-rate", lineId) : "—"}</td>
             <td class="step-num">${row.serviceId ? (calc.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(calc.cost), costUom, " / ")) : "—"}</td>
             <td>
               ${row.serviceId ? `
@@ -7596,6 +7607,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         dimensionId: serviceRow.dimensionId,
         manualQty: serviceRow.manualQty,
         manualRate: serviceRow.manualRate,
+        rateLocked: Boolean(serviceRow.rateLocked),
+        rateUOM: serviceRow.rateUOM,
         useCustomDimensions: serviceRow.useCustomDimensions,
         customLength: serviceRow.customLength,
         customWidth: serviceRow.customWidth,
@@ -7619,7 +7632,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         error: null,
         formulaId: line.formulaId || serviceRow.formulaId || null,
         dimensionId: serviceRow.dimensionId || null,
-        rateUOM: rateRow?.rateUOM || "",
+        rateUOM: (line.rateLocked && line.rateUOM) || rateRow?.rateUOM || "",
         uom: service.uom
       };
     }
@@ -13106,7 +13119,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
             <td class="step-num">${line.serviceId ? renderBomRequiredQtyDisplay("service", service, line, getSelectedFinishedGood()) : "—"}</td>
-            <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-service-rate", service && service.id) : "—"}</td>
+            <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (line.rateLocked && line.rateUOM) || (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-packaging-line-rate", line.id) : "—"}</td>
             <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")) : "—"}</td>
             <td>
               <div class="row-actions">
@@ -15690,6 +15703,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           </div>
           <div class="modal-body compact-line-body">
             <p class="stat-hint" style="margin:0 0 12px;">${service ? escapeHtml(service.name) + " (" + escapeHtml(service.code) + ")" : "Service not found"}</p>
+            ${state.modal.lineRateScope ? `<p class="stat-hint" style="margin:-4px 0 12px;">This rate is saved on this row only.</p>` : ""}
             <div class="form-grid two">
               <div>
                 <label class="form-label" for="srate-rate">Rate</label>
@@ -15777,11 +15791,77 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         selectedId: service.id,
         mode: "edit",
         lineId: null,
+        lineRateScope: null,
         compact: Boolean(options && options.compact),
         draft: defaultServiceRateDraft(service, rateRow),
         errors: {}
       };
       renderModal();
+    }
+
+    function findPackagingServiceLine(lineId, scope) {
+      const id = Number(lineId);
+      if (scope === "calculator") {
+        return (state.costCalculator.services || []).find((row) => Number(row.id || row.key) === id) || null;
+      }
+      return (state.bomServices || []).find((row) => Number(row.id) === id) || null;
+    }
+
+    function openPackagingLineRateModal(lineId, scope) {
+      const line = findPackagingServiceLine(lineId, scope);
+      const service = line && line.serviceId ? getService(line.serviceId) : null;
+      if (!line || !service) {
+        showNotification("Service row not found", "error");
+        return;
+      }
+      const rateRow = getServiceRateRecord(service.id);
+      const draft = defaultServiceRateDraft(service, rateRow);
+      if (line.rateLocked && line.manualRate != null && line.manualRate !== "") draft.rate = line.manualRate;
+      else if (Number(line.rate) > 0) draft.rate = line.rate;
+      if (line.rateLocked && line.rateUOM) draft.rateUOM = line.rateUOM;
+      state.modal = {
+        type: "service-rate",
+        selectedId: service.id,
+        mode: "edit",
+        lineId: line.id || line.key,
+        lineRateScope: scope,
+        compact: true,
+        draft,
+        errors: {}
+      };
+      renderModal();
+    }
+
+    function savePackagingLineRateFromModal() {
+      const draft = state.modal.draft;
+      const errors = validateServiceRateDraft(draft);
+      state.modal.errors = errors;
+      if (Object.keys(errors).length) {
+        showFirstValidationError(errors);
+        renderModal();
+        return;
+      }
+      const scope = state.modal.lineRateScope;
+      const line = findPackagingServiceLine(state.modal.lineId, scope);
+      if (!line) {
+        showNotification("Service row not found", "error");
+        return;
+      }
+      line.rateLocked = true;
+      line.manualRate = roundTo(Number(draft.rate), 2);
+      line.rateUOM = normalizeServiceRateUom(draft.rateUOM) || draft.rateUOM;
+      const service = getService(line.serviceId);
+      closeModal();
+      if (scope === "calculator") {
+        persistCostCalculatorState();
+        renderCostCalculator();
+        refreshIcons();
+      } else {
+        recalculateBOMCosts();
+        refreshBomViews();
+        persistEditorState();
+      }
+      showNotification("Rate updated for " + (service ? service.name : "this row") + " on this row only");
     }
 
     function validateServiceRateDraft(draft) {
@@ -15802,6 +15882,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function saveServiceRateFromModal() {
+      if (state.modal.lineRateScope) {
+        savePackagingLineRateFromModal();
+        return;
+      }
       const draft = state.modal.draft;
       const errors = validateServiceRateDraft(draft);
       state.modal.errors = errors;
@@ -20388,7 +20472,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         formulaId: draft.calculationMethod === "formula" ? Number(draft.formulaId) : null,
         dimensionId: draft.dimensionId ? Number(draft.dimensionId) : null,
         manualQty: draft.calculationMethod === "manual" ? parseByRule(draft.manualQty, "quantity").value : null,
-        manualRate: storedManualRateFromDraft(draft),
+        manualRate: existingLine && existingLine.rateLocked && !isFinishing && !isCostCalculatorFinishingModal()
+          ? existingLine.manualRate
+          : storedManualRateFromDraft(draft),
+        rateLocked: Boolean(existingLine && existingLine.rateLocked && !isFinishing && !isCostCalculatorFinishingModal()),
+        rateUOM: existingLine && existingLine.rateLocked && !isFinishing && !isCostCalculatorFinishingModal()
+          ? existingLine.rateUOM
+          : undefined,
         ...customDimensionFields(draft),
         quantity: 0,
         rate: 0,
@@ -21281,6 +21371,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const editServiceRate = event.target.closest("[data-edit-service-rate]");
         if (editServiceRate) {
           openServiceRateModal(editServiceRate.dataset.editServiceRate);
+          return;
+        }
+        const editPackagingLineRate = event.target.closest("[data-bom-packaging-line-rate]");
+        if (editPackagingLineRate) {
+          openPackagingLineRateModal(editPackagingLineRate.dataset.bomPackagingLineRate, "bom");
+          return;
+        }
+        const editCcPackagingLineRate = event.target.closest("[data-cc-packaging-line-rate]");
+        if (editCcPackagingLineRate) {
+          openPackagingLineRateModal(editCcPackagingLineRate.dataset.ccPackagingLineRate, "calculator");
           return;
         }
         const editBomServiceRate = event.target.closest("[data-bom-service-rate]");
