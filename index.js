@@ -13647,11 +13647,87 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
+    function formulaBuilderQueryText(query) {
+      return String(query || "").trim().toLowerCase();
+    }
+
+    function formulaBuilderChipMatches(query, parts) {
+      const q = formulaBuilderQueryText(query);
+      if (!q) return true;
+      return parts.some((part) => String(part || "").toLowerCase().includes(q));
+    }
+
+    function renderFormulaBuilderVariableGroups(query) {
+      const categoryOrder = ["Dimension", "Material", "Sheet", "Area", "Costing", "Service", "Printing"];
+      const items = getActiveFormulaVariables();
+      const extras = [];
+      items.forEach((item) => {
+        const category = item.category || "Other";
+        if (!categoryOrder.includes(category) && !extras.includes(category)) extras.push(category);
+      });
+      return categoryOrder.concat(extras).map((category) => {
+        const chips = items.filter((item) => (item.category || "Other") === category).map((item) => {
+          const sheetArea = isFixedSheetAreaCode(item.code);
+          const visible = formulaBuilderChipMatches(query, [item.code, item.name, item.category, sheetArea ? FIXED_SHEET_AREA.description : item.description]);
+          return `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" data-fb-chip data-fb-search="${escapeHtml([item.code, item.name, item.category].join(" "))}" title="${escapeHtml(sheetArea ? FIXED_SHEET_AREA.description : item.name)}" ${visible ? "" : "hidden"}>${escapeHtml(item.code)}${sheetArea ? ` <span class="formula-src">Fixed</span>` : ""}</button>`;
+        });
+        const visibleCount = items.filter((item) => (item.category || "Other") === category && formulaBuilderChipMatches(query, [item.code, item.name, item.category, isFixedSheetAreaCode(item.code) ? FIXED_SHEET_AREA.description : item.description])).length;
+        if (!chips.length) return "";
+        return `
+          <div class="fb-chip-group" data-fb-chip-group ${visibleCount ? "" : "hidden"}>
+            <div class="fb-chip-label">${escapeHtml(category)}</div>
+            <div class="chip-wrap">${chips.join("")}</div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    function renderFormulaBuilderFixedChips(query) {
+      return fixedVariables.map((item) => {
+        const visible = formulaBuilderChipMatches(query, [item.code, item.description]);
+        return `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" data-fb-chip data-fb-search="${escapeHtml([item.code, item.description].join(" "))}" title="${escapeHtml(item.description || item.code)}" ${visible ? "" : "hidden"}>${escapeHtml(item.code)} <span class="formula-src">Fixed</span></button>`;
+      }).join("");
+    }
+
+    function formulaBuilderFixedVisible(query) {
+      const q = formulaBuilderQueryText(query);
+      if (!q) return Boolean(state.modal.fixedOpen);
+      return fixedVariables.some((item) => formulaBuilderChipMatches(query, [item.code, item.description]));
+    }
+
+    function applyFormulaBuilderChipFilter(query) {
+      const root = document.getElementById("modal-dialog");
+      if (!root) return;
+      const q = formulaBuilderQueryText(query);
+      let shown = 0;
+      root.querySelectorAll("[data-fb-chip]").forEach((chip) => {
+        const match = !q || String(chip.dataset.fbSearch || "").toLowerCase().includes(q);
+        chip.hidden = !match;
+        if (match) shown += 1;
+      });
+      root.querySelectorAll("[data-fb-chip-group]").forEach((group) => {
+        group.hidden = !group.querySelector("[data-fb-chip]:not([hidden])");
+      });
+      const fixedBody = document.getElementById("fb-fixed-body");
+      const fixedToggle = document.getElementById("fb-fixed-toggle");
+      if (fixedBody) {
+        const fixedMatch = Boolean(q && fixedBody.querySelector("[data-fb-chip]:not([hidden])"));
+        const open = Boolean(state.modal.fixedOpen) || fixedMatch;
+        fixedBody.hidden = !open;
+        if (fixedToggle) fixedToggle.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+      const empty = document.getElementById("fb-chip-empty");
+      if (empty) empty.hidden = shown > 0;
+    }
+
     function renderFormulaBuilderModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const validation = currentFormulaValidation();
       const test = draft.testResult;
+      const chipQuery = state.modal.chipQuery || "";
+      const fixedOpen = formulaBuilderFixedVisible(chipQuery);
+      const showPurpose = draft.type !== "Style";
       return `
         <div class="modal-header">
           <div>
@@ -13662,102 +13738,114 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         </div>
         <div class="modal-body">
           <div class="fb-layout">
-            <div class="form-grid">
-              <div>
-                <label class="form-label" for="fb-name">Formula Name</label>
-                <input id="fb-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" />
-                ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
-              </div>
-              <div>
-                <label class="form-label" for="fb-code">Formula Code</label>
-                <input id="fb-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="FLAT_LENGTH" />
-                ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
-              </div>
-              <div>
-                <label class="form-label" for="fb-type">Type</label>
-                <select id="fb-type" class="full-select ${errors.type ? "input-invalid" : ""}">
-                  <option value="Material" ${draft.type === "Material" ? "selected" : ""}>Material</option>
-                  <option value="Service" ${draft.type === "Service" ? "selected" : ""}>Service</option>
-                  <option value="Style" ${draft.type === "Style" ? "selected" : ""}>Style</option>
-                </select>
-                ${errors.type ? `<div class="field-error">${escapeHtml(errors.type)}</div>` : ""}
-              </div>
-              ${draft.type === "Style" ? "" : `
-              <div>
-                <label class="form-label" for="fb-purpose">Purpose</label>
-                <select id="fb-purpose" class="full-select ${errors.purpose ? "input-invalid" : ""}">
-                  <option value="">Select purpose...</option>
-                  <option value="Quantity" ${draft.purpose === "Quantity" ? "selected" : ""}>Quantity</option>
-                  <option value="Rate" ${draft.purpose === "Rate" ? "selected" : ""}>Rate</option>
-                </select>
-                ${errors.purpose ? `<div class="field-error">${escapeHtml(errors.purpose)}</div>` : ""}
-              </div>
-              `}
-              <div class="fb-desc-row">
+            <div class="fb-main">
+              <div class="fb-identity${showPurpose ? "" : " is-style"}">
                 <div>
-                  <label class="form-label" for="fb-description">Description</label>
-                  <input id="fb-description" class="full-search" value="${escapeHtml(draft.description)}" />
+                  <label class="form-label" for="fb-name">Formula Name</label>
+                  <input id="fb-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" />
+                  ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
                 </div>
-                <div class="fb-service-flags">
-                  <label class="fb-flag">
-                    <input id="fb-service-length" type="checkbox" ${draft.serviceLength ? "checked" : ""} />
-                    <span>This formula uses Area Length</span>
-                  </label>
-                  <label class="fb-flag">
-                    <input id="fb-service-width" type="checkbox" ${draft.serviceWidth ? "checked" : ""} />
-                    <span>This formula uses Area Width</span>
-                  </label>
-                  <label class="fb-flag">
-                    <input id="fb-covered-area" type="checkbox" ${draft.coveredArea ? "checked" : ""} />
-                    <span>This formula uses Covered Area</span>
-                  </label>
+                <div>
+                  <label class="form-label" for="fb-code">Formula Code</label>
+                  <input id="fb-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="FLAT_LENGTH" />
+                  ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
                 </div>
+                <div>
+                  <label class="form-label" for="fb-type">Type</label>
+                  <div class="fb-select${errors.type ? " is-invalid" : ""}">
+                    ${prettySelect("fb-type", [
+                      { value: "Material", label: "Material" },
+                      { value: "Service", label: "Service" },
+                      { value: "Style", label: "Style" }
+                    ], draft.type || "Material")}
+                  </div>
+                  ${errors.type ? `<div class="field-error">${escapeHtml(errors.type)}</div>` : ""}
+                </div>
+                ${showPurpose ? `
+                <div>
+                  <label class="form-label" for="fb-purpose">Purpose</label>
+                  <div class="fb-select${errors.purpose ? " is-invalid" : ""}">
+                    ${prettySelect("fb-purpose", [
+                      { value: "", label: "Select purpose..." },
+                      { value: "Quantity", label: "Quantity" },
+                      { value: "Rate", label: "Rate" }
+                    ], draft.purpose || "")}
+                  </div>
+                  ${errors.purpose ? `<div class="field-error">${escapeHtml(errors.purpose)}</div>` : ""}
+                </div>
+                ` : ""}
+              </div>
+              <div class="fb-main-scroll">
+              <div>
+                <label class="form-label" for="fb-description">Description</label>
+                <input id="fb-description" class="full-search" value="${escapeHtml(draft.description)}" />
+              </div>
+              <div class="fb-service-flags">
+                <label class="fb-flag">
+                  <input id="fb-service-length" type="checkbox" ${draft.serviceLength ? "checked" : ""} />
+                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>This formula uses Area Length</span></span>
+                </label>
+                <label class="fb-flag">
+                  <input id="fb-service-width" type="checkbox" ${draft.serviceWidth ? "checked" : ""} />
+                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>This formula uses Area Width</span></span>
+                </label>
+                <label class="fb-flag">
+                  <input id="fb-covered-area" type="checkbox" ${draft.coveredArea ? "checked" : ""} />
+                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>This formula uses Covered Area</span></span>
+                </label>
               </div>
               <div>
                 <label class="form-label" for="fb-expression">Expression</label>
-                <div class="op-row">
-                  <button type="button" class="op-btn" data-insert="+">+</button>
-                  <button type="button" class="op-btn" data-insert="-">−</button>
-                  <button type="button" class="op-btn" data-insert="*">×</button>
-                  <button type="button" class="op-btn" data-insert="/">÷</button>
-                  <button type="button" class="op-btn" data-insert="(">(</button>
-                  <button type="button" class="op-btn" data-insert=")">)</button>
+                <div class="fb-expr ${errors.expression ? "is-invalid" : ""}">
+                  <div class="op-row">
+                    <button type="button" class="op-btn" data-insert="+">+</button>
+                    <button type="button" class="op-btn" data-insert="-">−</button>
+                    <button type="button" class="op-btn" data-insert="*">×</button>
+                    <button type="button" class="op-btn" data-insert="/">÷</button>
+                    <button type="button" class="op-btn" data-insert="(">(</button>
+                    <button type="button" class="op-btn" data-insert=")">)</button>
+                  </div>
+                  <textarea id="fb-expression" class="expression-input ${errors.expression ? "input-invalid" : ""}">${escapeHtml(draft.expression)}</textarea>
                 </div>
-                <textarea id="fb-expression" class="expression-input ${errors.expression ? "input-invalid" : ""}">${escapeHtml(draft.expression)}</textarea>
                 ${errors.expression ? `<div class="field-error">${escapeHtml(errors.expression)}</div>` : ""}
-                <div style="margin-top:8px;">${renderFormulaStatus(validation)}</div>
+                <div class="fb-status">${renderFormulaStatus(validation)}</div>
+              </div>
+              <div class="fb-test">
+                <div class="section-kicker">Formula Test</div>
+                <p class="stat-hint">Values are generated from variables used in the expression.</p>
+                ${renderFormulaTestFields(draft.expression, draft.testValues)}
+                <div class="toolbar-left">
+                  <button type="button" class="btn" id="btn-test-formula">Test Formula</button>
+                  <button type="button" class="btn btn-primary" id="btn-calculate-formula">Calculate</button>
+                </div>
+                ${test ? `
+                  <div class="preview-box">
+                    ${renderFormulaStatus({ valid: test.success, error: test.error })}
+                    ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(formatFormulaResult(test.result))}</strong></div>` : ""}
+                  </div>
+                ` : ""}
+              </div>
               </div>
             </div>
-            <div>
+            <div class="fb-vars">
               <div class="section-kicker">Variables</div>
-              <p class="stat-hint" style="margin:6px 0 8px;">Click to insert into the expression.</p>
-              <div class="chip-wrap">
-                ${getActiveFormulaVariables().map((item) => {
-                  const sheetArea = isFixedSheetAreaCode(item.code);
-                  return `<button type="button" class="chip" data-insert="${escapeHtml(item.code)}" title="${escapeHtml(sheetArea ? FIXED_SHEET_AREA.description : item.name)}">${escapeHtml(item.code)}${sheetArea ? ` <span class="formula-src">Fixed</span>` : ""}</button>`;
-                }).join("")}
-              </div>
-              <div class="section-kicker" style="margin-top:12px;">Fixed</div>
-              <p class="stat-hint" style="margin:6px 0 8px;">System implementation values. Click to insert. Not editable.</p>
-              <div class="chip-wrap">
-                ${fixedVariables.map((item) => renderFixedVariableChip(item)).join("")}
+              <p class="stat-hint">Click to insert into the expression.</p>
+              <input id="fb-chip-search" class="full-search" type="search" value="${escapeHtml(chipQuery)}" placeholder="Search variables" autocomplete="off" />
+              <div class="fb-chip-list">
+                ${renderFormulaBuilderVariableGroups(chipQuery)}
+                <div class="fb-fixed">
+                  <button type="button" class="fb-fixed-toggle" id="fb-fixed-toggle" aria-expanded="${fixedOpen ? "true" : "false"}">
+                    <span>Fixed</span>
+                    <span class="badge badge-muted">${fixedVariables.length}</span>
+                  </button>
+                  <div id="fb-fixed-body" ${fixedOpen ? "" : "hidden"}>
+                    <p class="stat-hint">System implementation values. Click to insert. Not editable.</p>
+                    <div class="chip-wrap">${renderFormulaBuilderFixedChips(chipQuery)}</div>
+                  </div>
+                </div>
+                <p id="fb-chip-empty" class="stat-hint" ${formulaBuilderQueryText(chipQuery) && !getActiveFormulaVariables().some((item) => formulaBuilderChipMatches(chipQuery, [item.code, item.name, item.category])) && !fixedVariables.some((item) => formulaBuilderChipMatches(chipQuery, [item.code, item.description])) ? "" : "hidden"}>No matching variables.</p>
               </div>
             </div>
-          </div>
-          <div style="margin-top:16px;">
-            <div class="section-kicker">Formula Test</div>
-            <p class="stat-hint" style="margin:6px 0 8px;">Values are generated from variables used in the expression.</p>
-            ${renderFormulaTestFields(draft.expression, draft.testValues)}
-            <div class="toolbar-left" style="margin-top:10px;">
-              <button type="button" class="btn" id="btn-test-formula">Test Formula</button>
-              <button type="button" class="btn btn-primary" id="btn-calculate-formula">Calculate</button>
-            </div>
-            ${test ? `
-              <div class="preview-box">
-                ${renderFormulaStatus({ valid: test.success, error: test.error })}
-                ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(formatFormulaResult(test.result))}</strong></div>` : ""}
-              </div>
-            ` : ""}
           </div>
         </div>
         <div class="modal-footer">
@@ -19284,6 +19372,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const isStyleFormModal = state.modal.type === "style-master" && !(state.modal.sub && state.modal.sub.type === "style-variable");
       const isCompactRateModal = Boolean(state.modal.compact) && (state.modal.type === "material-rate" || state.modal.type === "service-rate");
       dialog.classList.toggle("style-form-modal", isStyleFormModal);
+      dialog.classList.toggle("formula-builder", state.modal.type === "formula-builder");
       dialog.classList.toggle("wide", state.modal.type === "formula-builder" || state.modal.type === "formula-test" || (state.modal.type === "style-master" && state.modal.mode === "edit" && !isStyleFormModal) || (state.modal.type === "service-master" && state.modal.mode === "edit") || (state.modal.type === "raw-material-master" && state.modal.mode === "edit") || (state.modal.type === "other-raw-material-master" && state.modal.mode === "edit"));
       dialog.classList.toggle("wide-form", !isCompactRateModal && (state.modal.type === "finished-good" || state.modal.type === "finishing-service" || state.modal.type === "formula-variable" || state.modal.type === "raw-material-master" || state.modal.type === "other-raw-material-master" || state.modal.type === "service-master" || state.modal.type === "service-rate" || state.modal.type === "material-rate" || state.modal.type === "other-material-rate"));
       dialog.classList.toggle("formula-explainer", state.modal.type === "formula-explainer");
@@ -21914,6 +22003,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           state.modal.draft.code = event.target.value;
         }
         if (event.target.id === "fb-description") state.modal.draft.description = event.target.value;
+        if (event.target.id === "fb-chip-search") {
+          state.modal.chipQuery = event.target.value;
+          applyFormulaBuilderChipFilter(event.target.value);
+          return;
+        }
         if (event.target.dataset.testVar) {
           state.modal.draft.testValues[event.target.dataset.testVar] = event.target.value;
         }
@@ -21993,6 +22087,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           state.modal.draft.accessoryIds = normalizeAccessoryIds(state.modal.draft.accessoryIds).filter((id) => id !== removeId);
           renderModal();
           refreshIcons();
+          return;
+        }
+        const fixedToggle = event.target.closest("#fb-fixed-toggle");
+        if (fixedToggle && state.modal.type === "formula-builder") {
+          state.modal.fixedOpen = !state.modal.fixedOpen;
+          applyFormulaBuilderChipFilter(state.modal.chipQuery || "");
           return;
         }
         const insert = event.target.closest("[data-insert]");
