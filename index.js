@@ -11567,6 +11567,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return {
         filteredCount: rows.length,
         totalCount: formulas.length,
+        query: state.searches.formulas || "",
         grouped,
         groups: grouped
           ? FORMULA_TYPES.map((type) => {
@@ -11683,18 +11684,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="section-title">Formula Management</div>
             <div class="fm-hero-sub">Definitions, builder, and validation</div>
           </div>
-          <button type="button" class="btn btn-primary" id="btn-new-formula">
-            <i data-lucide="plus"></i> New Formula
-          </button>
         </div>
-        <div class="card fm-controls">
-          <div class="toolbar" style="margin-bottom:0;">
-            <div class="toolbar-left">
-              ${toolbarSearch("formula-search", state.searches.formulas, "Search formula name, code, expression...")}
-              ${renderFormulaFilter()}
-            </div>
-            <div class="toolbar-right">
-              <span class="badge badge-muted" id="formula-visible-count">${model.filteredCount} of ${model.totalCount}</span>
+        <div class="fm-sticky-tools">
+          <div class="card fm-controls">
+            <div class="toolbar" style="margin-bottom:0;">
+              <div class="toolbar-left">
+                ${toolbarSearch("formula-search", state.searches.formulas, "Search formula name, code, expression...")}
+                ${renderFormulaFilter()}
+              </div>
+              <div class="toolbar-right">
+                <span class="badge badge-muted" id="formula-visible-count">${model.filteredCount} of ${model.totalCount}</span>
+                <button type="button" class="btn btn-primary" id="btn-new-formula">
+                  <i data-lucide="plus"></i> New Formula
+                </button>
+              </div>
             </div>
           </div>
         </div>

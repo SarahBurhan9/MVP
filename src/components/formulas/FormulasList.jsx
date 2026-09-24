@@ -1,24 +1,27 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FormulasTable } from "./FormulasTable.jsx";
 
-function StyleGroupHeading({ group }) {
+function GroupToggle({ icon, kicker, title, count, open, onClick }) {
   return (
-    <div className="section-head">
-      <div className="fm-group-title">
+    <button type="button" className="fm-group-toggle" aria-expanded={open} onClick={onClick}>
+      <span className="fm-group-title">
         <span className="fm-group-icon">
-          <i data-lucide="palette"></i>
+          <i data-lucide={icon}></i>
         </span>
-        <div>
-          <div className="section-kicker">{group.kicker}</div>
-          <div className="section-title">{group.name}</div>
-        </div>
-      </div>
-      <span className="badge badge-muted">{group.rows.length}</span>
-    </div>
+        <span>
+          <span className="section-kicker">{kicker}</span>
+          <span className="section-title">{title}</span>
+        </span>
+      </span>
+      <span className="fm-group-toggle-side">
+        <span className="badge badge-muted">{count}</span>
+        <i data-lucide={open ? "chevron-down" : "chevron-right"}></i>
+      </span>
+    </button>
   );
 }
 
-function StyleGroupCards({ styleGroups }) {
+function StyleGroupCards({ styleGroups, isOpen, onToggle }) {
   if (!styleGroups.length) {
     return (
       <div className="card fm-group is-style">
@@ -27,64 +30,115 @@ function StyleGroupCards({ styleGroups }) {
     );
   }
 
-  return styleGroups.map((group) => (
-    <div key={group.key} className="card fm-group is-style" style={{ marginBottom: 16 }}>
-      <div className="card-body">
-        <StyleGroupHeading group={group} />
-        <FormulasTable rows={group.rows} emptyMessage="No formulas linked to this style." />
+  return styleGroups.map((group) => {
+    const key = "style:" + group.key;
+    const open = isOpen(key);
+    return (
+      <div key={group.key} className="card fm-group is-style" style={{ marginBottom: 10 }}>
+        <div className="card-body">
+          <GroupToggle
+            icon="palette"
+            kicker={group.kicker}
+            title={group.name}
+            count={group.rows.length}
+            open={open}
+            onClick={() => onToggle(key)}
+          />
+          {open ? (
+            <div className="fm-group-body">
+              <FormulasTable rows={group.rows} emptyMessage="No formulas linked to this style." />
+            </div>
+          ) : null}
+        </div>
       </div>
-    </div>
-  ));
+    );
+  });
 }
 
-export function FormulasList({ grouped, groups, rows, styleGroups }) {
+export function FormulasList({ grouped, groups, rows, styleGroups, query }) {
+  const [openKeys, setOpenKeys] = useState(() => new Set());
+  const searchOpen = Boolean(String(query || "").trim());
+
   useEffect(() => {
     if (window.lucide && typeof window.lucide.createIcons === "function") {
       window.lucide.createIcons();
     }
   });
 
+  function isOpen(key) {
+    return searchOpen || openKeys.has(key);
+  }
+
+  function onToggle(key) {
+    if (searchOpen) return;
+    setOpenKeys((current) => {
+      const next = new Set(current);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
   if (grouped) {
     return (
       <>
-        {groups.map((group) => (
-          <div key={group.type} className={`card fm-group ${group.cls}`} style={{ marginBottom: 16 }}>
-            <div className="card-body">
-              <div className="section-head">
-                <div className="fm-group-title">
-                  <span className="fm-group-icon">
-                    <i data-lucide={group.icon}></i>
-                  </span>
-                  <div>
-                    <div className="section-kicker">{group.type} formulas</div>
-                    <div className="section-title">{group.type}</div>
+        {groups.map((group) => {
+          const key = "type:" + group.type;
+          const open = isOpen(key);
+          return (
+            <div key={group.type} className={`card fm-group ${group.cls}`} style={{ marginBottom: 10 }}>
+              <div className="card-body">
+                <GroupToggle
+                  icon={group.icon}
+                  kicker={group.type + " formulas"}
+                  title={group.type}
+                  count={group.rows.length}
+                  open={open}
+                  onClick={() => onToggle(key)}
+                />
+                {open ? (
+                  <div className="fm-group-body">
+                    {group.styleGroups ? (
+                      group.styleGroups.length ? (
+                        group.styleGroups.map((styleGroup) => {
+                          const styleKey = "style:" + styleGroup.key;
+                          const styleOpen = isOpen(styleKey);
+                          return (
+                            <div key={styleGroup.key} className="fm-style-block">
+                              <GroupToggle
+                                icon="palette"
+                                kicker={styleGroup.kicker}
+                                title={styleGroup.name}
+                                count={styleGroup.rows.length}
+                                open={styleOpen}
+                                onClick={() => onToggle(styleKey)}
+                              />
+                              {styleOpen ? (
+                                <div className="fm-group-body">
+                                  <FormulasTable rows={styleGroup.rows} emptyMessage="No formulas linked to this style." />
+                                </div>
+                              ) : null}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <FormulasTable rows={[]} emptyMessage={group.emptyMessage} />
+                      )
+                    ) : (
+                      <FormulasTable rows={group.rows} emptyMessage={group.emptyMessage} />
+                    )}
                   </div>
-                </div>
-                <span className="badge badge-muted">{group.rows.length}</span>
+                ) : null}
               </div>
-              {group.styleGroups ? (
-                group.styleGroups.length ? (
-                  group.styleGroups.map((styleGroup) => (
-                    <div key={styleGroup.key} className="fm-style-block">
-                      <StyleGroupHeading group={styleGroup} />
-                      <FormulasTable rows={styleGroup.rows} emptyMessage="No formulas linked to this style." />
-                    </div>
-                  ))
-                ) : (
-                  <FormulasTable rows={[]} emptyMessage={group.emptyMessage} />
-                )
-              ) : (
-                <FormulasTable rows={group.rows} emptyMessage={group.emptyMessage} />
-              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </>
     );
   }
 
   if (Array.isArray(styleGroups)) {
-    return <StyleGroupCards styleGroups={styleGroups} />;
+    return <StyleGroupCards styleGroups={styleGroups} isOpen={isOpen} onToggle={onToggle} />;
   }
 
   return (

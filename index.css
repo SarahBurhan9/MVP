@@ -290,9 +290,19 @@
       font-size: 13px;
       color: var(--text-muted);
     }
+    .lib-page .fm-sticky-tools {
+      position: sticky;
+      top: var(--header-height);
+      z-index: 19;
+      padding-bottom: 16px;
+      background: var(--bg);
+    }
     .lib-page .fm-controls {
       padding: 12px 14px;
       margin-bottom: 16px;
+    }
+    .lib-page .fm-sticky-tools .fm-controls {
+      margin-bottom: 0;
     }
     .lib-page .fm-controls .toolbar-left {
       flex: 1;
@@ -360,9 +370,46 @@
       color: var(--text-muted);
     }
     .lib-page .fm-style-block + .fm-style-block {
-      margin-top: 8px;
-      padding-top: 16px;
+      margin-top: 4px;
+      padding-top: 8px;
       border-top: 1px solid var(--border);
+    }
+    .lib-page .fm-group-toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      width: 100%;
+      margin: 0;
+      padding: 2px 4px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+      text-align: left;
+      cursor: pointer;
+    }
+    .lib-page .fm-group-toggle:hover {
+      background: #f8fafc;
+    }
+    .lib-page .fm-group-toggle .section-kicker,
+    .lib-page .fm-group-toggle .section-title {
+      display: block;
+    }
+    .lib-page .fm-group-toggle-side {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      color: var(--text-muted);
+    }
+    .lib-page .fm-group-toggle-side svg {
+      width: 16px;
+      height: 16px;
+    }
+    .lib-page .fm-group-body {
+      margin-top: 12px;
     }
 
     .lib-page .fm-filter { position: relative; }

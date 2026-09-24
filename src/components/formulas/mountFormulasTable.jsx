@@ -28,6 +28,7 @@ export function mountFormulasTable(element, model) {
       groups={model.groups}
       rows={model.rows}
       styleGroups={model.styleGroups}
+      query={model.query}
     />
   );
 }
