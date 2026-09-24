@@ -23,6 +23,11 @@ export function mountFormulasTable(element, model) {
     formulasListEl = element;
   }
   formulasListRoot.render(
-    <FormulasList grouped={model.grouped} groups={model.groups} rows={model.rows} />
+    <FormulasList
+      grouped={model.grouped}
+      groups={model.groups}
+      rows={model.rows}
+      styleGroups={model.styleGroups}
+    />
   );
 }

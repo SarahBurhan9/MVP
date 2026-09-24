@@ -11485,9 +11485,80 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }));
     }
 
+    function styleFormulaGroups(items) {
+      const buckets = new Map();
+      const unlinked = [];
+      items.forEach((item) => {
+        const links = styleFormulas
+          .filter((link) => Number(link.formulaId) === Number(item.id))
+          .slice()
+          .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || a.id - b.id);
+        const placed = new Set();
+        let linked = false;
+        links.forEach((link) => {
+          const styleId = Number(link.styleId);
+          if (placed.has(styleId)) return;
+          const style = styles.find((entry) => Number(entry.id) === styleId);
+          if (!style) return;
+          placed.add(styleId);
+          linked = true;
+          if (!buckets.has(styleId)) buckets.set(styleId, []);
+          buckets.get(styleId).push({
+            item,
+            order: Number(link.order) || 0,
+            linkId: link.id
+          });
+        });
+        if (!linked) unlinked.push(item);
+      });
+
+      const groups = [];
+      styles.forEach((style) => {
+        const entries = buckets.get(Number(style.id));
+        if (!entries || !entries.length) return;
+        const sorted = entries
+          .slice()
+          .sort((a, b) => a.order - b.order || a.linkId - b.linkId)
+          .map((entry) => entry.item);
+        groups.push({
+          key: String(style.id),
+          name: style.name || "Style",
+          kicker: "Style",
+          items: sorted,
+          rows: formulaDisplayRows(sorted)
+        });
+      });
+      if (unlinked.length) {
+        groups.push({
+          key: "unlinked",
+          name: "Not linked to a style",
+          kicker: "Unlinked",
+          items: unlinked,
+          rows: formulaDisplayRows(unlinked)
+        });
+      }
+      return groups;
+    }
+
+    function renderStyleGroupHeading(group) {
+      return `
+        <div class="section-head">
+          <div class="fm-group-title">
+            <span class="fm-group-icon"><i data-lucide="palette"></i></span>
+            <div>
+              <div class="section-kicker">${escapeHtml(group.kicker)}</div>
+              <div class="section-title">${escapeHtml(group.name)}</div>
+            </div>
+          </div>
+          <span class="badge badge-muted">${group.rows.length}</span>
+        </div>
+      `;
+    }
+
     function formulasListModel() {
       const rows = filterFormulas();
       const grouped = state.formulaFilter === "all";
+      const styleFiltered = state.formulaFilter === "style";
       const typeMeta = {
         Material: { icon: "package", cls: "is-material" },
         Service: { icon: "wrench", cls: "is-service" },
@@ -11506,11 +11577,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 icon: meta.icon,
                 cls: meta.cls,
                 emptyMessage: "No " + type.toLowerCase() + " formulas.",
-                rows: formulaDisplayRows(items)
+                rows: formulaDisplayRows(items),
+                styleGroups: type === "Style" ? styleFormulaGroups(items) : null
               };
             })
           : [],
-        rows: grouped ? [] : formulaDisplayRows(rows)
+        rows: grouped ? [] : formulaDisplayRows(rows),
+        styleGroups: !grouped && styleFiltered ? styleFormulaGroups(rows) : null
       };
     }
 
@@ -11525,6 +11598,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return FORMULA_TYPES.map((type) => {
           const items = rows.filter((item) => item.type === type);
           const meta = typeMeta[type] || { icon: "sigma", cls: "" };
+          const body = type === "Style"
+            ? (() => {
+                const styleGroups = styleFormulaGroups(items);
+                if (!styleGroups.length) return renderFormulaTable([], `No ${type.toLowerCase()} formulas.`);
+                return styleGroups.map((group) => `
+                  <div class="fm-style-block">
+                    ${renderStyleGroupHeading(group)}
+                    ${renderFormulaTable(group.items, "No formulas linked to this style.")}
+                  </div>
+                `).join("");
+              })()
+            : renderFormulaTable(items, `No ${type.toLowerCase()} formulas.`);
           return `
               <div class="card fm-group ${meta.cls}" style="margin-bottom:16px;">
                 <div class="card-body">
@@ -11538,11 +11623,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     </div>
                     <span class="badge badge-muted">${items.length}</span>
                   </div>
-                  ${renderFormulaTable(items, `No ${type.toLowerCase()} formulas.`)}
+                  ${body}
                 </div>
               </div>
             `;
         }).join("");
+      }
+      if (state.formulaFilter === "style") {
+        const styleGroups = styleFormulaGroups(rows);
+        if (!styleGroups.length) {
+          return `<div class="card fm-group is-style">${renderFormulaTable([], "No formulas match this search or filter.")}</div>`;
+        }
+        return styleGroups.map((group) => `
+          <div class="card fm-group is-style" style="margin-bottom:16px;">
+            <div class="card-body">
+              ${renderStyleGroupHeading(group)}
+              ${renderFormulaTable(group.items, "No formulas linked to this style.")}
+            </div>
+          </div>
+        `).join("");
       }
       return `<div class="card fm-group">${renderFormulaTable(rows)}</div>`;
     }

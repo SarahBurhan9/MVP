@@ -359,6 +359,11 @@
       font-size: 13px;
       color: var(--text-muted);
     }
+    .lib-page .fm-style-block + .fm-style-block {
+      margin-top: 8px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
 
     .lib-page .fm-filter { position: relative; }
     .lib-page .fm-filter-native {
