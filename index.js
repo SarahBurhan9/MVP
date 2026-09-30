@@ -6708,7 +6708,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const H = parseCostCalculatorDimension(cc.H);
       const hasDims = hasStyle && L !== null && W !== null && H !== null;
       const ply = Number(cc.ply);
-      const hasPly = hasDims && (ply === 1 || ply === 2 || ply === 3);
+      const hasPly = hasDims && isStylePly(ply);
       return { hasStyle, hasDims, hasPly, L, W, H, ply };
     }
 
