@@ -18935,6 +18935,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: (material.name || material.code || "") + (usingWeight || line.calculationMethod === "manual" ? " · Default Weight Formula" : " · Default Required Quantity Formula"),
         formulaName: formula ? (formula.name || formula.code) : (model.formulaName || "Net Qty"),
         summaryHtml,
+        steps: (model.steps || []).filter((step) => !/GROSS_QTY/i.test(String(step.heading || "") + " " + String(step.expression || ""))).map((step, index) => ({
+          ...step,
+          index: index + 1
+        })),
         finalHtml: `Required Qty: <strong>${escapeHtml(shown)}</strong>${uom ? " " + escapeHtml(uom) : ""}`
       };
     }
