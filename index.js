@@ -14750,7 +14750,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const editing = state.modal.mode === "edit";
-      const tab = state.modal.materialTab || "info";
       const showGsm = draft.category === "Paper" || draft.category === "Board";
       const infoForm = `
           <div class="form-grid">
@@ -14809,41 +14808,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             </div>
           </div>
       `;
-      const linked = editing && draft.id ? getMaterialDimensionLinks(draft.id) : [];
-      const dimRows = linked.length
-        ? linked.map((row) => {
-            const dim = getDimension(row.dimensionId);
-            return `
-              <tr>
-                <td>${escapeHtml(formatDimensionChipLabel(dim))}</td>
-                ${masterRowActions("data-edit-material-dim", row.id, "data-delete-material-dim", row.id)}
-              </tr>
-            `;
-          }).join("")
-        : emptyRow(2, "No dimensions linked to this material yet.");
-      const dimsForm = `
-        <div class="section-head">
-          <div>
-            <div class="section-kicker">Material dimensions</div>
-            <p class="stat-hint" style="margin:4px 0 0;">Link a dimension to this material. Quantity uses Default Weight Formula, or Default Required Quantity Formula when Weight Formula is None.</p>
-          </div>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-add-material-dimension">
-            <i data-lucide="plus"></i> Add Dimension to Material
-          </button>
-        </div>
-        <div class="table-wrap">
-          <table class="data-table" style="min-width:560px;">
-            <thead>
-              <tr>
-                <th>Dimension Name</th>
-                <!-- Formula (Qty Calculate) column hidden intentionally as of qtyFormulaId-only change; materialDimensions.formulaId is still stored. -->
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>${dimRows}</tbody>
-          </table>
-        </div>
-      `;
       return `
         <div class="modal-header">
           <div>
@@ -14853,17 +14817,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           <button type="button" class="btn btn-ghost btn-sm" data-modal-close>Close</button>
         </div>
         <div class="modal-body">
-          ${editing ? `
-            <div class="section-tabs">
-              <button type="button" class="section-tab ${tab === "info" ? "active" : ""}" data-material-tab="info">Material Info</button>
-              <button type="button" class="section-tab ${tab === "dimensions" ? "active" : ""}" data-material-tab="dimensions">Dimensions</button>
-            </div>
-            ${tab === "dimensions" ? dimsForm : infoForm}
-          ` : infoForm}
+          ${infoForm}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          ${!editing || tab === "info" ? `<button type="button" class="btn btn-primary" id="btn-save-raw-material">${editing ? "Update Material Info" : "Add Material"}</button>` : ""}
+          <button type="button" class="btn btn-primary" id="btn-save-raw-material">${editing ? "Update Material Info" : "Add Material"}</button>
         </div>
       `;
     }
