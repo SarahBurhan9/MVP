@@ -197,8 +197,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: "Gross Quantity With Wastage",
         type: "Material",
         purpose: null,
-        description: "Wastage quantity from material quantity and wastage percent.",
-        expression: "MAT_QTY * WASTAGE / 100",
+        description: "Gross quantity is material quantity plus wastage quantity.",
+        expression: "MAT_QTY + WST_QTY",
         isActive: true
       },
       {
@@ -3057,10 +3057,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       formulas.forEach((item) => {
         if (item.code === "GROSS_QTY") {
           const current = String(item.expression || "").replace(/\s+/g, "").toUpperCase();
-          const next = "MAT_QTY * WASTAGE / 100";
+          const next = "MAT_QTY + WST_QTY";
           if (current !== next.replace(/\s+/g, "").toUpperCase()) {
             item.expression = next;
-            item.description = "Wastage quantity from material quantity and wastage percent.";
+            item.description = "Gross quantity is material quantity plus wastage quantity.";
             grossQtyFormulaPatched = true;
           }
         }
@@ -4730,11 +4730,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         ${materialQtyHeader}
         <th class="step-col-compact">Wastage %</th>
         <th class="step-col-compact">Wastage Qty</th>
-        <th class="step-col-compact">Net Qty</th>
+        <th class="step-col-compact">${includeMaterialQty ? "Gross Qty" : "Net Qty"}</th>
       `;
     }
 
-    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom, materialQtyHtml, wastageQtyHelpHtml, netQtyHelpHtml) {
+    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom, materialQtyHtml, wastageQtyHelpHtml, netQtyHelpHtml, wastageDisplayQty, trailingQty) {
       const materialQtyCell = materialQtyHtml == null ? "" : `<td class="step-num step-col-compact">${materialQtyHtml}</td>`;
       if (requiredQtyOnly) {
         return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>${materialQtyCell}`;
@@ -4743,12 +4743,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const wastageCell = wastageLineId
         ? renderStepValueWithEdit(wastageHtml, "data-edit-material-wastage", wastageLineId, "Edit wastage %", "pencil", "edit")
         : wastageHtml;
+      const wastageQtyText = wastageDisplayQty == null
+        ? formatWastageQty(netQty, grossQty, hasError)
+        : (hasError ? "—" : formatQty(wastageDisplayQty));
+      const trailingText = hasError ? "—" : formatQty(trailingQty == null ? netQty : trailingQty);
       return `
         <td class="step-num step-col-compact">${requiredQtyHtml}</td>
         ${materialQtyCell}
         <td class="step-num step-col-compact">${wastageCell}</td>
-        <td class="step-num step-col-compact">${appendHtmlUnit(formatWastageQty(netQty, grossQty, hasError), qtyUom, " ")}${wastageQtyHelpHtml || ""}</td>
-        <td class="step-num step-col-compact">${appendHtmlUnit(hasError ? "—" : formatQty(netQty), qtyUom, " ")}${netQtyHelpHtml || ""}</td>
+        <td class="step-num step-col-compact">${appendHtmlUnit(wastageQtyText, qtyUom, " ")}${wastageQtyHelpHtml || ""}</td>
+        <td class="step-num step-col-compact">${appendHtmlUnit(trailingText, qtyUom, " ")}${netQtyHelpHtml || ""}</td>
       `;
     }
 
@@ -5928,6 +5932,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return true;
     }
 
+    function computeWastageAndGrossQty(variables, netQty, wastage) {
+      const base = { ...variables, NET_QTY: netQty, WASTAGE: wastage };
+      const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", base, ["WST_QTY"]);
+      if (!wstEval.success) {
+        return { error: wstEval.error || "Wastage quantity could not be calculated.", wstQty: null, grossQty: null };
+      }
+      const wstQty = wstEval.result;
+      const grossFormula = getFormulaByCode("GROSS_QTY");
+      const withWst = { ...base, WST_QTY: wstQty };
+      if (grossFormula && grossFormula.isActive) {
+        const grossEval = evaluateFormula(grossFormula.expression, withWst, [grossFormula.code]);
+        if (!grossEval.success) {
+          return { error: grossEval.error || "Gross quantity could not be calculated.", wstQty, grossQty: null };
+        }
+        return { error: null, wstQty, grossQty: grossEval.result };
+      }
+      return { error: null, wstQty, grossQty: Number(netQty) + Number(wstQty) };
+    }
+
     function calculateMaterialCost(materialLine, context) {
       const line = { ...materialLine, error: null };
       const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
@@ -6025,28 +6048,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
-      const grossFormula = getFormulaByCode("GROSS_QTY");
       let grossQty;
+      let wstQty = 0;
       if (accessoryLine) {
         grossQty = netQty;
-      } else if (grossFormula && grossFormula.isActive) {
-        const grossEval = evaluateFormula(
-          grossFormula.expression,
-          { ...variables, NET_QTY: netQty, WASTAGE: wastage },
-          [grossFormula.code]
-        );
-        if (!grossEval.success) {
-          line.error = grossEval.error;
+      } else {
+        const grossResult = computeWastageAndGrossQty(variables, netQty, wastage);
+        if (grossResult.error) {
+          line.error = grossResult.error;
           line.netQty = 0;
           line.grossQty = 0;
+          line.wastageQty = 0;
           line.costPerPiece = 0;
           return line;
         }
-        grossQty = grossEval.result;
-      } else {
-        grossQty = netQty * (1 + wastage / 100);
+        wstQty = grossResult.wstQty;
+        grossQty = grossResult.grossQty;
       }
       line.netQty = roundTo(netQty, 4);
+      line.wastageQty = roundTo(wstQty, 4);
       line.grossQty = roundTo(grossQty, 4);
       delete line.rateFormulaId;
       line.dimensionVolume = null;
@@ -6158,26 +6178,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       const qtyFormula = line.calculationMethod === "formula" ? getOtherMaterialQtyFormula(material) : null;
       const variables = buildOtherMaterialFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula);
-      const grossFormula = getFormulaByCode("GROSS_QTY");
-      let grossQty;
-      if (grossFormula && grossFormula.isActive) {
-        const grossEval = evaluateFormula(
-          grossFormula.expression,
-          { ...variables, NET_QTY: netQty, WASTAGE: wastage },
-          [grossFormula.code]
-        );
-        if (!grossEval.success) {
-          line.error = grossEval.error;
-          line.netQty = 0;
-          line.grossQty = 0;
-          line.costPerPiece = 0;
-          return line;
-        }
-        grossQty = grossEval.result;
-      } else {
-        grossQty = netQty * (1 + wastage / 100);
+      const grossResult = computeWastageAndGrossQty(variables, netQty, wastage);
+      if (grossResult.error) {
+        line.error = grossResult.error;
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.wastageQty = 0;
+        line.costPerPiece = 0;
+        return line;
       }
+      const grossQty = grossResult.grossQty;
       line.netQty = roundTo(netQty, 4);
+      line.wastageQty = roundTo(grossResult.wstQty, 4);
       line.grossQty = roundTo(grossQty, 4);
       delete line.rateFormulaId;
       line.dimensionVolume = null;
@@ -13123,7 +13135,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       material && material.uom,
                       renderBomMaterialQtyDisplay("material", material, line, getSelectedFinishedGood()),
                       formulaHelpButton("wastage-qty", line.id, "How wastage quantity was calculated"),
-                      formulaHelpButton("column-net-qty", line.id, "How net quantity was calculated")
+                      formulaHelpButton("gross-qty", line.id, "How gross quantity was calculated"),
+                      line.wastageQty,
+                      line.grossQty
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
@@ -18971,6 +18985,37 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function buildFormulaExplainModel_GrossQty(lineId) {
+      const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
+      const material = line ? getRawMaterial(line.rawMaterialId) : null;
+      const fg = getSelectedFinishedGood();
+      if (!line || !material || !fg) return { error: "Gross quantity details are unavailable." };
+      const uom = material.uom || "";
+      const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
+      const qtyFormula = resolved && resolved.formula;
+      const variables = buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line);
+      const matEval = evaluateFormula("MAT_QTY", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["MAT_QTY"]);
+      const matShown = matEval.success ? formatQty(matEval.result) : "—";
+      const wstShown = formatQty(line.wastageQty);
+      const grossFormula = getFormulaByCode("GROSS_QTY");
+      return {
+        title: "Gross Qty",
+        subtitle: (material.name || material.code || "") + " · Gross Quantity With Wastage",
+        formulaName: grossFormula ? (grossFormula.name || "Gross Quantity With Wastage") : "Gross Quantity With Wastage",
+        sourceType: "formula",
+        summaryHtml: "Gross Qty uses the formula GROSS_QTY = MAT_QTY + WST_QTY. MAT_QTY is the material quantity. WST_QTY is the wastage quantity on this row.",
+        steps: [
+          {
+            index: 1,
+            heading: "Gross Quantity With Wastage (GROSS_QTY)",
+            expression: "MAT_QTY + WST_QTY",
+            pluggedHtml: `${escapeHtml(matShown)} + ${escapeHtml(wstShown)} = <strong class="formula-val">${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+          }
+        ],
+        finalHtml: `Gross Qty: <strong>${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+      };
+    }
+
     function buildFormulaExplainModel_ColumnNetQty(lineId) {
       const model = buildFormulaExplainModel_NetQty(lineId);
       if (model.error) return model;
@@ -18990,19 +19035,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!line || !material || !fg) return { error: "Wastage quantity details are unavailable." };
       const uom = material.uom || "";
-      const grossFormula = getFormulaByCode("GROSS_QTY");
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
       const qtyFormula = resolved && resolved.formula;
       const variables = buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line);
-      const steps = buildGrossQtyExplainSteps(variables, {}, line.netQty, line.wastagePercent, line.grossQty, { WASTAGE: "manual" }, 0);
+      const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["WST_QTY"]);
+      const matEval = evaluateFormula("MAT_QTY", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["MAT_QTY"]);
       return {
         title: "Wastage Qty",
-        subtitle: (material.name || material.code || "") + " · Gross Quantity formula",
-        formulaName: grossFormula ? (grossFormula.name || grossFormula.code) : "Gross Quantity",
+        subtitle: (material.name || material.code || "") + " · Wastage quantity",
+        formulaName: "Wastage Qty",
         sourceType: "formula",
-        summaryHtml: "Wastage Qty uses the formula MAT_QTY * WASTAGE / 100. MAT_QTY is the material quantity formula. WASTAGE is the percent entered on this row.",
-        steps,
-        finalHtml: `Wastage Qty: <strong>${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+        summaryHtml: "Wastage Qty uses MAT_QTY * WASTAGE / 100. MAT_QTY is the material quantity. WASTAGE is the percent entered on this row.",
+        steps: [
+          {
+            index: 1,
+            heading: "Wastage Qty (WST_QTY)",
+            expression: "MAT_QTY * WASTAGE / 100",
+            pluggedHtml: `${escapeHtml(matEval.success ? formatQty(matEval.result) : "—")} × ${escapeHtml(formatQty(line.wastagePercent))} / 100 = <strong class="formula-val">${escapeHtml(wstEval.success ? formatQty(wstEval.result) : formatQty(line.wastageQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+          }
+        ],
+        finalHtml: `Wastage Qty: <strong>${escapeHtml(formatQty(line.wastageQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
       };
     }
 
@@ -19021,8 +19073,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         {
           index: 1,
           heading: "Gross Qty",
-          expression: "Net Qty after wastage",
-          pluggedHtml: `Gross Qty: <strong class="formula-val">${escapeHtml(formatQty(line.grossQty))}</strong> ${escapeHtml(materialUnit)}`
+          expression: "MAT_QTY + WST_QTY",
+          pluggedHtml: `Gross Qty (MAT_QTY + WST_QTY): <strong class="formula-val">${escapeHtml(formatQty(line.grossQty))}</strong> ${escapeHtml(materialUnit)}`
         },
         {
           index: 2,
@@ -19042,7 +19094,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: (material.name || material.code || "") + " · rate " + (formatRatePkr(rate, rateRow && rateRow.rateUOM)),
         formulaName: "Quantity in rate unit × Rate",
         sourceType: "formula",
-        summaryHtml: "Cost / Piece starts from Gross Qty. That quantity is converted from the raw material unit (" + materialUnit + ") into the rate unit (" + rateUnit + "), then multiplied by the rate. The label / " + fgUnit + " is the finished good unit, meaning the cost for one finished " + fgUnit.replace(/s$/, "") + ".",
+        summaryHtml: "Cost / Piece starts from Gross Qty, which is MAT_QTY + WST_QTY. That quantity is converted from the raw material unit (" + materialUnit + ") into the rate unit (" + rateUnit + "), then multiplied by the rate. The label / " + fgUnit + " is the finished good unit.",
         steps,
         finalHtml: `Cost / Piece: <strong>${escapeHtml(formatRupees(line.costPerPiece))} / ${escapeHtml(fgUnit)}</strong>`
       };
@@ -19053,6 +19105,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (kind === "required-qty") return buildFormulaExplainModel_RequiredQty(lineId);
       if (kind === "net-qty") return buildFormulaExplainModel_NetQty(lineId);
       if (kind === "material-qty") return buildFormulaExplainModel_MaterialQty(lineId);
+      if (kind === "gross-qty") return buildFormulaExplainModel_GrossQty(lineId);
       if (kind === "column-net-qty") return buildFormulaExplainModel_ColumnNetQty(lineId);
       if (kind === "wastage-qty") return buildFormulaExplainModel_WastageQty(lineId);
       if (kind === "line-cost") return buildFormulaExplainModel_LineCost(lineId);
@@ -19132,9 +19185,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "required-qty", "net-qty", "material-qty", "column-net-qty", "wastage-qty", "line-cost"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "required-qty", "net-qty", "material-qty", "column-net-qty", "gross-qty", "wastage-qty", "line-cost"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "column-net-qty" || resolved === "wastage-qty" || resolved === "line-cost";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
