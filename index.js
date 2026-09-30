@@ -14918,11 +14918,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function defaultMaterialRateDraft(material, rateRow) {
-      const inferredUom = normalizeMaterialRateUom(material && material.uom) || "Rs./kg";
       return {
         rawMaterialId: material ? material.id : null,
         rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
-        rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        rateUOM: (rateRow && rateRow.rateUOM) || "",
         formulaId: rateRow && rateRow.formulaId ? Number(rateRow.formulaId) : "",
         status: (rateRow && rateRow.status) || "Active"
       };
@@ -15494,11 +15493,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function defaultOtherMaterialRateDraft(material, rateRow) {
-      const inferredUom = normalizeMaterialRateUom(material && material.uom) || "Rs./kg";
       return {
         otherRawMaterialId: material ? material.id : null,
         rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
-        rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        rateUOM: (rateRow && rateRow.rateUOM) || "",
         formulaId: rateRow && rateRow.formulaId ? Number(rateRow.formulaId) : "",
         status: (rateRow && rateRow.status) || "Active"
       };
@@ -16052,11 +16050,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function defaultServiceRateDraft(service, rateRow) {
-      const inferredUom = normalizeServiceRateUom(service && service.uom) || "Rs./piece";
       return {
         serviceId: service ? service.id : null,
         rate: rateRow && rateRow.rate != null ? rateRow.rate : "",
-        rateUOM: (rateRow && rateRow.rateUOM) || inferredUom,
+        rateUOM: (rateRow && rateRow.rateUOM) || "",
         formulaId: rateRow && rateRow.formulaId ? Number(rateRow.formulaId) : "",
         status: (rateRow && rateRow.status) || "Active"
       };
