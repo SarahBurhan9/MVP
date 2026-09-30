@@ -8349,8 +8349,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             </section>
 
-            <div id="cc-style-formulas-root">${cc.styleFormulasOpen && steps.hasDims ? renderCostCalculatorStyleFormulasMarkup() : ""}</div>
-
             <section class="card cc-card">
               <div class="card-body">
                 <div class="cc-step">Step 4: Select Raw Materials</div>
