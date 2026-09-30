@@ -197,8 +197,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         name: "Gross Quantity With Wastage",
         type: "Material",
         purpose: null,
-        description: "Net quantity inflated by wastage percent.",
-        expression: "NET_QTY * (1 + WASTAGE / 100)",
+        description: "Wastage quantity from material quantity and wastage percent.",
+        expression: "MAT_QTY * WASTAGE / 100",
         isActive: true
       },
       {
@@ -740,6 +740,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     let idb = null;
     let idbReady = false;
     let idbHydrating = false;
+    let grossQtyFormulaPatched = false;
     let lastSavedAt = null;
     let persistEditorTimer = null;
     let persistPrefsTimer = null;
@@ -1666,6 +1667,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           replaceArrayContents(getCollectionArray(name), loaded[name]);
         });
         sanitizeNumericMasters();
+        if (grossQtyFormulaPatched && idb) {
+          await saveToIndexedDB("formulas", formulas);
+          grossQtyFormulaPatched = false;
+        }
         applyStoredMigrations(await getAppStateRecord("migrations"));
         const qtyFormulaMigration = migrateQtyFormulaFromMaterialDimensions({ notify: true });
         const serviceFormulaMigration = migrateServiceFormulaFromServiceDimensions({ notify: true });
@@ -3050,6 +3055,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (!item.status) item.status = "Active";
       });
       formulas.forEach((item) => {
+        if (item.code === "GROSS_QTY") {
+          const current = String(item.expression || "").replace(/\s+/g, "").toUpperCase();
+          const next = "MAT_QTY * WASTAGE / 100";
+          if (current !== next.replace(/\s+/g, "").toUpperCase()) {
+            item.expression = next;
+            item.description = "Wastage quantity from material quantity and wastage percent.";
+            grossQtyFormulaPatched = true;
+          }
+        }
         if (item.type === "Style") {
           item.purpose = null;
           return;
@@ -4701,12 +4715,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function formatWastageQty(netQty, grossQty, hasError) {
       if (hasError) return "—";
-      const net = Number(netQty);
       const gross = Number(grossQty);
-      if (!Number.isFinite(net) || !Number.isFinite(gross)) return "—";
-      const waste = roundTo(gross - net, 4);
-      if (!Number.isFinite(waste) || waste < 0) return "—";
-      return formatQty(waste);
+      if (!Number.isFinite(gross) || gross < 0) return "—";
+      return formatQty(gross);
     }
 
     function renderPlyMaterialQtyHeaders(requiredQtyOnly, includeMaterialQty) {
@@ -18979,26 +18990,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!line || !material || !fg) return { error: "Wastage quantity details are unavailable." };
       const uom = material.uom || "";
-      const waste = roundTo(Number(line.grossQty) - Number(line.netQty), 4);
+      const grossFormula = getFormulaByCode("GROSS_QTY");
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
       const qtyFormula = resolved && resolved.formula;
       const variables = buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line);
-      const grossFormula = getFormulaByCode("GROSS_QTY");
       const steps = buildGrossQtyExplainSteps(variables, {}, line.netQty, line.wastagePercent, line.grossQty, { WASTAGE: "manual" }, 0);
-      steps.push({
-        index: steps.length + 1,
-        heading: "Wastage Qty",
-        expression: "Gross Qty − Net Qty",
-        pluggedHtml: `${escapeHtml(formatQty(line.grossQty))} − ${escapeHtml(formatQty(line.netQty))} = <strong class="formula-val">${escapeHtml(formatQty(waste))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
-      });
       return {
         title: "Wastage Qty",
         subtitle: (material.name || material.code || "") + " · Gross Quantity formula",
         formulaName: grossFormula ? (grossFormula.name || grossFormula.code) : "Gross Quantity",
         sourceType: "formula",
-        summaryHtml: "Wastage Qty is Gross Qty minus Net Qty. Gross Qty comes from the " + (grossFormula ? grossFormula.code : "GROSS_QTY") + " formula. Wastage % is the percent entered on this row. Net Qty comes from the Default Weight Formula.",
+        summaryHtml: "Wastage Qty uses the formula MAT_QTY * WASTAGE / 100. MAT_QTY is the material quantity formula. WASTAGE is the percent entered on this row.",
         steps,
-        finalHtml: `Wastage Qty: <strong>${escapeHtml(Number.isFinite(waste) ? formatQty(waste) : "—")}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+        finalHtml: `Wastage Qty: <strong>${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
       };
     }
 
