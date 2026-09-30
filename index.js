@@ -12782,6 +12782,61 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function costCalculatorFormulaViewLine(layerName) {
+      const layer = String(layerName || "");
+      const fg = getCostCalculatorFinishedGood();
+      const layerRow = (state.costCalculator.layers || []).find((row) => row.layer === layer);
+      if (!fg || !layerRow || !layerRow.rawMaterialId) return null;
+      const calc = calculateCostCalculatorMaterial(layerRow);
+      return {
+        fg,
+        line: {
+          id: layerRow.id || layerRow.key || layer,
+          layer: layerRow.layer,
+          rawMaterialId: layerRow.rawMaterialId,
+          calculationMethod: layerRow.calculationMethod === "manual" ? "manual" : "formula",
+          formulaId: calc.formulaId || layerRow.formulaId || null,
+          dimensionId: layerRow.dimensionId != null && layerRow.dimensionId !== "" ? layerRow.dimensionId : calc.dimensionId,
+          manualQty: layerRow.manualQty,
+          manualRate: layerRow.manualRate,
+          wastagePercent: calc.wastagePercent,
+          useCustomDimensions: Boolean(layerRow.useCustomDimensions),
+          customLength: layerRow.customLength,
+          customWidth: layerRow.customWidth,
+          netQty: calc.netQty,
+          grossQty: calc.grossQty,
+          error: calc.error || null
+        }
+      };
+    }
+
+    function costCalculatorMaterialFormulaPopupDisplayModel(layerName) {
+      const view = costCalculatorFormulaViewLine(layerName);
+      if (!view) return null;
+      const fg = view.fg;
+      const line = view.line;
+      const material = getRawMaterial(line.rawMaterialId);
+      const dim = getDimension(line.dimensionId);
+      const ply = styleFormulaPlyForBomLine(fg, line);
+      const styleRows = evaluateStyleFormulasForFinishedGood(fg);
+      const snap = getStyleFormulaMetrics(fg, styleRows);
+      const resolved = resolveQuantityFormulaLW(fg, dim, getFormulaVariableDefaults(), ply);
+      const override = getCustomDimensionOverride(line);
+      const axes = coveredAreaAxesForPly(styleRows, ply);
+      return {
+        kind: "material-formula",
+        styleName: fg?.style ?? "—",
+        materialLabel: material
+          ? (material.name + (material.code ? " (" + material.code + ")" : ""))
+          : "Material",
+        layerLabel: line.layer || "",
+        lengthRow: materialAxisFormulaDisplayModel("L", fg, line, resolved, override, snap, dim, axes.lengthRow),
+        widthRow: materialAxisFormulaDisplayModel("W", fg, line, resolved, override, snap, dim, axes.widthRow),
+        coveredGroup: materialCoveredFormulaDisplayGroup(fg, line, snap, styleRows),
+        qtyRow: materialQtyFormulaDisplayModel(line, material)
+      };
+    }
+
     function bomInfoPopupDisplayModel(fg) {
       if (state.bomInfoPopup === "product") {
         const ply = fg?.ply ?? "—";
@@ -12839,11 +12894,53 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (dialog) dialog.innerHTML = "";
     }
 
+    function renderCostCalculatorMaterialFormulaPopup() {
+      const backdrop = document.getElementById("bom-info-backdrop");
+      const dialog = document.getElementById("bom-info-dialog");
+      if (!backdrop || !dialog) return;
+      unmountBomInfoPopup();
+      const model = costCalculatorMaterialFormulaPopupDisplayModel(state.bomInfoPopupLineId);
+      if (!model) {
+        closeBomInfoPopup();
+        return;
+      }
+      dialog.innerHTML = `
+        <div class="bom-info-accent"></div>
+        <div class="bom-info-header">
+          <div>
+            <div class="section-kicker">Auto-calculated</div>
+            <strong id="bom-info-title">${escapeHtml(model.materialLabel || "Quantity Formula")}</strong>
+          </div>
+          <div class="row-actions" style="align-items:center;gap:8px;">
+            <span class="badge badge-muted">Read-only</span>
+            <button type="button" class="btn btn-ghost btn-sm" data-bom-info-close aria-label="Close">Close</button>
+          </div>
+        </div>
+        <div class="bom-info-body"></div>
+      `;
+      mountBomInfoPopup(dialog.querySelector(".bom-info-body"), model);
+      backdrop.hidden = false;
+      requestAnimationFrame(() => backdrop.classList.add("show"));
+    }
+
+    function openCostCalculatorMaterialFormulaPopup(layer) {
+      const view = costCalculatorFormulaViewLine(layer);
+      if (!view) return;
+      state.bomInfoPopup = "cc-material-formula";
+      state.bomInfoPopupLineId = String(layer || "");
+      renderCostCalculatorMaterialFormulaPopup();
+      refreshIcons();
+    }
+
     function renderBomInfoPopup() {
       const backdrop = document.getElementById("bom-info-backdrop");
       const dialog = document.getElementById("bom-info-dialog");
       if (!backdrop || !dialog) return;
       unmountBomInfoPopup();
+      if (state.bomInfoPopup === "cc-material-formula") {
+        renderCostCalculatorMaterialFormulaPopup();
+        return;
+      }
       const fg = getSelectedFinishedGood();
       if (!state.bomInfoPopup || !fg) {
         closeBomInfoPopup();
@@ -21954,7 +22051,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         const formulaCcLayer = event.target.closest("[data-formula-cc-layer]");
         if (formulaCcLayer) {
-          openFormulaExplainerModal("cc-material", formulaCcLayer.dataset.formulaCcLayer);
+          openCostCalculatorMaterialFormulaPopup(formulaCcLayer.dataset.formulaCcLayer);
           return;
         }
         const editCcLayerDims = event.target.closest("[data-edit-cc-layer-dims]");
