@@ -2873,6 +2873,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `${value}${formulaHelpButton("required-qty", lineId, "How required quantity was calculated")}`;
     }
 
+    function renderBomNetQtyDisplay(material, line) {
+      const shown = line && line.error ? "—" : formatQty(line && line.netQty);
+      const value = appendHtmlUnit(shown, material && material.uom, " ");
+      const lineId = line && (line.id != null ? line.id : line.key);
+      if (lineId == null || lineId === "") return value;
+      return `${value}${formulaHelpButton("net-qty", lineId, "How required quantity was calculated")}`;
+    }
+
+    function renderBomMaterialQtyDisplay(kind, item, line, finishedGood) {
+      const value = appendHtmlUnit(formatMasterRequiredQty(kind, item, line, finishedGood), item && item.uom, " ");
+      const lineId = line && (line.id != null ? line.id : line.key);
+      if (lineId == null || lineId === "") return value;
+      return `${value}${formulaHelpButton("material-qty", lineId, "How material quantity was calculated")}`;
+    }
+
     function formatCostTimesQuantity(costPerPiece, quantity, hasError) {
       if (hasError) return `<span class="calc-error-cost">Error</span>`;
       const qty = Number(quantity);
@@ -4694,21 +4709,24 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formatQty(waste);
     }
 
-    function renderPlyMaterialQtyHeaders(requiredQtyOnly) {
+    function renderPlyMaterialQtyHeaders(requiredQtyOnly, includeMaterialQty) {
+      const materialQtyHeader = includeMaterialQty ? `<th class="step-col-compact">Material Qty</th>` : "";
       if (requiredQtyOnly) {
-        return `<th class="step-col-compact">Required Qty</th>`;
+        return `<th class="step-col-compact">Required Qty</th>${materialQtyHeader}`;
       }
       return `
         <th class="step-col-compact">Required Qty</th>
+        ${materialQtyHeader}
         <th class="step-col-compact">Wastage %</th>
         <th class="step-col-compact">Wastage Qty</th>
         <th class="step-col-compact">Net Qty</th>
       `;
     }
 
-    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom) {
+    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom, materialQtyHtml) {
+      const materialQtyCell = materialQtyHtml == null ? "" : `<td class="step-num step-col-compact">${materialQtyHtml}</td>`;
       if (requiredQtyOnly) {
-        return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>`;
+        return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>${materialQtyCell}`;
       }
       const wastageHtml = formatWastagePercent(wastagePercent, hasError);
       const wastageCell = wastageLineId
@@ -4716,6 +4734,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : wastageHtml;
       return `
         <td class="step-num step-col-compact">${requiredQtyHtml}</td>
+        ${materialQtyCell}
         <td class="step-num step-col-compact">${wastageCell}</td>
         <td class="step-num step-col-compact">${appendHtmlUnit(formatWastageQty(netQty, grossQty, hasError), qtyUom, " ")}</td>
         <td class="step-num step-col-compact">${appendHtmlUnit(hasError ? "—" : formatQty(netQty), qtyUom, " ")}</td>
@@ -13065,7 +13084,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                   <tr>
                     <th>#</th>
                     <th class="step-col-dim">Dimension</th>
-                    ${renderPlyMaterialQtyHeaders(accessory)}
+                    ${renderPlyMaterialQtyHeaders(accessory, true)}
                     <th class="step-col-compact">Rate</th>
                     <th class="step-col-compact">Cost / Piece</th>
                     <th class="step-col-actions">Action</th>
@@ -13083,14 +13102,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "dims"
                     )}</td>
                     ${renderPlyMaterialQtyCells(
-                      renderBomRequiredQtyDisplay("material", material, line, getSelectedFinishedGood()),
+                      renderBomNetQtyDisplay(material, line),
                       line.netQty,
                       line.grossQty,
                       line.wastagePercent,
                       Boolean(line.error),
                       line.id,
                       accessory,
-                      material && material.uom
+                      material && material.uom,
+                      renderBomMaterialQtyDisplay("material", material, line, getSelectedFinishedGood())
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
@@ -18889,9 +18909,56 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function buildFormulaExplainModel_NetQty(lineId) {
+      const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
+      const material = line ? getRawMaterial(line.rawMaterialId) : null;
+      const model = buildFormulaExplainModel_BOMLine("material", lineId);
+      if (!line || !material) return model.error ? model : { error: "Required quantity details are unavailable." };
+      if (model.error) return model;
+      const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
+      const formula = resolved && resolved.formula;
+      const weightId = normalizeFormulaBinding(material.qtyFormulaId);
+      const usingWeight = Boolean(formula && weightId && Number(formula.id) === Number(weightId));
+      const uom = material.uom || "";
+      const shown = line.error ? "—" : formatQty(line.netQty);
+      const sourceName = formula ? ((formula.name || formula.code) + " (" + formula.code + ")") : "the quantity entered on this line";
+      const summaryHtml = line.calculationMethod === "manual"
+        ? "Required Qty on this row shows the Net Qty. This line is set to Manual, so the number is the quantity entered on the line."
+        : usingWeight
+          ? "Required Qty on this row shows the Net Qty. It is calculated by the Default Weight Formula on the raw material: " + sourceName + "."
+          : "Required Qty on this row shows the Net Qty. Default Weight Formula is None, so this uses the Default Required Quantity Formula on the raw material: " + sourceName + ".";
+      return {
+        ...model,
+        title: "Required Qty",
+        subtitle: (material.name || material.code || "") + (usingWeight || line.calculationMethod === "manual" ? " · Default Weight Formula" : " · Default Required Quantity Formula"),
+        formulaName: formula ? (formula.name || formula.code) : (model.formulaName || "Net Qty"),
+        summaryHtml,
+        finalHtml: `Required Qty: <strong>${escapeHtml(shown)}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+      };
+    }
+
+    function buildFormulaExplainModel_MaterialQty(lineId) {
+      const model = buildFormulaExplainModel_RequiredQty(lineId);
+      if (model.error) return model;
+      const steps = (model.steps || []).map((step) => ({
+        ...step,
+        heading: String(step.heading || "").replace("Required Qty", "Material Qty"),
+        pluggedHtml: String(step.pluggedHtml || "").replace(/Required Qty/g, "Material Qty")
+      }));
+      return {
+        ...model,
+        title: "Material Qty",
+        summaryHtml: "Material Qty is the Default Required Quantity Formula on the raw material, multiplied by the Order Quantity.",
+        steps,
+        finalHtml: String(model.finalHtml || "").replace(/Required Qty/g, "Material Qty")
+      };
+    }
+
     function buildFormulaExplainModel(kind, lineId) {
       if (kind === "order-qty") return buildFormulaExplainModel_OrderQty();
       if (kind === "required-qty") return buildFormulaExplainModel_RequiredQty(lineId);
+      if (kind === "net-qty") return buildFormulaExplainModel_NetQty(lineId);
+      if (kind === "material-qty") return buildFormulaExplainModel_MaterialQty(lineId);
       if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
       if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
@@ -18968,9 +19035,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "required-qty"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "required-qty", "net-qty", "material-qty"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
