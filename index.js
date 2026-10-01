@@ -14094,7 +14094,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       </div>
                       <div class="cost-optional-row">
                         <div class="cost-optional-field">
-                          <label class="form-label" for="bom-order-quantity">Order Quantity ${formulaHelpButton("order-qty", "bom", "How order quantity was calculated")}</label>
+                          <label class="form-label" for="bom-order-quantity">Order Quantity</label>
                           <input class="wastage-input" type="text" inputmode="decimal" id="bom-order-quantity" value="${escapeHtml(orderQtyValue)}" aria-label="Order quantity" />
                         </div>
                       </div>
