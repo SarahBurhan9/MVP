@@ -312,6 +312,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const DEFAULT_GLUE_FLAP = 1;
     const DEFAULT_WASTAGE_PERCENT = 1;
     const SERVICE_CUSTOM_DIM_ERROR = "Enter custom Length and Width.";
+    const SHEET_CUSTOM_DIM_ERROR = "Enter custom sheet length and width.";
     const STRUCTURAL_PLY_LAYERS = {
       1: ["Single Layer"],
       2: ["Top Liner", "Bottom Liner"],
@@ -4279,6 +4280,107 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function isUseCustomSheetDimensions(source) {
+      return Boolean(source && source.useCustomSheetDimensions === true);
+    }
+
+    function getAutoSheetLW(finishedGood) {
+      const sheet = getSheetDimensions(finishedGood);
+      return { L: roundTo(sheet.length, 2), W: roundTo(sheet.width, 2) };
+    }
+
+    function renderCompactSheetLW(L, W, uom) {
+      const length = Number(L);
+      const width = Number(W);
+      if (!Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) return "";
+      const suffix = String(uom || "").trim() ? " " + escapeHtml(String(uom).trim()) : "";
+      return `Sheet L = ${escapeHtml(formatQty(length))}${suffix}, Sheet W = ${escapeHtml(formatQty(width))}${suffix}`;
+    }
+
+    function formatBreakdownSheetDimensions(finishedGood, line, uom) {
+      if (isUseCustomSheetDimensions(line)) {
+        const custom = renderCompactSheetLW(line.customSheetLength, line.customSheetWidth, uom);
+        if (custom) return custom;
+      }
+      const auto = getAutoSheetLW(finishedGood);
+      return renderCompactSheetLW(auto.L, auto.W, uom) || "—";
+    }
+
+    function getCustomSheetDimensionOverride(line) {
+      const out = { L: null, W: null, error: null };
+      if (!isUseCustomSheetDimensions(line)) return out;
+      const L = numericOrNull(line.customSheetLength);
+      const W = numericOrNull(line.customSheetWidth);
+      if (L === null || W === null || L <= 0 || W <= 0) {
+        out.error = SHEET_CUSTOM_DIM_ERROR;
+        return out;
+      }
+      out.L = L;
+      out.W = W;
+      return out;
+    }
+
+    function customSheetDimensionFields(draft) {
+      return {
+        useCustomSheetDimensions: isUseCustomSheetDimensions(draft),
+        customSheetLength: numericOrNull(draft.customSheetLength),
+        customSheetWidth: numericOrNull(draft.customSheetWidth)
+      };
+    }
+
+    function applyLineSheetOverride(vars, line) {
+      const override = getCustomSheetDimensionOverride(line);
+      if (override.L === null || override.W === null) return;
+      vars.SHEET_LENGTH = roundTo(override.L, 2);
+      vars.SHEET_WIDTH = roundTo(override.W, 2);
+      vars.SHEET_AREA = roundTo(vars.SHEET_WIDTH * vars.SHEET_LENGTH, 4);
+    }
+
+    function fillCustomSheetDimensionsFromAuto(draft) {
+      const fg = getMaterialModalFinishedGood();
+      const auto = getAutoSheetLW(fg);
+      if (draft.customSheetLength === "" || draft.customSheetLength == null) draft.customSheetLength = auto.L;
+      if (draft.customSheetWidth === "" || draft.customSheetWidth == null) draft.customSheetWidth = auto.W;
+    }
+
+    function validateCustomSheetDimensionDraft(draft, errors) {
+      if (!draft || !isUseCustomSheetDimensions(draft)) return;
+      const L = numericOrNull(draft.customSheetLength);
+      const W = numericOrNull(draft.customSheetWidth);
+      if (L === null || L <= 0) errors.customSheetLength = "Sheet length must be greater than 0.";
+      if (W === null || W <= 0) errors.customSheetWidth = "Sheet width must be greater than 0.";
+    }
+
+    function renderBomStepDimensionStack(finishedGood, line) {
+      const uom = finishedGood && finishedGood.dimensionUOM;
+      return `
+        <div class="step-dim-stack">
+          <div class="step-dim-box">
+            <span class="step-dim-tag">CUT</span>
+            ${renderStepValueWithEdit(
+              formatBreakdownMaterialDimensions(finishedGood, line, uom),
+              "data-edit-material-dims",
+              line.id,
+              "Edit dimensions",
+              "ruler",
+              "dims"
+            )}
+          </div>
+          <div class="step-dim-box step-dim-box-sheet">
+            <span class="step-dim-tag step-dim-tag-sheet">SHEET</span>
+            ${renderStepValueWithEdit(
+              formatBreakdownSheetDimensions(finishedGood, line, uom),
+              "data-edit-material-sheet-dims",
+              line.id,
+              "Edit sheet dimensions",
+              "ruler",
+              "dims"
+            )}
+          </div>
+        </div>
+      `;
+    }
+
     function formulasUsingVariable(code) {
       return formulas.filter((item) => extractIdentifiers(item.expression).includes(code));
     }
@@ -5894,7 +5996,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         PIECE_AREA: pieceArea,
         ...ENGINE_CONSTANTS
       };
+      applyLineSheetOverride(vars, line);
       injectStyleFormulaResults(finishedGood, vars, layerPly);
+      applyLineSheetOverride(vars, line);
       vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
       return vars;
     }
@@ -6119,6 +6223,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const dimOverride = getCustomDimensionOverride(line);
         if (dimOverride.error) {
           line.error = dimOverride.error;
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        const sheetOverride = getCustomSheetDimensionOverride(line);
+        if (sheetOverride.error) {
+          line.error = sheetOverride.error;
           line.netQty = 0;
           line.grossQty = 0;
           line.costPerPiece = 0;
@@ -8858,7 +8970,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           : (prev ? prev.customLength : ""),
         customWidth: Object.prototype.hasOwnProperty.call(patch, "customWidth")
           ? patch.customWidth
-          : (prev ? prev.customWidth : "")
+          : (prev ? prev.customWidth : ""),
+        useCustomSheetDimensions: Object.prototype.hasOwnProperty.call(patch, "useCustomSheetDimensions")
+          ? patch.useCustomSheetDimensions
+          : Boolean(prev && prev.useCustomSheetDimensions),
+        customSheetLength: Object.prototype.hasOwnProperty.call(patch, "customSheetLength")
+          ? patch.customSheetLength
+          : (prev ? prev.customSheetLength : ""),
+        customSheetWidth: Object.prototype.hasOwnProperty.call(patch, "customSheetWidth")
+          ? patch.customSheetWidth
+          : (prev ? prev.customSheetWidth : "")
       };
       applyMaterialFormulaBindings(draft);
       return calculateMaterialCost({
@@ -8872,6 +8993,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         manualRate: storedManualRateFromDraft(draft),
         wastagePercent: draft.wastagePercent,
         ...customDimensionFields(draft),
+        ...customSheetDimensionFields(draft),
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -13322,14 +13444,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <tbody>
                   <tr>
                     <td>1</td>
-                    <td class="step-col-dim">${renderStepValueWithEdit(
-                      formatBreakdownMaterialDimensions(getSelectedFinishedGood(), line, (getSelectedFinishedGood() || {}).dimensionUOM),
-                      "data-edit-material-dims",
-                      line.id,
-                      "Edit dimensions",
-                      "ruler",
-                      "dims"
-                    )}</td>
+                    <td class="step-col-dim">${renderBomStepDimensionStack(getSelectedFinishedGood(), line)}</td>
                     ${renderPlyMaterialQtyCells(
                       renderBomNetQtyDisplay(material, line),
                       line.netQty,
@@ -18164,7 +18279,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           wastagePercent: line.wastagePercent == null ? "" : line.wastagePercent,
           useCustomDimensions: Boolean(line.useCustomDimensions),
           customLength: line.customLength != null ? line.customLength : "",
-          customWidth: line.customWidth != null ? line.customWidth : ""
+          customWidth: line.customWidth != null ? line.customWidth : "",
+          useCustomSheetDimensions: Boolean(line.useCustomSheetDimensions),
+          customSheetLength: line.customSheetLength != null ? line.customSheetLength : "",
+          customSheetWidth: line.customSheetWidth != null ? line.customSheetWidth : ""
         };
       }
       const fg = getSelectedFinishedGood();
@@ -18180,7 +18298,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         wastagePercent: DEFAULT_WASTAGE_PERCENT,
         useCustomDimensions: false,
         customLength: "",
-        customWidth: ""
+        customWidth: "",
+        useCustomSheetDimensions: false,
+        customSheetLength: "",
+        customSheetWidth: ""
       };
     }
 
@@ -18245,7 +18366,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         errors.duplicate = "This material is already added to the selected layer.";
       }
       validateCustomDimensionDraft(draft, errors);
-      if (!errors.formulaId && !errors.rawMaterialId && !errors.manualQty && !errors.manualRate && !errors.wastagePercent && !errors.finishedGood && !errors.dimensionId && !errors.customLength && !errors.customWidth) {
+      validateCustomSheetDimensionDraft(draft, errors);
+      const keepSheetOverride = !isCostCalculatorLayerModal() && !isCostCalculatorAdditionalModal();
+      if (!errors.formulaId && !errors.rawMaterialId && !errors.manualQty && !errors.manualRate && !errors.wastagePercent && !errors.finishedGood && !errors.dimensionId && !errors.customLength && !errors.customWidth && !errors.customSheetLength && !errors.customSheetWidth) {
         const preview = calculateMaterialCost({
           id: lineId || 0,
           rawMaterialId: draft.rawMaterialId,
@@ -18257,6 +18380,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           manualRate: storedManualRateFromDraft(draft),
           wastagePercent: draft.wastagePercent,
           ...customDimensionFields(draft),
+          ...(keepSheetOverride ? customSheetDimensionFields(draft) : {}),
           netQty: 0,
           grossQty: 0,
           rate: 0,
@@ -19858,6 +19982,55 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return renderCompactLineModal("Edit Dimensions", body, "btn-save-material");
     }
 
+    function renderMaterialSheetDimsPopup() {
+      const draft = state.modal.draft;
+      const errors = state.modal.errors || {};
+      const material = getRawMaterial(draft.rawMaterialId);
+      const auto = getAutoSheetLW(getMaterialModalFinishedGood());
+      const autoLabel = renderCompactSheetLW(auto.L, auto.W) || "—";
+      const checked = isUseCustomSheetDimensions(draft);
+      const lengthValue = draft.customSheetLength == null || draft.customSheetLength === "" ? "" : String(draft.customSheetLength);
+      const widthValue = draft.customSheetWidth == null || draft.customSheetWidth === "" ? "" : String(draft.customSheetWidth);
+      const body = `
+        <p class="stat-hint" style="margin:0 0 12px;">${material ? escapeHtml(material.name) + " — override sheet length and sheet width used in quantity formulas." : "Override sheet length and sheet width used in quantity formulas."}</p>
+        <div class="dim-popup-card">
+          <div class="dim-popup-current">
+            <span>Current dimensions</span>
+            <strong>${autoLabel}</strong>
+          </div>
+          <label class="custom-dim-flag dim-popup-toggle">
+            <input id="modal-material-use-custom-sheet" type="checkbox" ${checked ? "checked" : ""} />
+            <span>
+              <strong>Use Custom Sheet Dimensions</strong>
+              <span class="stat-hint">Replace the current sheet length and sheet width for this material line</span>
+            </span>
+          </label>
+          ${checked ? `
+            <div class="dim-input-row two dim-popup-fields">
+              <div>
+                <label class="form-label" for="modal-material-custom-sheet-length">Custom Length (inch)</label>
+                <div class="input-with-unit ${errors.customSheetLength ? "is-invalid" : ""}">
+                  <input id="modal-material-custom-sheet-length" type="number" step="any" min="0.0001" value="${escapeHtml(lengthValue)}" aria-invalid="${errors.customSheetLength ? "true" : "false"}" />
+                  <span>in.</span>
+                </div>
+                ${errors.customSheetLength ? `<div class="field-error">${escapeHtml(errors.customSheetLength)}</div>` : ""}
+              </div>
+              <div>
+                <label class="form-label" for="modal-material-custom-sheet-width">Custom Width (inch)</label>
+                <div class="input-with-unit ${errors.customSheetWidth ? "is-invalid" : ""}">
+                  <input id="modal-material-custom-sheet-width" type="number" step="any" min="0.0001" value="${escapeHtml(widthValue)}" aria-invalid="${errors.customSheetWidth ? "true" : "false"}" />
+                  <span>in.</span>
+                </div>
+                ${errors.customSheetWidth ? `<div class="field-error">${escapeHtml(errors.customSheetWidth)}</div>` : ""}
+              </div>
+            </div>
+          ` : ""}
+        </div>
+        ${errors.formula ? `<div class="field-error" style="margin-top:10px;">${escapeHtml(errors.formula)}</div>` : ""}
+      `;
+      return renderCompactLineModal("Edit Sheet Dimensions", body, "btn-save-material");
+    }
+
     function renderMaterialQtyMethodFields(draft, errors, qtyLabel) {
       const material = getRawMaterial(draft.rawMaterialId);
       const formula = draft.calculationMethod === "formula" ? resolveMasterCostFormula(material, "material").formula : getFormula(draft.formulaId);
@@ -20075,6 +20248,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialFormModal() {
       const panel = getBomLineModalPanel();
       if (panel === "dims") return renderMaterialDimsPopup();
+      if (panel === "sheet-dims") return renderMaterialSheetDimsPopup();
       if (panel === "qty") return renderMaterialQtyPopup();
       if (panel === "wastage") return renderMaterialWastagePopup();
       const fromAdditional = Boolean(state.modal.fromAdditional);
@@ -20633,6 +20807,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           "wastage"
         ).value,
         ...customDimensionFields(draft),
+        ...((!isCostCalculatorLayerModal() && !isCostCalculatorAdditionalModal()) ? customSheetDimensionFields(draft) : {}),
         netQty: 0,
         grossQty: 0,
         rate: 0,
@@ -21047,6 +21222,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return true;
       } else if (target.id === "modal-material-custom-width") {
         draft.customWidth = target.value;
+        state.modal.errors = {};
+        refreshBomLinePreview();
+        return true;
+      } else if (target.id === "modal-material-use-custom-sheet") {
+        draft.useCustomSheetDimensions = target.checked;
+        if (target.checked) fillCustomSheetDimensionsFromAuto(draft);
+      } else if (target.id === "modal-material-custom-sheet-length") {
+        draft.customSheetLength = target.value;
+        state.modal.errors = {};
+        refreshBomLinePreview();
+        return true;
+      } else if (target.id === "modal-material-custom-sheet-width") {
+        draft.customSheetWidth = target.value;
         state.modal.errors = {};
         refreshBomLinePreview();
         return true;
@@ -22554,6 +22742,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           openMaterialModal(editDimsBtn.dataset.editMaterialDims, "dims");
           return;
         }
+        const editSheetDimsBtn = event.target.closest("[data-edit-material-sheet-dims]");
+        if (editSheetDimsBtn) {
+          openMaterialModal(editSheetDimsBtn.dataset.editMaterialSheetDims, "sheet-dims");
+          return;
+        }
         const editWastageBtn = event.target.closest("[data-edit-material-wastage]");
         if (editWastageBtn) {
           openMaterialModal(editWastageBtn.dataset.editMaterialWastage, "wastage");
@@ -22948,7 +23141,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
         const caretStart = event.target.selectionStart;
         const caretEnd = event.target.selectionEnd;
-        if (event.target.id === "modal-manual-qty" || event.target.id === "modal-manual-rate" || event.target.id === "modal-wastage" || event.target.id === "modal-material-custom-length" || event.target.id === "modal-material-custom-width") {
+        if (event.target.id === "modal-manual-qty" || event.target.id === "modal-manual-rate" || event.target.id === "modal-wastage" || event.target.id === "modal-material-custom-length" || event.target.id === "modal-material-custom-width" || event.target.id === "modal-material-custom-sheet-length" || event.target.id === "modal-material-custom-sheet-width") {
           updateMaterialDraftFromEvent(event.target);
           return;
         }

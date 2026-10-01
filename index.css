@@ -845,6 +845,59 @@
       color: var(--text);
     }
 
+    .step-dim-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 250px;
+    }
+
+    table.data-table.step-grid-table td.step-col-dim:has(.step-dim-stack) {
+      white-space: normal;
+    }
+
+    .step-dim-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .step-dim-box-sheet {
+      background: #f0f9ff;
+      border-color: #bae6fd;
+    }
+
+    .step-dim-box .step-inline-edit {
+      flex: 1 1 auto;
+      align-items: center;
+    }
+
+    .step-dim-box .step-inline-edit-value {
+      white-space: normal;
+      line-height: 1.35;
+    }
+
+    .step-dim-tag {
+      flex: 0 0 auto;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      color: #64748b;
+      background: #f1f5f9;
+      border-radius: 4px;
+      padding: 2px 5px;
+      line-height: 1.4;
+    }
+
+    .step-dim-tag-sheet {
+      color: #0369a1;
+      background: #e0f2fe;
+    }
+
     .step-inline-edit {
       display: inline-flex;
       align-items: center;
