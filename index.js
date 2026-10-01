@@ -5936,6 +5936,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return true;
     }
 
+    function boundRawMaterialFormula(material, formulaId, fieldName) {
+      const id = normalizeFormulaBinding(material && formulaId);
+      if (!id) return { formula: null, error: null };
+      const formula = getFormula(id);
+      if (!formula) {
+        return { formula: null, error: fieldName + " is not a valid formula. Choose another formula on the Raw Material master." };
+      }
+      if (!formula.isActive) {
+        return { formula: null, error: fieldName + " is inactive. Activate it or choose another formula on the Raw Material master." };
+      }
+      return { formula: formula, error: null };
+    }
+
     function computeWastageAndGrossQty(variables, netQty, wastage) {
       const base = { ...variables, NET_QTY: netQty, WASTAGE: wastage };
       const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", base, ["WST_QTY"]);
@@ -5956,7 +5969,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function calculateMaterialCost(materialLine, context) {
-      const line = { ...materialLine, error: null };
+      const line = { ...materialLine, error: null, yield: null };
       const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
       const material = getRawMaterial(line.rawMaterialId);
       const formulaDimensionId = (context && context.useEnteredDimensions) ? null : line.dimensionId;
@@ -6052,11 +6065,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
+      const wastageBound = boundRawMaterialFormula(material, material.wastageFormulaId, "Default Wastage Formula");
+      const grossBound = boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula");
+      const costBound = boundRawMaterialFormula(material, material.costPerPieceFormulaId, "Default Cost/Piece Formula");
+      const yieldBound = boundRawMaterialFormula(material, material.yieldFormulaId, "Default Yield Formula");
+      const bindingError = wastageBound.error || grossBound.error || costBound.error || yieldBound.error;
+      if (bindingError) {
+        line.error = bindingError;
+        line.netQty = 0;
+        line.grossQty = 0;
+        line.wastageQty = 0;
+        line.costPerPiece = 0;
+        line.yield = null;
+        return line;
+      }
+      const formulaVars = { ...variables, NET_QTY: netQty, WASTAGE: wastage };
       let grossQty;
       let wstQty = 0;
-      if (accessoryLine) {
+      if (accessoryLine && !wastageBound.formula && !grossBound.formula) {
         grossQty = netQty;
-      } else {
+      } else if (!wastageBound.formula && !grossBound.formula) {
         const grossResult = computeWastageAndGrossQty(variables, netQty, wastage);
         if (grossResult.error) {
           line.error = grossResult.error;
@@ -6064,30 +6092,119 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           line.grossQty = 0;
           line.wastageQty = 0;
           line.costPerPiece = 0;
+          line.yield = null;
           return line;
         }
         wstQty = grossResult.wstQty;
         grossQty = grossResult.grossQty;
+      } else {
+        if (wastageBound.formula) {
+          const wstEval = evaluateFormula(wastageBound.formula.expression, formulaVars, [wastageBound.formula.code]);
+          if (!wstEval.success) {
+            line.error = wstEval.error || "Default Wastage Formula could not be calculated.";
+            line.netQty = 0;
+            line.grossQty = 0;
+            line.wastageQty = 0;
+            line.costPerPiece = 0;
+            line.yield = null;
+            return line;
+          }
+          wstQty = wstEval.result;
+        } else if (!accessoryLine) {
+          const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", formulaVars, ["WST_QTY"]);
+          if (!wstEval.success) {
+            line.error = wstEval.error || "Wastage quantity could not be calculated.";
+            line.netQty = 0;
+            line.grossQty = 0;
+            line.wastageQty = 0;
+            line.costPerPiece = 0;
+            line.yield = null;
+            return line;
+          }
+          wstQty = wstEval.result;
+        }
+        const grossVars = { ...formulaVars, WST_QTY: wstQty };
+        if (grossBound.formula) {
+          const grossEval = evaluateFormula(grossBound.formula.expression, grossVars, [grossBound.formula.code]);
+          if (!grossEval.success) {
+            line.error = grossEval.error || "Default Gross Quantity Formula could not be calculated.";
+            line.netQty = 0;
+            line.grossQty = 0;
+            line.wastageQty = 0;
+            line.costPerPiece = 0;
+            line.yield = null;
+            return line;
+          }
+          grossQty = grossEval.result;
+        } else if (accessoryLine) {
+          grossQty = netQty;
+        } else {
+          const grossFormula = getFormulaByCode("GROSS_QTY");
+          if (grossFormula && grossFormula.isActive) {
+            const grossEval = evaluateFormula(grossFormula.expression, grossVars, [grossFormula.code]);
+            if (!grossEval.success) {
+              line.error = grossEval.error || "Gross quantity could not be calculated.";
+              line.netQty = 0;
+              line.grossQty = 0;
+              line.wastageQty = 0;
+              line.costPerPiece = 0;
+              line.yield = null;
+              return line;
+            }
+            grossQty = grossEval.result;
+          } else {
+            grossQty = Number(netQty) + Number(wstQty);
+          }
+        }
       }
       line.netQty = roundTo(netQty, 4);
       line.wastageQty = roundTo(wstQty, 4);
       line.grossQty = roundTo(grossQty, 4);
       delete line.rateFormulaId;
       line.dimensionVolume = null;
+      let qtyForRate = null;
+      let conversionError = null;
       try {
-        const qtyForRate = convertQuantity(grossQty, material?.uom, formatRateUnit(rateRow?.rateUOM) || material?.uom, {
+        const converted = convertQuantity(grossQty, material?.uom, formatRateUnit(rateRow?.rateUOM) || material?.uom, {
           gsm: material?.gsm,
           sheetArea: getSheetDimensions(finishedGood).area
         });
-        if (!Number.isFinite(qtyForRate) || qtyForRate < 0) {
+        if (!Number.isFinite(converted) || converted < 0) {
           throw new Error("Quantity could not be converted to the purchasing rate unit.");
         }
-        line.qtyForRate = roundTo(qtyForRate, 4);
-        line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
+        qtyForRate = converted;
+        line.qtyForRate = roundTo(converted, 4);
       } catch (error) {
-        line.error = error && error.message ? error.message : "Unsupported unit conversion";
+        conversionError = error && error.message ? error.message : "Unsupported unit conversion";
+        line.qtyForRate = null;
+      }
+      if (costBound.formula) {
+        const costEval = evaluateFormula(costBound.formula.expression, { ...formulaVars, WST_QTY: wstQty, MATERIAL_RATE: line.rate }, [costBound.formula.code]);
+        if (!costEval.success) {
+          line.error = costEval.error || "Default Cost/Piece Formula could not be calculated.";
+          line.costPerPiece = 0;
+          line.yield = null;
+          return line;
+        }
+        line.costPerPiece = roundTo(costEval.result, 2);
+      } else if (conversionError) {
+        line.error = conversionError;
         line.costPerPiece = 0;
+        line.yield = null;
         return line;
+      } else {
+        line.costPerPiece = roundTo(qtyForRate * line.rate, 2);
+      }
+      if (yieldBound.formula) {
+        const yieldEval = evaluateFormula(yieldBound.formula.expression, { ...formulaVars, WST_QTY: wstQty, MATERIAL_RATE: line.rate }, [yieldBound.formula.code]);
+        if (!yieldEval.success) {
+          line.error = yieldEval.error || "Default Yield Formula could not be calculated.";
+          line.yield = null;
+          return line;
+        }
+        line.yield = roundTo(yieldEval.result, 4);
+      } else {
+        line.yield = null;
       }
       return line;
     }
@@ -18226,9 +18343,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formulaHasVariableInputs(formula, extraByCode) ? "formula" : "formula-flat";
     }
 
-    function buildGrossQtyExplainSteps(variables, computed, netQty, wastagePercent, grossQty, tagHints, startIndex) {
+    function buildGrossQtyExplainSteps(variables, computed, netQty, wastagePercent, grossQty, tagHints, startIndex, grossFormulaOverride) {
       const steps = [];
-      const grossFormula = getFormulaByCode("GROSS_QTY");
+      const grossFormula = grossFormulaOverride || getFormulaByCode("GROSS_QTY");
       const wastage = Number(wastagePercent);
       const net = Number(netQty);
       const wastageTag = (tagHints && tagHints.WASTAGE) || "input";
@@ -18326,7 +18443,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             opts.wastagePercent,
             opts.grossQty,
             tagHints,
-            extraSteps.length
+            extraSteps.length,
+            opts.grossFormula
           ));
         }
         return {
@@ -18381,7 +18499,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
 
       if (includeGrossQty) {
-        steps.push(...buildGrossQtyExplainSteps(variables, computed, opts.netQty, opts.wastagePercent, opts.grossQty, tagHints, steps.length));
+        steps.push(...buildGrossQtyExplainSteps(variables, computed, opts.netQty, opts.wastagePercent, opts.grossQty, tagHints, steps.length, opts.grossFormula));
       }
 
       return {
@@ -18488,6 +18606,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             ? buildOtherMaterialFormulaVariables(fg, item, Number(line.wastagePercent) || 0, line.dimensionId, formula)
             : buildFormulaVariables(fg, item, accessoryLine ? 0 : (Number(line.wastagePercent) || 0), line.dimensionId, formula, line))
         : {};
+      if (!isService && !isOther) {
+        variables.NET_QTY = line.netQty;
+        variables.WST_QTY = line.wastageQty;
+        variables.WASTAGE = accessoryLine ? 0 : (Number(line.wastagePercent) || 0);
+      }
       const isManual = line.calculationMethod === "manual";
       if (!isManual && !formula) {
         return { error: line.error || "A valid formula is required." };
@@ -18508,6 +18631,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         title,
         sourceType: isManual ? "manual" : inferExplainSourceType(formula),
         includeGrossQty: !isService && !accessoryLine,
+        grossFormula: !isService && !isOther && item ? boundRawMaterialFormula(item, item.grossQtyFormulaId, "Default Gross Quantity Formula").formula : null,
         tagHints: { WASTAGE: "manual" },
         finalHtml: isService
           ? serviceQtyHtml
@@ -18553,6 +18677,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: layer + " · dimensions typed in Cost Calculator",
         sourceType: inferExplainSourceType(formula),
         includeGrossQty: true,
+        grossFormula: material ? boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula").formula : null,
         tagHints: { L: "manual", W: "manual", H: "manual" },
         coveredArea: coveredInQty ? null : calc.coveredArea,
         finalHtml: `Net Qty: <strong>${escapeHtml(formatQty(calc.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(calc.grossQty))} ${escapeHtml(uom)}</strong>${finalCovered}`
@@ -18705,6 +18830,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: "Additional material · dimensions typed in Cost Calculator",
         sourceType: row.calculationMethod === "manual" ? "manual" : inferExplainSourceType(formula),
         includeGrossQty: true,
+        grossFormula: material ? boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula").formula : null,
         tagHints: { L: "manual", W: "manual", H: "manual" },
         finalHtml: `Net Qty: <strong>${escapeHtml(formatQty(calc.netQty))} ${escapeHtml(uom)}</strong> → Gross Qty: <strong>${escapeHtml(formatQty(calc.grossQty))} ${escapeHtml(uom)}</strong>`
       });
@@ -19043,20 +19169,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const matEval = evaluateFormula("MAT_QTY", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["MAT_QTY"]);
       const matShown = matEval.success ? formatQty(matEval.result) : "—";
       const wstShown = formatQty(line.wastageQty);
-      const grossFormula = getFormulaByCode("GROSS_QTY");
+      const grossBound = boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula");
+      const grossFormula = grossBound.formula || getFormulaByCode("GROSS_QTY");
+      const usingMaterialGross = Boolean(grossBound.formula);
+      const grossVars = { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent, WST_QTY: line.wastageQty };
       return {
         title: "Gross Qty",
-        subtitle: (material.name || material.code || "") + " · Gross Quantity With Wastage",
-        formulaName: grossFormula ? (grossFormula.name || "Gross Quantity With Wastage") : "Gross Quantity With Wastage",
+        subtitle: (material.name || material.code || "") + (usingMaterialGross ? " · Default Gross Quantity Formula" : " · Gross Quantity With Wastage"),
+        formulaName: grossFormula ? (grossFormula.name || grossFormula.code) : "Gross Quantity With Wastage",
         sourceType: "formula",
-        summaryHtml: "Gross Qty uses the formula GROSS_QTY = MAT_QTY + WST_QTY. MAT_QTY is the material quantity. WST_QTY is the wastage quantity on this row.",
+        summaryHtml: usingMaterialGross
+          ? "Gross Qty uses the Default Gross Quantity Formula on the raw material: " + (grossFormula.name || grossFormula.code) + " (" + grossFormula.code + ")."
+          : "Gross Qty uses the formula GROSS_QTY = MAT_QTY + WST_QTY. MAT_QTY is the material quantity. WST_QTY is the wastage quantity on this row.",
         steps: [
-          {
-            index: 1,
-            heading: "Gross Quantity With Wastage (GROSS_QTY)",
-            expression: "MAT_QTY + WST_QTY",
-            pluggedHtml: `${escapeHtml(matShown)} + ${escapeHtml(wstShown)} = <strong class="formula-val">${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
-          }
+          usingMaterialGross
+            ? {
+              index: 1,
+              heading: (grossFormula.name || "Gross Quantity") + " (" + grossFormula.code + ")",
+              expression: prettyExpressionText(grossFormula.expression),
+              pluggedHtml: "= " + expressionToExplainHtml(grossFormula.expression, grossVars, { NET_QTY: line.netQty, WST_QTY: line.wastageQty }, { WASTAGE: "manual", NET_QTY: "step", WST_QTY: "step" }) +
+                " = <strong class=\"formula-val\">" + escapeHtml(formatQty(line.grossQty)) + "</strong>" + (uom ? " " + escapeHtml(uom) : "")
+            }
+            : {
+              index: 1,
+              heading: "Gross Quantity With Wastage (GROSS_QTY)",
+              expression: "MAT_QTY + WST_QTY",
+              pluggedHtml: `${escapeHtml(matShown)} + ${escapeHtml(wstShown)} = <strong class="formula-val">${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+            }
         ],
         finalHtml: `Gross Qty: <strong>${escapeHtml(formatQty(line.grossQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
       };
@@ -19084,8 +19223,29 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
       const qtyFormula = resolved && resolved.formula;
       const variables = buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line);
-      const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["WST_QTY"]);
-      const matEval = evaluateFormula("MAT_QTY", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["MAT_QTY"]);
+      const wastageBound = boundRawMaterialFormula(material, material.wastageFormulaId, "Default Wastage Formula");
+      const wastageVars = { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent };
+      if (wastageBound.formula) {
+        return {
+          title: "Wastage Qty",
+          subtitle: (material.name || material.code || "") + " · Default Wastage Formula",
+          formulaName: wastageBound.formula.name || wastageBound.formula.code,
+          sourceType: "formula",
+          summaryHtml: "Wastage Qty uses the Default Wastage Formula on the raw material: " + (wastageBound.formula.name || wastageBound.formula.code) + " (" + wastageBound.formula.code + ").",
+          steps: [
+            {
+              index: 1,
+              heading: (wastageBound.formula.name || "Wastage") + " (" + wastageBound.formula.code + ")",
+              expression: prettyExpressionText(wastageBound.formula.expression),
+              pluggedHtml: "= " + expressionToExplainHtml(wastageBound.formula.expression, wastageVars, { NET_QTY: line.netQty }, { WASTAGE: "manual", NET_QTY: "step" }) +
+                " = <strong class=\"formula-val\">" + escapeHtml(formatQty(line.wastageQty)) + "</strong>" + (uom ? " " + escapeHtml(uom) : "")
+            }
+          ],
+          finalHtml: `Wastage Qty: <strong>${escapeHtml(formatQty(line.wastageQty))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+        };
+      }
+      const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", wastageVars, ["WST_QTY"]);
+      const matEval = evaluateFormula("MAT_QTY", wastageVars, ["MAT_QTY"]);
       return {
         title: "Wastage Qty",
         subtitle: (material.name || material.code || "") + " · Wastage quantity",
@@ -19115,6 +19275,35 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fgUnit = fg.uom || "pieces";
       const qtyForRate = line.qtyForRate;
       const rate = line.rate;
+      const costBound = boundRawMaterialFormula(material, material.costPerPieceFormulaId, "Default Cost/Piece Formula");
+      if (costBound.formula) {
+        const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
+        const qtyFormula = resolved && resolved.formula;
+        const variables = {
+          ...buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line),
+          NET_QTY: line.netQty,
+          WASTAGE: line.wastagePercent,
+          WST_QTY: line.wastageQty,
+          MATERIAL_RATE: line.rate
+        };
+        return {
+          title: "Cost / Piece",
+          subtitle: (material.name || material.code || "") + " · Default Cost/Piece Formula",
+          formulaName: costBound.formula.name || costBound.formula.code,
+          sourceType: "formula",
+          summaryHtml: "Cost / Piece uses the Default Cost/Piece Formula on the raw material: " + (costBound.formula.name || costBound.formula.code) + " (" + costBound.formula.code + ").",
+          steps: [
+            {
+              index: 1,
+              heading: (costBound.formula.name || "Cost / Piece") + " (" + costBound.formula.code + ")",
+              expression: prettyExpressionText(costBound.formula.expression),
+              pluggedHtml: "= " + expressionToExplainHtml(costBound.formula.expression, variables, { NET_QTY: line.netQty, WST_QTY: line.wastageQty, MATERIAL_RATE: line.rate }, { WASTAGE: "manual", NET_QTY: "step", WST_QTY: "step" }) +
+                " = <strong class=\"formula-val\">" + escapeHtml(formatRupees(line.costPerPiece)) + "</strong>"
+            }
+          ],
+          finalHtml: `Cost / Piece: <strong>${escapeHtml(formatRupees(line.costPerPiece))} / ${escapeHtml(fgUnit)}</strong>`
+        };
+      }
       const steps = [
         {
           index: 1,
