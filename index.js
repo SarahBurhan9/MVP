@@ -3018,6 +3018,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (item.gsm != null && item.gsm !== "") item.gsm = roundTo(item.gsm, 1);
         item.qtyFormulaId = normalizeFormulaBinding(item.qtyFormulaId);
         item.requiredQtyFormulaId = normalizeFormulaBinding(item.requiredQtyFormulaId);
+        item.wastageFormulaId = normalizeFormulaBinding(item.wastageFormulaId);
+        item.grossQtyFormulaId = normalizeFormulaBinding(item.grossQtyFormulaId);
+        item.costPerPieceFormulaId = normalizeFormulaBinding(item.costPerPieceFormulaId);
+        item.yieldFormulaId = normalizeFormulaBinding(item.yieldFormulaId);
         item.dimensionIds = normalizeDimensionIds(item.dimensionIds);
         delete item.rateFormulaId;
       });
@@ -11650,7 +11654,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function isFormulaUsed(formulaId) {
       const formula = getFormula(formulaId);
-      const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.requiredQtyFormulaId, formula))
+      const usedInMasters = rawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.requiredQtyFormulaId, formula) || bindingUsesFormula(item.wastageFormulaId, formula) || bindingUsesFormula(item.grossQtyFormulaId, formula) || bindingUsesFormula(item.costPerPieceFormulaId, formula) || bindingUsesFormula(item.yieldFormulaId, formula))
         || otherRawMaterials.some((item) => bindingUsesFormula(item.qtyFormulaId, formula))
         || services.some((item) => bindingUsesFormula(item.formulaId, formula) || bindingUsesFormula(item.qtyFormulaId, formula) || bindingUsesFormula(item.requiredQtyFormulaId, formula))
         || materialRates.some((item) => bindingUsesFormula(item.formulaId, formula))
@@ -14771,6 +14775,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         gsm: "",
         qtyFormulaId: null,
         requiredQtyFormulaId: null,
+        wastageFormulaId: null,
+        grossQtyFormulaId: null,
+        costPerPieceFormulaId: null,
+        yieldFormulaId: null,
         dimensionIds: [],
         status: "Active"
       };
@@ -14822,19 +14830,45 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 ${MATERIAL_UOMS.map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
               </select>
             </div>
-            <div>
-              <label class="form-label" for="rm-qty-formula">Default Weight Formula</label>
-              <select id="rm-qty-formula" class="full-select">
-                ${renderBoundFormulaOptions("Material", draft.qtyFormulaId, "Quantity")}
-              </select>
-              <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
-            </div>
-            <div>
-              <label class="form-label" for="rm-required-qty-formula">Default Required Quantity Formula</label>
-              <select id="rm-required-qty-formula" class="full-select">
-                ${renderBoundFormulaOptions("Material", draft.requiredQtyFormulaId)}
-              </select>
-              <p class="stat-hint" style="margin-top:6px;">Used for Required Qty. Also used for cost quantity when Default Weight Formula is None.</p>
+            <div class="form-grid two">
+              <div>
+                <label class="form-label" for="rm-qty-formula">Default Weight Formula</label>
+                <select id="rm-qty-formula" class="full-select">
+                  ${renderBoundFormulaOptions("Material", draft.qtyFormulaId, "Quantity")}
+                </select>
+                <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity on BOM &amp; Costing and Cost Calculator.</p>
+              </div>
+              <div>
+                <label class="form-label" for="rm-required-qty-formula">Default Required Quantity Formula</label>
+                <select id="rm-required-qty-formula" class="full-select">
+                  ${renderBoundFormulaOptions("Material", draft.requiredQtyFormulaId)}
+                </select>
+                <p class="stat-hint" style="margin-top:6px;">Used for Required Qty. Also used for cost quantity when Default Weight Formula is None.</p>
+              </div>
+              <div>
+                <label class="form-label" for="rm-wastage-formula">Default Wastage Formula</label>
+                <select id="rm-wastage-formula" class="full-select">
+                  ${renderBoundFormulaOptions("Material", draft.wastageFormulaId)}
+                </select>
+              </div>
+              <div>
+                <label class="form-label" for="rm-gross-qty-formula">Default Gross Quantity Formula</label>
+                <select id="rm-gross-qty-formula" class="full-select">
+                  ${renderBoundFormulaOptions("Material", draft.grossQtyFormulaId)}
+                </select>
+              </div>
+              <div>
+                <label class="form-label" for="rm-cost-piece-formula">Default Cost/Piece Formula</label>
+                <select id="rm-cost-piece-formula" class="full-select">
+                  ${renderBoundFormulaOptions("Material", draft.costPerPieceFormulaId)}
+                </select>
+              </div>
+              <div>
+                <label class="form-label" for="rm-yield-formula">Default Yield Formula</label>
+                <select id="rm-yield-formula" class="full-select">
+                  ${renderBoundFormulaOptions("Material", draft.yieldFormulaId)}
+                </select>
+              </div>
             </div>
             ${showGsm ? `
               <div>
@@ -14883,6 +14917,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         gsm: item.gsm == null ? "" : formatDecimal(item.gsm, 1, false),
         qtyFormulaId: normalizeFormulaBinding(item.qtyFormulaId),
         requiredQtyFormulaId: normalizeFormulaBinding(item.requiredQtyFormulaId),
+        wastageFormulaId: normalizeFormulaBinding(item.wastageFormulaId),
+        grossQtyFormulaId: normalizeFormulaBinding(item.grossQtyFormulaId),
+        costPerPieceFormulaId: normalizeFormulaBinding(item.costPerPieceFormulaId),
+        yieldFormulaId: normalizeFormulaBinding(item.yieldFormulaId),
         dimensionIds: normalizeDimensionIds(item.dimensionIds),
         status: item.status
       };
@@ -14922,6 +14960,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         gsm: parsedGsm && parsedGsm.ok ? parsedGsm.value : null,
         qtyFormulaId: normalizeFormulaBinding(draft.qtyFormulaId),
         requiredQtyFormulaId: normalizeFormulaBinding(draft.requiredQtyFormulaId),
+        wastageFormulaId: normalizeFormulaBinding(draft.wastageFormulaId),
+        grossQtyFormulaId: normalizeFormulaBinding(draft.grossQtyFormulaId),
+        costPerPieceFormulaId: normalizeFormulaBinding(draft.costPerPieceFormulaId),
+        yieldFormulaId: normalizeFormulaBinding(draft.yieldFormulaId),
         status: draft.status
       };
       if (state.modal.mode === "edit" && draft.id) {
@@ -14959,6 +15001,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       else if (target.id === "rm-gsm") draft.gsm = target.value;
       else if (target.id === "rm-qty-formula") draft.qtyFormulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "rm-required-qty-formula") draft.requiredQtyFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "rm-wastage-formula") draft.wastageFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "rm-gross-qty-formula") draft.grossQtyFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "rm-cost-piece-formula") draft.costPerPieceFormulaId = normalizeFormulaBinding(target.value);
+      else if (target.id === "rm-yield-formula") draft.yieldFormulaId = normalizeFormulaBinding(target.value);
       else if (target.id === "rm-status") draft.status = target.value;
       else return false;
       return true;
