@@ -354,7 +354,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const FORMULA_PURPOSES = ["Rate", "Quantity"];
     const MATERIAL_CATEGORIES = ["Paper", "Board", "Sheet", "Film", "Consumable"];
     const RAW_MATERIAL_CATEGORIES = MATERIAL_CATEGORIES.concat("Accessories");
-    const MATERIAL_UOMS = ["kg", "gm", "sheet", "sq.meter"];
+    const MATERIAL_UOMS = ["piece", "sq.inch", "sq.meter", "meter", "kg", "hour", "pieces", "job", "gm", "sheet"];
     const FINISHED_GOOD_UOMS = ["pieces", "kg", "box"];
 
     const BASE_VARIABLES = [
@@ -16161,7 +16161,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div>
               <label class="form-label" for="srv-uom">UOM</label>
               <select id="srv-uom" class="full-select">
-                ${["piece", "sq.inch", "sq.meter", "meter", "kg", "hour", "pieces", "job"].map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
+                ${MATERIAL_UOMS.map((uom) => `<option value="${uom}" ${draft.uom === uom ? "selected" : ""}>${uom}</option>`).join("")}
               </select>
             </div>
             <div>
