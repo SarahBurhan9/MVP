@@ -5489,6 +5489,63 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
        Formula engine and material costing
        ================================================== */
 
+    const FORMULA_FUNCTIONS = {
+      ROUNDDOWN: { args: 2 },
+      ROUNDUP: { args: 2 },
+      FLOOR: { args: 1 },
+      CEIL: { args: 1 },
+      ROUND: { args: 2 },
+      SQRT: { args: 1 },
+      MAX: { args: 2 },
+      MIN: { args: 2 },
+      ABS: { args: 1 },
+      POWER: { args: 2 }
+    };
+
+    function isFormulaFunctionName(name) {
+      return Object.prototype.hasOwnProperty.call(FORMULA_FUNCTIONS, String(name || "").toUpperCase());
+    }
+
+    function formulaDecimalPlaces(value, name, allowed) {
+      if (!Number.isFinite(value) || Math.abs(value - Math.round(value)) > 1e-9) {
+        throw new Error(name + " decimal places must be a whole number.");
+      }
+      const digits = Math.round(value);
+      if (allowed.indexOf(digits) === -1) {
+        throw new Error(name + " only supports " + allowed.join(" or ") + " decimal places.");
+      }
+      return digits;
+    }
+
+    function applyFormulaFunction(name, args) {
+      const key = String(name || "").toUpperCase();
+      const spec = FORMULA_FUNCTIONS[key];
+      if (!spec) throw new Error("Unknown function " + name + ".");
+      if (args.length !== spec.args) {
+        throw new Error(key + " expects " + spec.args + " argument" + (spec.args === 1 ? "" : "s") + ".");
+      }
+      if (key === "ROUNDDOWN") {
+        formulaDecimalPlaces(args[1], "ROUNDDOWN", [0]);
+        return Math.trunc(args[0]);
+      }
+      if (key === "ROUNDUP") {
+        formulaDecimalPlaces(args[1], "ROUNDUP", [0]);
+        return args[0] < 0 ? Math.floor(args[0]) : Math.ceil(args[0]);
+      }
+      if (key === "FLOOR") return Math.floor(args[0]);
+      if (key === "CEIL") return Math.ceil(args[0]);
+      if (key === "ROUND") return roundTo(args[0], formulaDecimalPlaces(args[1], "ROUND", [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]));
+      if (key === "SQRT") {
+        if (args[0] < 0) throw new Error("SQRT cannot be used on a negative number.");
+        return Math.sqrt(args[0]);
+      }
+      if (key === "MAX") return Math.max(args[0], args[1]);
+      if (key === "MIN") return Math.min(args[0], args[1]);
+      if (key === "ABS") return Math.abs(args[0]);
+      if (key === "POWER") return Math.pow(args[0], args[1]);
+      throw new Error("Unknown function " + name + ".");
+    }
+
     function tokenizeExpression(expression) {
       const src = String(expression || "");
       const tokens = [];
@@ -5499,7 +5556,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           i += 1;
           continue;
         }
-        if ("+-*/()".includes(ch)) {
+        if ("+-*/(),".includes(ch)) {
           tokens.push({ type: ch });
           i += 1;
           continue;
@@ -5577,6 +5634,22 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           }
           if (token.type === "id") {
             consume();
+            if (peek() && peek().type === "(") {
+              const fnName = token.value;
+              if (!isFormulaFunctionName(fnName)) throw new Error("Unknown function " + fnName + ".");
+              consume();
+              const args = [];
+              if (!peek() || peek().type !== ")") {
+                args.push(parseExpression());
+                while (peek() && peek().type === ",") {
+                  consume();
+                  args.push(parseExpression());
+                }
+              }
+              if (!peek() || peek().type !== ")") throw new Error("Missing closing parenthesis.");
+              consume();
+              return applyFormulaFunction(fnName, args);
+            }
             if (!Object.prototype.hasOwnProperty.call(variables, token.value)) {
               throw new Error("Unknown variable `" + token.value + "`.");
             }
@@ -5607,10 +5680,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function extractIdentifiers(expression) {
       try {
+        const tokens = tokenizeExpression(expression);
         return [...new Set(
-          tokenizeExpression(expression)
-            .filter((token) => token.type === "id")
-            .map((token) => token.value)
+          tokens.filter((token, index) => {
+            if (token.type !== "id") return false;
+            const next = tokens[index + 1];
+            return !(next && next.type === "(" && isFormulaFunctionName(token.value));
+          }).map((token) => token.value)
         )];
       } catch (error) {
         return [];
@@ -14146,24 +14222,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function renderFormulaStatus(validation) {
       if (validation.valid) {
-        return `<div class="formula-status status-valid">Formula Valid</div>`;
+        return `<div class="formula-status status-valid">Formula Valid: Ready for calculation.</div>`;
       }
       return `<div class="formula-status status-invalid">Formula Invalid${validation.error ? `: ${escapeHtml(validation.error)}` : ""}</div>`;
     }
 
-    function renderFormulaTestFields(expression, testValues) {
+    function renderFormulaTestFields(expression, testValues, compact) {
       const vars = formulaReferencedVars(expression);
       if (!vars.length) return `<p class="stat-hint">No variables detected in this expression.</p>`;
       return `
         <div class="test-fields">
           ${vars.map((name) => {
             const catalog = getFormulaVariableByCode(name);
-            const label = catalog ? `${catalog.code} — ${catalog.name}` : name;
-            const unit = catalog && catalog.unit ? ` (${catalog.unit})` : "";
+            const label = !compact && catalog ? `${catalog.code} — ${catalog.name}` : name;
+            const unit = !compact && catalog && catalog.unit ? ` (${catalog.unit})` : "";
+            const title = catalog ? `${catalog.name}${catalog.unit ? " (" + catalog.unit + ")" : ""}` : name;
             return `
             <div>
-              <label class="form-label" for="ft-${escapeHtml(name)}">${escapeHtml(label)}${escapeHtml(unit)}</label>
-              <input id="ft-${escapeHtml(name)}" class="full-search" data-test-var="${escapeHtml(name)}" type="number" step="any" value="${testValues[name] ?? ""}" />
+              <label class="form-label" for="ft-${escapeHtml(name)}" title="${escapeHtml(title)}">${escapeHtml(label)}${escapeHtml(unit)}</label>
+              <input id="ft-${escapeHtml(name)}" class="full-search" data-test-var="${escapeHtml(name)}" type="number" step="any" value="${testValues[name] ?? ""}" title="${escapeHtml(title)}" />
             </div>`;
           }).join("")}
         </div>
@@ -14243,13 +14320,52 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (empty) empty.hidden = shown > 0;
     }
 
+    function renderFormulaBuilderVariableList(query) {
+      const catalog = getActiveFormulaVariables().map((item) => ({
+        code: item.code,
+        name: item.name || item.description || item.code,
+        search: [item.code, item.name, item.category, item.description].join(" "),
+        fixed: isFixedSheetAreaCode(item.code)
+      }));
+      const fixed = fixedVariables.map((item) => ({
+        code: item.code,
+        name: item.description || item.code,
+        search: [item.code, item.description].join(" "),
+        fixed: true
+      }));
+      return catalog.concat(fixed).map((item) => {
+        const visible = formulaBuilderChipMatches(query, [item.search]);
+        return `
+          <button type="button" class="fb-var-row" data-insert="${escapeHtml(item.code)}" data-fb-chip data-fb-search="${escapeHtml(item.search)}" title="${escapeHtml(item.name)}" ${visible ? "" : "hidden"}>
+            <span class="fb-var-code">${escapeHtml(item.code)}</span>
+            <span class="fb-var-name">${escapeHtml(item.name)}${item.fixed ? ` <span class="formula-src">Fixed</span>` : ""}</span>
+          </button>
+        `;
+      }).join("");
+    }
+
+    function renderFormulaFunctionChips() {
+      const functions = [
+        ["ROUNDDOWN(, 0)", "ROUNDDOWN(x, 0)"],
+        ["ROUNDUP(, 0)", "ROUNDUP(x, 0)"],
+        ["FLOOR()", "FLOOR(x)"],
+        ["CEIL()", "CEIL(x)"],
+        ["ROUND(, 2)", "ROUND(x, 2)"],
+        ["SQRT()", "SQRT(x)"],
+        ["MAX(, )", "MAX(a, b)"],
+        ["MIN(, )", "MIN(a, b)"],
+        ["ABS()", "ABS(x)"],
+        ["POWER(, )", "POWER(x, y)"]
+      ];
+      return functions.map((item) => `<button type="button" class="chip fb-fn-chip" data-insert="${escapeHtml(item[0])}">${escapeHtml(item[1])}</button>`).join("");
+    }
+
     function renderFormulaBuilderModal() {
       const draft = state.modal.draft;
       const errors = state.modal.errors || {};
       const validation = currentFormulaValidation();
       const test = draft.testResult;
       const chipQuery = state.modal.chipQuery || "";
-      const fixedOpen = formulaBuilderFixedVisible(chipQuery);
       const showPurpose = draft.type !== "Style";
       return `
         <div class="modal-header">
@@ -14264,35 +14380,27 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <div class="fb-main">
               <div class="fb-identity${showPurpose ? "" : " is-style"}">
                 <div>
-                  <label class="form-label" for="fb-name">Formula Name</label>
+                  <label class="form-label" for="fb-name">Formula Name *</label>
                   <input id="fb-name" class="full-search ${errors.name ? "input-invalid" : ""}" value="${escapeHtml(draft.name)}" />
                   ${errors.name ? `<div class="field-error">${escapeHtml(errors.name)}</div>` : ""}
                 </div>
                 <div>
-                  <label class="form-label" for="fb-code">Formula Code</label>
+                  <label class="form-label" for="fb-code">Formula Code *</label>
                   <input id="fb-code" class="full-search ${errors.code ? "input-invalid" : ""}" value="${escapeHtml(draft.code)}" placeholder="FLAT_LENGTH" />
                   ${errors.code ? `<div class="field-error">${escapeHtml(errors.code)}</div>` : ""}
                 </div>
                 <div>
-                  <label class="form-label" for="fb-type">Type</label>
+                  <label class="form-label" for="fb-type">Type *</label>
                   <div class="fb-select${errors.type ? " is-invalid" : ""}">
-                    ${prettySelect("fb-type", [
-                      { value: "Material", label: "Material" },
-                      { value: "Service", label: "Service" },
-                      { value: "Style", label: "Style" }
-                    ], draft.type || "Material")}
+                    ${prettySelect("fb-type", FORMULA_TYPES.map((type) => ({ value: type, label: type })), draft.type || "Material")}
                   </div>
                   ${errors.type ? `<div class="field-error">${escapeHtml(errors.type)}</div>` : ""}
                 </div>
                 ${showPurpose ? `
                 <div>
-                  <label class="form-label" for="fb-purpose">Purpose</label>
+                  <label class="form-label" for="fb-purpose">Purpose *</label>
                   <div class="fb-select${errors.purpose ? " is-invalid" : ""}">
-                    ${prettySelect("fb-purpose", [
-                      { value: "", label: "Select purpose..." },
-                      { value: "Quantity", label: "Quantity" },
-                      { value: "Rate", label: "Rate" }
-                    ], draft.purpose || "")}
+                    ${prettySelect("fb-purpose", [{ value: "", label: "Select purpose..." }].concat(FORMULA_PURPOSES.map((purpose) => ({ value: purpose, label: purpose }))), draft.purpose || "")}
                   </div>
                   ${errors.purpose ? `<div class="field-error">${escapeHtml(errors.purpose)}</div>` : ""}
                 </div>
@@ -14306,20 +14414,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <div class="fb-service-flags">
                 <label class="fb-flag">
                   <input id="fb-service-length" type="checkbox" ${draft.serviceLength ? "checked" : ""} />
-                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>This formula uses Area Length</span></span>
+                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>Uses Area Length</span></span>
                 </label>
                 <label class="fb-flag">
                   <input id="fb-service-width" type="checkbox" ${draft.serviceWidth ? "checked" : ""} />
-                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>This formula uses Area Width</span></span>
+                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>Uses Area Width</span></span>
                 </label>
                 <label class="fb-flag">
                   <input id="fb-covered-area" type="checkbox" ${draft.coveredArea ? "checked" : ""} />
-                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>This formula uses Covered Area</span></span>
+                  <span class="fb-flag-box"><span class="fb-flag-mark"></span><span>Uses Covered Area</span></span>
                 </label>
               </div>
               <div>
-                <label class="form-label" for="fb-expression">Expression</label>
-                <div class="fb-expr ${errors.expression ? "is-invalid" : ""}">
+                <div class="fb-expr-head">
+                  <label class="form-label" for="fb-expression">Expression *</label>
                   <div class="op-row">
                     <button type="button" class="op-btn" data-insert="+">+</button>
                     <button type="button" class="op-btn" data-insert="-">−</button>
@@ -14327,53 +14435,49 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <button type="button" class="op-btn" data-insert="/">÷</button>
                     <button type="button" class="op-btn" data-insert="(">(</button>
                     <button type="button" class="op-btn" data-insert=")">)</button>
+                    <button type="button" class="op-btn" data-insert=",">,</button>
                   </div>
+                </div>
+                <div class="fb-fn-row">
+                  <span class="fb-fn-label">Packaging</span>
+                  <div class="chip-wrap">${renderFormulaFunctionChips()}</div>
+                </div>
+                <div class="fb-expr ${errors.expression ? "is-invalid" : ""}">
                   <textarea id="fb-expression" class="expression-input ${errors.expression ? "input-invalid" : ""}">${escapeHtml(draft.expression)}</textarea>
                 </div>
                 ${errors.expression ? `<div class="field-error">${escapeHtml(errors.expression)}</div>` : ""}
                 <div class="fb-status">${renderFormulaStatus(validation)}</div>
               </div>
-              <div class="fb-test">
-                <div class="section-kicker">Formula Test</div>
-                <p class="stat-hint">Values are generated from variables used in the expression.</p>
-                ${renderFormulaTestFields(draft.expression, draft.testValues)}
-                <div class="toolbar-left">
-                  <button type="button" class="btn" id="btn-test-formula">Test Formula</button>
+              <div class="fb-sandbox">
+                <div class="fb-sandbox-head">
+                  <div>
+                    <div class="section-kicker">Formula Test Sandbox</div>
+                    <p class="stat-hint">Enter test values for expression variables.</p>
+                  </div>
                   <button type="button" class="btn btn-primary" id="btn-calculate-formula">Calculate</button>
                 </div>
-                ${test ? `
-                  <div class="preview-box">
-                    ${renderFormulaStatus({ valid: test.success, error: test.error })}
-                    ${test.success ? `<div class="cost-row"><span>Result</span><strong>${escapeHtml(formatFormulaResult(test.result))}</strong></div>` : ""}
-                  </div>
-                ` : ""}
+                ${renderFormulaTestFields(draft.expression, draft.testValues, true)}
+                <div class="fb-sandbox-result ${test && !test.success ? "is-invalid" : ""}">
+                  <span>Calculated Output</span>
+                  <strong>${test && test.success ? escapeHtml(formatFormulaResult(test.result)) : (test && test.error ? escapeHtml(test.error) : "—")}</strong>
+                </div>
               </div>
               </div>
             </div>
             <div class="fb-vars">
               <div class="section-kicker">Variables</div>
-              <p class="stat-hint">Click to insert into the expression.</p>
-              <input id="fb-chip-search" class="full-search" type="search" value="${escapeHtml(chipQuery)}" placeholder="Search variables" autocomplete="off" />
-              <div class="fb-chip-list">
-                ${renderFormulaBuilderVariableGroups(chipQuery)}
-                <div class="fb-fixed">
-                  <button type="button" class="fb-fixed-toggle" id="fb-fixed-toggle" aria-expanded="${fixedOpen ? "true" : "false"}">
-                    <span>Fixed</span>
-                    <span class="badge badge-muted">${fixedVariables.length}</span>
-                  </button>
-                  <div id="fb-fixed-body" ${fixedOpen ? "" : "hidden"}>
-                    <p class="stat-hint">System implementation values. Click to insert. Not editable.</p>
-                    <div class="chip-wrap">${renderFormulaBuilderFixedChips(chipQuery)}</div>
-                  </div>
-                </div>
-                <p id="fb-chip-empty" class="stat-hint" ${formulaBuilderQueryText(chipQuery) && !getActiveFormulaVariables().some((item) => formulaBuilderChipMatches(chipQuery, [item.code, item.name, item.category])) && !fixedVariables.some((item) => formulaBuilderChipMatches(chipQuery, [item.code, item.description])) ? "" : "hidden"}>No matching variables.</p>
+              <p class="stat-hint">Click variable to insert into expression.</p>
+              <input id="fb-chip-search" class="full-search" type="search" value="${escapeHtml(chipQuery)}" placeholder="Filter variables..." autocomplete="off" />
+              <div class="fb-var-list">
+                ${renderFormulaBuilderVariableList(chipQuery)}
+                <p id="fb-chip-empty" class="stat-hint" ${formulaBuilderQueryText(chipQuery) && !getActiveFormulaVariables().some((item) => formulaBuilderChipMatches(chipQuery, [item.code, item.name, item.category, item.description])) && !fixedVariables.some((item) => formulaBuilderChipMatches(chipQuery, [item.code, item.description])) ? "" : "hidden"}>No matching variables.</p>
               </div>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn" data-modal-close>Cancel</button>
-          <button type="button" class="btn btn-primary" id="btn-save-formula">Save Formula</button>
+          <button type="button" class="btn btn-primary" id="btn-save-formula">${state.modal.mode === "edit" ? "Update" : "Save Formula"}</button>
         </div>
       `;
     }
@@ -14452,9 +14556,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const field = document.getElementById("fb-expression");
       const start = field ? field.selectionStart : (state.modal.cursor || current.length);
       const end = field ? field.selectionEnd : start;
-      const insert = /[A-Z_]/.test(token[0]) ? token : ` ${token} `;
+      const insert = /[A-Za-z_]/.test(token[0]) ? token : ` ${token} `;
       state.modal.draft.expression = current.slice(0, start) + insert + current.slice(end);
-      state.modal.cursor = start + insert.length;
+      const argAt = insert.indexOf("(");
+      state.modal.cursor = start + (argAt >= 0 ? argAt + 1 : insert.length);
       state.modal.draft.testResult = null;
       state.modal.errors = {};
       renderModal();
@@ -18325,6 +18430,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (token.type === "-") return " − ";
         if (token.type === "(") return "(";
         if (token.type === ")") return ")";
+        if (token.type === ",") return ", ";
         return escapeHtml(token.value || token.type);
       }).join("");
     }
