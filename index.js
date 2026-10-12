@@ -13618,7 +13618,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       "pencil",
                       "rate"
                     ) : "—"}</td>
-                    <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}${formulaHelpButton("line-cost", line.id, "How cost per piece was calculated")}</td>
+                    <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
                     <td class="step-col-actions">
                       <div class="row-actions">
                         <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
@@ -13693,10 +13693,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const lineModels = {};
       orderedSlots.forEach((slot) => {
         if (!slot.line) return;
-        lineModels["material:" + slot.line.id] = bomLineCostDisplayModel(slot.line);
+        lineModels["material:" + slot.line.id] = {
+          ...bomLineCostDisplayModel(slot.line),
+          explainKind: "line-cost",
+          explainLine: slot.line.id
+        };
       });
       (layout.accessoryLines || []).forEach((line) => {
-        lineModels["material:" + line.id] = bomLineCostDisplayModel(line);
+        lineModels["material:" + line.id] = {
+          ...bomLineCostDisplayModel(line),
+          explainKind: "line-cost",
+          explainLine: line.id
+        };
       });
       mountBomCostCellHosts(
         root,
@@ -19762,8 +19770,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!line || !material || !fg) return { error: "Cost details are unavailable." };
       const rateRow = getMaterialRate(material.id);
-      const rateUnit = formatRateUnit(rateRow && rateRow.rateUOM) || material.uom || "";
-      const materialUnit = material.uom || "";
       const fgUnit = fg.uom || "pieces";
       const qtyForRate = line.qtyForRate;
       const rate = line.rate;
@@ -19796,33 +19802,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           finalHtml: `Cost / Piece: <strong>${escapeHtml(formatRupees(line.costPerPiece))} / ${escapeHtml(fgUnit)}</strong>`
         };
       }
-      const steps = [
-        {
-          index: 1,
-          heading: "Gross Qty",
-          expression: "MAT_QTY + WST_QTY",
-          pluggedHtml: `Gross Qty (MAT_QTY + WST_QTY): <strong class="formula-val">${escapeHtml(formatQty(line.grossQty))}</strong> ${escapeHtml(materialUnit)}`
-        },
-        {
-          index: 2,
-          heading: "Quantity in the rate unit",
-          expression: materialUnit + " → " + rateUnit,
-          pluggedHtml: `Converted quantity: <strong class="formula-val">${escapeHtml(qtyForRate == null ? "—" : formatQty(qtyForRate))}</strong> ${escapeHtml(rateUnit)}`
-        },
-        {
-          index: 3,
-          heading: "Cost / Piece",
-          expression: "Quantity in the rate unit × Rate",
-          pluggedHtml: `${escapeHtml(qtyForRate == null ? "—" : formatQty(qtyForRate))} × ${escapeHtml(formatRatePkr(rate, rateRow && rateRow.rateUOM))} = <strong class="formula-val">${escapeHtml(formatRupees(line.costPerPiece))}</strong>`
-        }
-      ];
       return {
         title: "Cost / Piece",
         subtitle: (material.name || material.code || "") + " · rate " + (formatRatePkr(rate, rateRow && rateRow.rateUOM)),
         formulaName: "Quantity in rate unit × Rate",
         sourceType: "formula",
-        summaryHtml: "Cost / Piece starts from Gross Qty, which is MAT_QTY + WST_QTY. That quantity is converted from the raw material unit (" + materialUnit + ") into the rate unit (" + rateUnit + "), then multiplied by the rate. The label / " + fgUnit + " is the finished good unit.",
-        steps,
+        summaryHtml: "",
+        steps: [
+          {
+            index: 3,
+            heading: "Cost / Piece",
+            expression: "Quantity in the rate unit × Rate",
+            pluggedHtml: `${escapeHtml(qtyForRate == null ? "—" : formatQty(qtyForRate))} × ${escapeHtml(formatRatePkr(rate, rateRow && rateRow.rateUOM))} = <strong class="formula-val">${escapeHtml(formatRupees(line.costPerPiece))}</strong>`
+          }
+        ],
         finalHtml: `Cost / Piece: <strong>${escapeHtml(formatRupees(line.costPerPiece))} / ${escapeHtml(fgUnit)}</strong>`
       };
     }

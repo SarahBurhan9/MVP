@@ -58,7 +58,12 @@ export function mountBomLineCostCells(scope, modelsByHost) {
       lineSlots,
       key,
       element,
-      <BomLineCost hasError={model.hasError} displayValue={model.displayValue} />
+      <BomLineCost
+        hasError={model.hasError}
+        displayValue={model.displayValue}
+        explainKind={model.explainKind}
+        explainLine={model.explainLine}
+      />
     );
   });
 }
