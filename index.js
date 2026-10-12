@@ -6445,7 +6445,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           }
           wstQty = wstEval.result;
         }
+        attachMaterialQuantityFormula(line, { finishedGood: finishedGood });
         const grossVars = { ...formulaVars, WST_QTY: wstQty };
+        const tableMaterialQty = numericOrNull(line.materialOrderQty);
+        if (tableMaterialQty !== null) grossVars.MAT_QTY = tableMaterialQty;
         if (grossBound.formula) {
           const grossEval = evaluateFormula(grossBound.formula.expression, grossVars, [grossBound.formula.code]);
           if (!grossEval.success) {
@@ -19633,13 +19636,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
       const qtyFormula = resolved && resolved.formula;
       const variables = buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line);
-      const matEval = evaluateFormula("MAT_QTY", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent }, ["MAT_QTY"]);
-      const matShown = matEval.success ? formatQty(matEval.result) : "—";
+      const tableMaterialQty = numericOrNull(line.materialOrderQty);
+      const matEval = evaluateFormula("MAT_QTY", { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent, MAT_QTY: tableMaterialQty }, ["MAT_QTY"]);
+      const matShown = tableMaterialQty !== null ? formatQty(tableMaterialQty) : (matEval.success ? formatQty(matEval.result) : "—");
       const wstShown = formatQty(line.wastageQty);
       const grossBound = boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula");
       const grossFormula = grossBound.formula || getFormulaByCode("GROSS_QTY");
       const usingMaterialGross = Boolean(grossBound.formula);
       const grossVars = { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent, WST_QTY: line.wastageQty };
+      if (tableMaterialQty !== null) grossVars.MAT_QTY = tableMaterialQty;
       return {
         title: "Gross Qty",
         subtitle: (material.name || material.code || "") + (usingMaterialGross ? " · Default Gross Quantity Formula" : " · Gross Quantity With Wastage"),
