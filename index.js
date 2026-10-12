@@ -5832,9 +5832,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const width = numericOrNull(provided ? provided.SHEET_WIDTH : null);
         const length = numericOrNull(provided ? provided.SHEET_LENGTH : null);
         if (width !== null && length !== null) return { success: true, value: roundTo(width * length, 4) };
-        if (options && options.noFormulaDefaults) {
-          return { success: false, error: "Variable SHEET_AREA has no value. Formula defaults are not used for Material Qty." };
-        }
         return { success: true, value: getSheetDimensions(getSelectedFinishedGood()).area };
       }
 
@@ -5866,10 +5863,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { success: true, value: nested.result };
       }
 
-      if (options && options.noFormulaDefaults) {
-        return { success: false, error: "Variable " + id + " has no value. Formula defaults are not used for Material Qty." };
-      }
-
       const styled = resolveVariableValue(id, getSelectedFinishedGood(), null);
       if (styled !== null) return { success: true, value: styled };
 
@@ -5893,9 +5886,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (!syntax.valid) return { success: false, result: null, error: syntax.error };
 
       const incoming = provided && typeof provided === "object" ? provided : {};
-      const variables = options && options.noFormulaDefaults
-        ? { ...incoming }
-        : { ...getFormulaVariableDefaults(), ...incoming };
+      const variables = { ...getFormulaVariableDefaults(), ...incoming };
       if (options && options.strictJobDimensions) {
         ["L", "W", "H"].forEach((code) => {
           if (!Object.prototype.hasOwnProperty.call(incoming, code) || numericOrNull(incoming[code]) === null) {
@@ -6201,60 +6192,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function buildMaterialQtyVariables(finishedGood, material, line) {
-      const vars = {};
+      const wastage = isBomAccessoryLine(line) ? 0 : Number(line.wastagePercent) || 0;
+      const formula = getFormulaByCode(MATERIAL_QTY_FORMULA_CODE);
+      const vars = buildFormulaVariables(finishedGood, material, wastage, line && line.dimensionId, formula, line);
       const orderQty = materialQtyUserOrderQuantity();
-      const layerPly = styleFormulaPlyForBomLine(finishedGood, line);
-      const dim = getDimension(line && line.dimensionId);
-      const usingCustomDimensions = isUseCustomDimensions(line);
-      const dimensionOverride = getCustomDimensionOverride(line);
-      let L = null;
-      let W = null;
-      if (!usingCustomDimensions || !dimensionOverride.error) {
-        if (usingCustomDimensions) {
-          L = numericOrNull(dimensionOverride.L);
-          W = numericOrNull(dimensionOverride.W);
-        } else {
-          const resolved = resolveQuantityFormulaLW(finishedGood, dim, {}, layerPly);
-          L = numericOrNull(resolved.L);
-          W = numericOrNull(resolved.W);
-        }
-      }
-      if (L !== null) vars.L = roundTo(L, 2);
-      if (W !== null) vars.W = roundTo(W, 2);
-      const fgDims = finishedGood && finishedGood.dimensions ? finishedGood.dimensions : {};
-      const H = numericOrNull(dim && dim.H != null ? dim.H : fgDims.H);
-      if (H !== null) vars.H = roundTo(H, 2);
-      const gsm = numericOrNull(material && material.gsm);
-      if (gsm !== null) vars.GSM = roundTo(gsm, 1);
-      const ply = numericOrNull(finishedGood && finishedGood.ply);
-      if (ply !== null) vars.PLY = ply;
-      const style = finishedGood ? findStyleByName(finishedGood.style) : null;
-      if (style) {
-        getStyleVariablesForPly(style.id, layerPly).forEach((row) => {
-          const code = row.variableCode;
-          if (!code || code === "ORDER_QTY") return;
-          const n = numericOrNull(row.value);
-          if (n !== null) vars[code] = n;
-        });
-      }
-      if (L !== null) vars.L = roundTo(L, 2);
-      if (W !== null) vars.W = roundTo(W, 2);
-      if (gsm !== null) vars.GSM = roundTo(gsm, 1);
-      const usingCustomSheet = isUseCustomSheetDimensions(line);
-      const sheetOverride = getCustomSheetDimensionOverride(line);
-      if (usingCustomSheet && !sheetOverride.error && sheetOverride.L !== null && sheetOverride.W !== null) {
-        vars.SHEET_LENGTH = roundTo(sheetOverride.L, 2);
-        vars.SHEET_WIDTH = roundTo(sheetOverride.W, 2);
-      }
-      injectStyleFormulaResults(finishedGood, vars, layerPly);
       if (orderQty !== null) vars.ORDER_QTY = orderQty;
-      else delete vars.ORDER_QTY;
-      return {
-        variables: vars,
-        orderQtyMissing: orderQty === null,
-        dimensionError: usingCustomDimensions ? dimensionOverride.error : null,
-        sheetError: usingCustomSheet ? sheetOverride.error : null
-      };
+      return vars;
     }
 
     function attachMaterialQuantityFormula(line, context) {
@@ -6283,22 +6226,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         line.materialQtyError = "Formula MATERIAL_QTY has no expression.";
         return;
       }
-      const built = buildMaterialQtyVariables(finishedGood, material, line);
-      line.materialQtyVariables = built.variables;
-      const identifiers = extractIdentifiers(expression);
-      if (built.orderQtyMissing && identifiers.indexOf("ORDER_QTY") !== -1) {
-        line.materialQtyError = "Order quantity is not entered. MATERIAL_QTY uses ORDER_QTY from the order quantity you type. No default is used.";
-        return;
-      }
-      if (built.dimensionError && (identifiers.indexOf("L") !== -1 || identifiers.indexOf("W") !== -1)) {
-        line.materialQtyError = built.dimensionError;
-        return;
-      }
-      if (built.sheetError && (identifiers.indexOf("SHEET_LENGTH") !== -1 || identifiers.indexOf("SHEET_WIDTH") !== -1)) {
-        line.materialQtyError = built.sheetError;
-        return;
-      }
-      const evaluated = evaluateFormula(expression, built.variables, [formula.code], { noFormulaDefaults: true });
+      const variables = buildMaterialQtyVariables(finishedGood, material, line);
+      line.materialQtyVariables = variables;
+      const evaluated = evaluateFormula(expression, variables, [formula.code]);
       if (!evaluated.success || !Number.isFinite(Number(evaluated.result))) {
         line.materialQtyError = evaluated.error || "Formula MATERIAL_QTY could not be calculated.";
         return;
@@ -19611,17 +19541,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function materialQtyInputOrigin(code, material) {
-      if (code === "ORDER_QTY") return "the order quantity you entered";
+    function materialQtyInputOrigin(code, material, variables) {
+      if (code === "ORDER_QTY") return "order quantity you entered";
+      if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, code)) return "fixed value";
       if (code === "GSM" && material && material.gsm != null) return "GSM on raw material " + (material.name || material.code);
-      if (code === "L" || code === "W") return "length and width for this material line";
-      if (code === "SHEET_LENGTH" || code === "SHEET_WIDTH") return "sheet size on the style or on this material line";
-      if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, code)) {
-        return "fixed variable " + code;
-      }
+      if (code === "L" || code === "W" || code === "H") return "length, width, or height for this line";
+      if (code === "SHEET_LENGTH" || code === "SHEET_WIDTH") return "sheet size for this line";
+      const defaults = getFormulaVariableDefaults();
+      const current = variables ? numericOrNull(variables[code]) : null;
+      const fallback = numericOrNull(defaults[code]);
+      if (current !== null && fallback !== null && current === fallback) return "formula default";
       const nested = getFormulaByCode(code);
       if (nested && nested.code !== MATERIAL_QTY_FORMULA_CODE) return "formula " + nested.code;
-      return "a value already on this finished good, style, or material line";
+      return "value used in this formula";
     }
 
     function buildFormulaExplainModel_MaterialQty(lineId) {
@@ -19646,11 +19578,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = (line && line.materialQtyVariables) || {};
       const identifiers = extractIdentifiers(formula.expression);
       const inputHtml = identifiers.map((code) => {
-        const hasValue = Object.prototype.hasOwnProperty.call(variables, code) && numericOrNull(variables[code]) !== null;
-        const shown = hasValue ? formatPreviewVariableDisplay(code, variables[code]) : "no value";
-        const note = hasValue
-          ? materialQtyInputOrigin(code, material)
-          : "no value was supplied. Formula default values are not used";
+        const value = Object.prototype.hasOwnProperty.call(variables, code) ? variables[code] : null;
+        const shown = numericOrNull(value) !== null ? formatPreviewVariableDisplay(code, value) : "—";
+        const note = materialQtyInputOrigin(code, material, variables);
         return `<div><strong>${escapeHtml(code)}</strong> — ${escapeHtml(note)}: <strong class="formula-val">${escapeHtml(shown)}</strong></div>`;
       }).join("");
       const qty = line && !line.materialQtyError ? numericOrNull(line.materialOrderQty) : null;
@@ -19664,7 +19594,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         sourceType: "formula",
         summaryHtml: line && line.materialQtyError
           ? line.materialQtyError
-          : "Material Qty is the result of formula " + (formula.name || formula.code) + " (MATERIAL_QTY). ORDER_QTY is the order quantity you entered. Formula default values are not used.",
+          : "Material Qty is the result of formula " + (formula.name || formula.code) + " (MATERIAL_QTY). Values you entered are used first. Fixed values stay fixed. A formula variable with no entered value uses its default.",
         steps: [{
           index: 1,
           heading: (formula.name || formula.code) + " (" + formula.code + ")",
