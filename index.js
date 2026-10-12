@@ -6173,23 +6173,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return formula;
     }
 
-    function wastageQtyFormula(material) {
-      const bound = boundRawMaterialFormula(material, material && material.wastageFormulaId, "Default Wastage Formula");
-      if (bound.formula || bound.error) return bound;
+    function wastageQtyFormula() {
       const byCode = activeFormulaByCode("WST_QTY");
-      return byCode ? { formula: byCode, error: null } : { formula: null, error: null };
+      return byCode
+        ? { formula: byCode, error: null }
+        : { formula: null, error: "Formula WST_QTY was not found. Create an active formula with code WST_QTY." };
     }
 
-    function pieceCostFormula(material) {
-      const bound = boundRawMaterialFormula(material, material && material.costPerPieceFormulaId, "Default Cost/Piece Formula");
-      if (bound.formula || bound.error) return bound;
+    function pieceCostFormula() {
       const byCode = activeFormulaByCode("PIECE_COST");
-      return byCode ? { formula: byCode, error: null } : { formula: null, error: null };
+      return byCode
+        ? { formula: byCode, error: null }
+        : { formula: null, error: "Formula PIECE_COST was not found. Create an active formula with code PIECE_COST." };
     }
 
-    function yieldFormulaForMaterial(material) {
-      const bound = boundRawMaterialFormula(material, material && material.yieldFormulaId, "Default Yield Formula");
-      if (bound.formula || bound.error) return bound;
+    function yieldFormulaForMaterial() {
       const byCode = activeFormulaByCode("YIELD");
       return byCode ? { formula: byCode, error: null } : { formula: null, error: null };
     }
@@ -13314,7 +13312,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         lengthRow: materialAxisFormulaDisplayModel("L", fg, line, resolved, override, snap, dim, axes.lengthRow),
         widthRow: materialAxisFormulaDisplayModel("W", fg, line, resolved, override, snap, dim, axes.widthRow),
         coveredGroup: materialCoveredFormulaDisplayGroup(fg, line, snap, styleRows),
-        qtyRow: materialQtyFormulaDisplayModel(line, material)
+        qtyRow: materialQtyFormulaDisplayModel(line, material),
+        perimeter: stylePerimeterDisplayModel(styleRows)
       };
     }
 
@@ -19842,7 +19841,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           subtitle: (material.name || material.code || "") + " · Default Yield Formula",
           formulaName: "Default Yield Formula",
           sourceType: "formula",
-          summaryHtml: yieldBound.error || "Default Yield Formula is None on this raw material, so no yield is calculated.",
+          summaryHtml: yieldBound.error || "Formula YIELD was not found. Create an active formula with code YIELD.",
           steps: [],
           finalHtml: `Yield: <strong>${escapeHtml(shown)}</strong>`
         };
@@ -19861,7 +19860,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: (material.name || material.code || "") + " · Default Yield Formula",
         formulaName: yieldBound.formula.name || yieldBound.formula.code,
         sourceType: "formula",
-        summaryHtml: "Yield uses the Default Yield Formula on the raw material: " + (yieldBound.formula.name || yieldBound.formula.code) + " (" + yieldBound.formula.code + ").",
+        summaryHtml: "Yield uses the formula " + (yieldBound.formula.name || yieldBound.formula.code) + " (" + yieldBound.formula.code + ").",
         steps: [
           {
             index: 1,

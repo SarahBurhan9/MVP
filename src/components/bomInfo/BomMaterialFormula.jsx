@@ -1,3 +1,5 @@
+import { StylePerimeterRow } from "./BomStyleFormulas.jsx";
+
 function FormulaHelpButton({ kind, line, ariaLabel }) {
   return (
     <button
@@ -43,7 +45,7 @@ function FormulaRow({ row }) {
   );
 }
 
-export function BomMaterialFormula({ styleName, materialLabel, layerLabel, lengthRow, widthRow, coveredGroup, qtyRow }) {
+export function BomMaterialFormula({ styleName, materialLabel, layerLabel, lengthRow, widthRow, coveredGroup, qtyRow, perimeter }) {
   return (
     <>
       <p className="stat-hint" style={{ margin: "0 0 12px" }}>
@@ -72,6 +74,7 @@ export function BomMaterialFormula({ styleName, materialLabel, layerLabel, lengt
           )
         ) : null}
         <FormulaRow row={qtyRow} />
+        {perimeter ? <StylePerimeterRow perimeter={perimeter} /> : null}
       </div>
     </>
   );

@@ -29,6 +29,7 @@ export function BomInfoPopupBody({ model }) {
         widthRow={model.widthRow}
         coveredGroup={model.coveredGroup}
         qtyRow={model.qtyRow}
+        perimeter={model.perimeter}
       />
     );
   }

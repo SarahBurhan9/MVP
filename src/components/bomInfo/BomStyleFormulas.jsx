@@ -42,7 +42,7 @@ function StyleFormulaRow({ row }) {
   );
 }
 
-function StylePerimeterRow({ perimeter }) {
+export function StylePerimeterRow({ perimeter }) {
   return (
     <div className="style-formula-row">
       <div>
