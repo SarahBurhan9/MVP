@@ -2893,7 +2893,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const value = appendHtmlUnit(shown, material && material.uom, " ");
       const lineId = line && (line.id != null ? line.id : line.key);
       if (lineId == null || lineId === "") return value;
-      return `${value}${formulaHelpButton("net-qty", lineId, "How net quantity was calculated")}`;
+      return `${value}${formulaHelpButton("net-qty", lineId, "How required quantity was calculated")}`;
     }
 
     function renderBomMaterialQtyDisplay(kind, item, line, finishedGood) {
@@ -13455,7 +13455,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <td>1</td>
                     <td class="step-col-dim">${renderBomStepDimensionStack(getSelectedFinishedGood(), line)}</td>
                     ${renderPlyMaterialQtyCells(
-                      renderBomEnteredRequiredQty(line),
+                      renderBomNetQtyDisplay(material, line),
                       line.netQty,
                       line.grossQty,
                       line.wastagePercent,
@@ -19386,17 +19386,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = resolved && resolved.formula;
       const weightId = normalizeFormulaBinding(material.qtyFormulaId);
       const usingWeight = Boolean(formula && weightId && Number(formula.id) === Number(weightId));
-      const uom = material.uom || "";
-      const shown = line.error ? "—" : formatQty(line.netQty);
       const sourceName = formula ? ((formula.name || formula.code) + " (" + formula.code + ")") : "the quantity entered on this line";
       const summaryHtml = line.calculationMethod === "manual"
-        ? "Net Qty is the quantity entered on this line."
+        ? "Required Qty on this row shows the Net Qty. This line is set to Manual, so the number is the quantity entered on the line."
         : usingWeight
-          ? "Net Qty is calculated by the Default Weight Formula on the raw material: " + sourceName + ". Required Qty is the Order Quantity you entered, not this result."
-          : "Net Qty uses the Default Required Quantity Formula on the raw material because Default Weight Formula is None: " + sourceName + ". Required Qty is the Order Quantity you entered, not this result.";
+          ? "Required Qty on this row shows the Net Qty. It is calculated by the Default Weight Formula on the raw material: " + sourceName + "."
+          : "Required Qty on this row shows the Net Qty. Default Weight Formula is None, so this uses the Default Required Quantity Formula on the raw material: " + sourceName + ".";
       return {
         ...model,
-        title: "Net Qty",
+        title: "Required Qty",
         subtitle: (material.name || material.code || "") + (usingWeight || line.calculationMethod === "manual" ? " · Default Weight Formula" : " · Default Required Quantity Formula"),
         formulaName: formula ? (formula.name || formula.code) : (model.formulaName || "Net Qty"),
         summaryHtml,
@@ -19404,7 +19402,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ...step,
           index: index + 1
         })),
-        finalHtml: `Net Qty: <strong>${escapeHtml(shown)}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+        finalHtml: ""
       };
     }
 
@@ -19473,7 +19471,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const model = buildFormulaExplainModel_NetQty(lineId);
       if (model.error) return model;
       const summary = String(model.summaryHtml || "");
-      const detail = summary.replace(/^Net Qty is calculated by the Default Weight Formula on the raw material: /, "Calculated by the Default Weight Formula on the raw material: ").replace(/ Required Qty is the Order Quantity you entered, not this result\./, "");
+      const detail = summary.replace(/^Required Qty on this row shows the Net Qty\.\s*/, "");
       return {
         ...model,
         title: "Net Qty",
@@ -19723,7 +19721,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${model.summaryHtml ? `<p class="formula-explain-note">${model.summaryHtml}</p>` : ""}
           ${flatMeta}
           ${steps.length ? `<ol class="formula-explain-steps">${stepsHtml}</ol>` : ""}
-          <div class="formula-explain-final">${model.finalHtml}</div>
+          ${model.finalHtml ? `<div class="formula-explain-final">${model.finalHtml}</div>` : ""}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" data-modal-close>Got it</button>
