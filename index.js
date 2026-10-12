@@ -6167,6 +6167,26 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return { formula: formula, error: null };
     }
 
+    function activeFormulaByCode(code) {
+      const formula = getFormulaByCode(code);
+      if (!formula || formula.isActive === false) return null;
+      return formula;
+    }
+
+    function wastageQtyFormula(material) {
+      const bound = boundRawMaterialFormula(material, material && material.wastageFormulaId, "Default Wastage Formula");
+      if (bound.formula || bound.error) return bound;
+      const byCode = activeFormulaByCode("WASTAGE_QTY");
+      return byCode ? { formula: byCode, error: null } : { formula: null, error: null };
+    }
+
+    function yieldFormulaForMaterial(material) {
+      const bound = boundRawMaterialFormula(material, material && material.yieldFormulaId, "Default Yield Formula");
+      if (bound.formula || bound.error) return bound;
+      const byCode = activeFormulaByCode("YIELD");
+      return byCode ? { formula: byCode, error: null } : { formula: null, error: null };
+    }
+
     function computeWastageAndGrossQty(variables, netQty, wastage) {
       const base = { ...variables, NET_QTY: netQty, WASTAGE: wastage };
       const wstEval = evaluateFormula("MAT_QTY * WASTAGE / 100", base, ["WST_QTY"]);
@@ -6387,10 +6407,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
-      const wastageBound = boundRawMaterialFormula(material, material.wastageFormulaId, "Default Wastage Formula");
+      const wastageBound = wastageQtyFormula(material);
       const grossBound = boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula");
       const costBound = boundRawMaterialFormula(material, material.costPerPieceFormulaId, "Default Cost/Piece Formula");
-      const yieldBound = boundRawMaterialFormula(material, material.yieldFormulaId, "Default Yield Formula");
+      const yieldBound = yieldFormulaForMaterial(material);
       const bindingError = wastageBound.error || grossBound.error || costBound.error || yieldBound.error;
       if (bindingError) {
         line.error = bindingError;
@@ -6407,7 +6427,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (accessoryLine && !wastageBound.formula && !grossBound.formula) {
         grossQty = netQty;
       } else if (!wastageBound.formula && !grossBound.formula) {
-        const grossResult = computeWastageAndGrossQty(variables, netQty, wastage);
+        const grossResult = computeWastageAndGrossQty(formulaVars, netQty, wastage);
         if (grossResult.error) {
           line.error = grossResult.error;
           line.netQty = 0;
@@ -19695,7 +19715,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
       const qtyFormula = resolved && resolved.formula;
       const variables = buildFormulaVariables(fg, material, Number(line.wastagePercent) || 0, line.dimensionId, qtyFormula, line);
-      const wastageBound = boundRawMaterialFormula(material, material.wastageFormulaId, "Default Wastage Formula");
+      const wastageBound = wastageQtyFormula(material);
       const wastageVars = { ...variables, NET_QTY: line.netQty, WASTAGE: line.wastagePercent };
       if (wastageBound.formula) {
         return {
@@ -19813,7 +19833,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!line || !material || !fg) return { error: "Yield details are unavailable." };
       const shown = line.error || line.yield == null || !Number.isFinite(Number(line.yield)) ? "—" : formatQty(line.yield);
-      const yieldBound = boundRawMaterialFormula(material, material.yieldFormulaId, "Default Yield Formula");
+      const yieldBound = yieldFormulaForMaterial(material);
       if (!yieldBound.formula) {
         return {
           title: "Yield",
@@ -22156,7 +22176,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (page === "services") renderServices();
       if (page === "service-rates") renderServiceRates();
       if (page === "finished-goods") renderFinishedGoods();
-      if (page === "bom-costing") renderBOMPage();
+      if (page === "bom-costing") {
+        if (state.selectedFinishedGoodId && getSelectedFinishedGood()) recalculateBOMCosts();
+        renderBOMPage();
+      }
       if (page === "bom-list") {
         if (state.selectedFinishedGoodId) recalculateBOMCosts();
         renderBomList();
