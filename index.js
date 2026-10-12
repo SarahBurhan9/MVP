@@ -13628,13 +13628,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       renderBomYieldDisplay(material, line)
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
-                      formatRatePkr(line.rate, (getMaterialRate(material.id) && getMaterialRate(material.id).rateUOM) || ""),
+                      (getMaterialRate(material.id) && Number(getMaterialRate(material.id).rate) > 0) ? formatRatePkr(getMaterialRate(material.id).rate, getMaterialRate(material.id).rateUOM) : "—",
                       "data-bom-material-rate",
                       material.id,
                       "Edit rate",
                       "pencil",
                       "rate"
-                    ) : "—"}</td>
+                    ) : "—"}${formulaHelpButton("material-rate", line.id, "How rate was picked")}</td>
                     <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
                     <td class="step-col-actions">
                       <div class="row-actions">
@@ -19764,6 +19764,33 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function buildFormulaExplainModel_MaterialRate(lineId) {
+      const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
+      const material = line ? getRawMaterial(line.rawMaterialId) : null;
+      if (!line || !material) return { error: "Rate details are unavailable." };
+      const rateRow = getMaterialRate(material.id);
+      if (!rateRow || !Number.isFinite(Number(rateRow.rate)) || Number(rateRow.rate) <= 0) {
+        return { error: "No rate is saved for " + (material.name || material.code) + ". Set it on Raw Material Rates." };
+      }
+      const shown = formatRatePkr(rateRow.rate, rateRow.rateUOM);
+      return {
+        title: "Rate",
+        subtitle: (material.name || material.code || "") + " · Raw Material Rate",
+        formulaName: "Raw Material Rate",
+        sourceType: "formula",
+        summaryHtml: "Rate is taken from the rate saved for this raw material.",
+        steps: [
+          {
+            index: 1,
+            heading: "Raw Material Rate",
+            expression: "Raw Material Rate",
+            pluggedHtml: `<strong class="formula-val">${escapeHtml(shown)}</strong>`
+          }
+        ],
+        finalHtml: `Rate: <strong>${escapeHtml(shown)}</strong>`
+      };
+    }
+
     function buildFormulaExplainModel_LineCost(lineId) {
       const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
@@ -19859,6 +19886,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (kind === "column-net-qty") return buildFormulaExplainModel_ColumnNetQty(lineId);
       if (kind === "wastage-qty") return buildFormulaExplainModel_WastageQty(lineId);
       if (kind === "line-cost") return buildFormulaExplainModel_LineCost(lineId);
+      if (kind === "material-rate") return buildFormulaExplainModel_MaterialRate(lineId);
       if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
       if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
@@ -19935,9 +19963,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "column-net-qty", "gross-qty", "wastage-qty", "line-cost"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "column-net-qty", "gross-qty", "wastage-qty", "line-cost", "material-rate"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost" || resolved === "material-rate";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
