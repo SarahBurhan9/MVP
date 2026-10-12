@@ -2879,12 +2879,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `${value}${formulaHelpButton("required-qty", lineId, "How required quantity was calculated")}`;
     }
 
+    function renderBomEnteredRequiredQty(line) {
+      const shown = hasBomOrderQuantity() ? formatQty(bomOrderQuantityValue()) : "—";
+      const uom = state.bomOrderQuantityUOM || "";
+      const value = uom ? appendHtmlUnit(shown, uom, " ") : shown;
+      const lineId = line && (line.id != null ? line.id : line.key);
+      if (lineId == null || lineId === "") return value;
+      return `${value}${formulaHelpButton("entered-order-qty", lineId, "Required quantity is the order quantity you entered")}`;
+    }
+
     function renderBomNetQtyDisplay(material, line) {
       const shown = line && line.error ? "—" : formatQty(line && line.netQty);
       const value = appendHtmlUnit(shown, material && material.uom, " ");
       const lineId = line && (line.id != null ? line.id : line.key);
       if (lineId == null || lineId === "") return value;
-      return `${value}${formulaHelpButton("net-qty", lineId, "How required quantity was calculated")}`;
+      return `${value}${formulaHelpButton("net-qty", lineId, "How net quantity was calculated")}`;
     }
 
     function renderBomMaterialQtyDisplay(kind, item, line, finishedGood) {
@@ -13446,7 +13455,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <td>1</td>
                     <td class="step-col-dim">${renderBomStepDimensionStack(getSelectedFinishedGood(), line)}</td>
                     ${renderPlyMaterialQtyCells(
-                      renderBomNetQtyDisplay(material, line),
+                      renderBomEnteredRequiredQty(line),
                       line.netQty,
                       line.grossQty,
                       line.wastagePercent,
@@ -19280,6 +19289,25 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return null;
     }
 
+    function buildFormulaExplainModel_EnteredOrderQty() {
+      const qty = bomOrderQuantityValue();
+      const shown = formatQty(qty);
+      return {
+        title: "Required Qty",
+        subtitle: "Order Quantity",
+        formulaName: "Order Quantity",
+        sourceType: "manual",
+        summaryHtml: "Required Qty is the Order Quantity you entered in the cost summary. The material formula does not set this number.",
+        steps: [{
+          index: 1,
+          heading: "Order Quantity",
+          expression: "Entered quantity",
+          pluggedHtml: `Required Qty: <strong class="formula-val">${escapeHtml(formatExplainNumber(qty))}</strong>`
+        }],
+        finalHtml: `Required Qty: <strong>${escapeHtml(shown)}</strong>`
+      };
+    }
+
     function buildFormulaExplainModel_RequiredQty(lineId) {
       const target = findBomRequiredQtyTarget(lineId);
       const fg = getSelectedFinishedGood();
@@ -19352,7 +19380,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
       const model = buildFormulaExplainModel_BOMLine("material", lineId);
-      if (!line || !material) return model.error ? model : { error: "Required quantity details are unavailable." };
+      if (!line || !material) return model.error ? model : { error: "Net quantity details are unavailable." };
       if (model.error) return model;
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
       const formula = resolved && resolved.formula;
@@ -19362,13 +19390,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const shown = line.error ? "—" : formatQty(line.netQty);
       const sourceName = formula ? ((formula.name || formula.code) + " (" + formula.code + ")") : "the quantity entered on this line";
       const summaryHtml = line.calculationMethod === "manual"
-        ? "Required Qty on this row shows the Net Qty. This line is set to Manual, so the number is the quantity entered on the line."
+        ? "Net Qty is the quantity entered on this line."
         : usingWeight
-          ? "Required Qty on this row shows the Net Qty. It is calculated by the Default Weight Formula on the raw material: " + sourceName + "."
-          : "Required Qty on this row shows the Net Qty. Default Weight Formula is None, so this uses the Default Required Quantity Formula on the raw material: " + sourceName + ".";
+          ? "Net Qty is calculated by the Default Weight Formula on the raw material: " + sourceName + ". Required Qty is the Order Quantity you entered, not this result."
+          : "Net Qty uses the Default Required Quantity Formula on the raw material because Default Weight Formula is None: " + sourceName + ". Required Qty is the Order Quantity you entered, not this result.";
       return {
         ...model,
-        title: "Required Qty",
+        title: "Net Qty",
         subtitle: (material.name || material.code || "") + (usingWeight || line.calculationMethod === "manual" ? " · Default Weight Formula" : " · Default Required Quantity Formula"),
         formulaName: formula ? (formula.name || formula.code) : (model.formulaName || "Net Qty"),
         summaryHtml,
@@ -19376,7 +19404,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ...step,
           index: index + 1
         })),
-        finalHtml: `Required Qty: <strong>${escapeHtml(shown)}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+        finalHtml: `Net Qty: <strong>${escapeHtml(shown)}</strong>${uom ? " " + escapeHtml(uom) : ""}`
       };
     }
 
@@ -19445,7 +19473,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const model = buildFormulaExplainModel_NetQty(lineId);
       if (model.error) return model;
       const summary = String(model.summaryHtml || "");
-      const detail = summary.replace(/^Required Qty on this row shows the Net Qty\.\s*/, "");
+      const detail = summary.replace(/^Net Qty is calculated by the Default Weight Formula on the raw material: /, "Calculated by the Default Weight Formula on the raw material: ").replace(/ Required Qty is the Order Quantity you entered, not this result\./, "");
       return {
         ...model,
         title: "Net Qty",
@@ -19623,6 +19651,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function buildFormulaExplainModel(kind, lineId) {
       if (kind === "order-qty") return buildFormulaExplainModel_OrderQty();
+      if (kind === "entered-order-qty") return buildFormulaExplainModel_EnteredOrderQty();
       if (kind === "required-qty") return buildFormulaExplainModel_RequiredQty(lineId);
       if (kind === "net-qty") return buildFormulaExplainModel_NetQty(lineId);
       if (kind === "material-qty") return buildFormulaExplainModel_MaterialQty(lineId);
@@ -19707,7 +19736,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "required-qty", "net-qty", "material-qty", "yield", "column-net-qty", "gross-qty", "wastage-qty", "line-cost"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "column-net-qty", "gross-qty", "wastage-qty", "line-cost"];
       const resolved = allowed.includes(kind) ? kind : "material";
       const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost";
       state.modal = {
