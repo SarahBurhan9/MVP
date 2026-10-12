@@ -19386,8 +19386,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = resolved && resolved.formula;
       const weightId = normalizeFormulaBinding(material.qtyFormulaId);
       const usingWeight = Boolean(formula && weightId && Number(formula.id) === Number(weightId));
-      const uom = material.uom || "";
-      const shown = line.error ? "—" : formatQty(line.netQty);
       const sourceName = formula ? ((formula.name || formula.code) + " (" + formula.code + ")") : "the quantity entered on this line";
       const summaryHtml = line.calculationMethod === "manual"
         ? "Net Qty is the quantity entered on this line."
@@ -19404,7 +19402,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ...step,
           index: index + 1
         })),
-        finalHtml: `Net Qty: <strong>${escapeHtml(shown)}</strong>${uom ? " " + escapeHtml(uom) : ""}`
+        finalHtml: ""
       };
     }
 
@@ -19723,7 +19721,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           ${model.summaryHtml ? `<p class="formula-explain-note">${model.summaryHtml}</p>` : ""}
           ${flatMeta}
           ${steps.length ? `<ol class="formula-explain-steps">${stepsHtml}</ol>` : ""}
-          <div class="formula-explain-final">${model.finalHtml}</div>
+          ${model.finalHtml ? `<div class="formula-explain-final">${model.finalHtml}</div>` : ""}
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-primary" data-modal-close>Got it</button>
