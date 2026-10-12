@@ -3623,6 +3623,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (job.W !== null) vars.W = job.W;
       if (job.H !== null) vars.H = job.H;
       vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
+      vars.ORDER_QUANTITY = vars.ORDER_QTY;
       return vars;
     }
 
@@ -5887,6 +5888,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
       const incoming = provided && typeof provided === "object" ? provided : {};
       const variables = { ...getFormulaVariableDefaults(), ...incoming };
+      applyRuntimeOrderQuantity(variables, incoming, options);
       if (options && options.strictJobDimensions) {
         ["L", "W", "H"].forEach((code) => {
           if (!Object.prototype.hasOwnProperty.call(incoming, code) || numericOrNull(incoming[code]) === null) {
@@ -5900,6 +5902,16 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         variables[id] = resolved.value;
       }
       return calculateFormula(expression, variables);
+    }
+
+    function applyRuntimeOrderQuantity(variables, incoming, options) {
+      if (!variables || (options && options.preserveExplicitOrderQuantity)) return;
+      const runtime = numericOrNull(incoming && incoming.ORDER_QTY);
+      if (runtime === null) return;
+      const supplied = numericOrNull(incoming && incoming.ORDER_QUANTITY);
+      const catalogDefault = numericOrNull(getFormulaVariableDefaults().ORDER_QUANTITY);
+      const suppliedIsDefault = supplied !== null && catalogDefault !== null && supplied === catalogDefault;
+      if (supplied === null || suppliedIsDefault) variables.ORDER_QUANTITY = runtime;
     }
 
     function validateFormulaSyntax(expression) {
@@ -5963,7 +5975,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { valid: false, error: "Circular formula dependency detected.", result: null };
       }
 
-      const evaluated = evaluateFormula(expression, { ...getFormulaVariableDefaults(), ...(opts.variables || {}) }, opts.selfCode ? [opts.selfCode] : []);
+      const evaluated = evaluateFormula(expression, { ...getFormulaVariableDefaults(), ...(opts.variables || {}) }, opts.selfCode ? [opts.selfCode] : [], opts.variables ? { preserveExplicitOrderQuantity: true } : null);
       if (!evaluated.success) {
         return { valid: false, error: evaluated.error || "Formula cannot be evaluated.", result: null };
       }
@@ -6015,6 +6027,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       injectStyleFormulaResults(finishedGood, vars, layerPly);
       applyLineSheetOverride(vars, line);
       vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
+      vars.ORDER_QUANTITY = vars.ORDER_QTY;
       return vars;
     }
 
@@ -6059,6 +6072,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
       injectStyleFormulaResults(finishedGood, vars);
       vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
+      vars.ORDER_QUANTITY = vars.ORDER_QTY;
       return vars;
     }
 
@@ -6196,7 +6210,10 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const formula = getFormulaByCode(MATERIAL_QTY_FORMULA_CODE);
       const vars = buildFormulaVariables(finishedGood, material, wastage, line && line.dimensionId, formula, line);
       const orderQty = materialQtyUserOrderQuantity();
-      if (orderQty !== null) vars.ORDER_QTY = orderQty;
+      if (orderQty !== null) {
+        vars.ORDER_QTY = orderQty;
+        vars.ORDER_QUANTITY = orderQty;
+      }
       return vars;
     }
 
@@ -6693,6 +6710,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
       injectStyleFormulaResults(finishedGood, vars);
       vars.ORDER_QTY = orderQuantityForFinishedGood(finishedGood);
+      vars.ORDER_QUANTITY = vars.ORDER_QTY;
       return vars;
     }
 
@@ -14798,7 +14816,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const result = evaluateFormula(
         state.modal.draft.expression,
         numericTestValues(state.modal.draft.testValues || {}),
-        state.modal.draft.code ? [state.modal.draft.code] : []
+        state.modal.draft.code ? [state.modal.draft.code] : [],
+        { preserveExplicitOrderQuantity: true }
       );
       state.modal.draft.testResult = result;
       renderModal();
@@ -19542,7 +19561,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function materialQtyInputOrigin(code, material, variables) {
-      if (code === "ORDER_QTY") return "order quantity you entered";
+      if (code === "ORDER_QTY" || code === "ORDER_QUANTITY") return "order quantity you entered";
       if (Object.prototype.hasOwnProperty.call(ENGINE_CONSTANTS, code)) return "fixed value";
       if (code === "GSM" && material && material.gsm != null) return "GSM on raw material " + (material.name || material.code);
       if (code === "L" || code === "W" || code === "H") return "length, width, or height for this line";
