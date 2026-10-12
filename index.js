@@ -6181,60 +6181,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return layers.includes(canonicalPlyLayerName(line.layer));
     }
 
-    function evaluateRawMaterialCoveredWeight(finishedGood, material, line, variables) {
-      const layerPly = styleFormulaPlyForBomLine(finishedGood, line);
-      const areaEval = evaluateCoveredAreaValue(finishedGood, variables, null, layerPly);
-      const coveredArea = areaEval.success ? numericOrNull(areaEval.result) : null;
-      if (coveredArea === null) {
-        return {
-          error: areaEval.error || "Covered area could not be calculated.",
-          kg: null,
-          coveredArea: null,
-          formula: null
-        };
-      }
-      const weightFormula = getFormulaByCode("SHEET_WEIGHT");
-      const weightVars = {
-        ...(variables || {}),
-        COVERED_AREA: coveredArea,
-        GSM: material && material.gsm != null ? roundTo(material.gsm, 1) : (variables && variables.GSM)
-      };
-      if (!weightFormula || !weightFormula.isActive || !weightFormula.expression) {
-        const gsm = Number(weightVars.GSM);
-        const factor = Number(ENGINE_CONSTANTS.SQ_IN_TO_SQ_M);
-        if (!Number.isFinite(gsm) || gsm <= 0 || !Number.isFinite(factor)) {
-          return {
-            error: "GSM is required to calculate required weight from covered area.",
-            kg: null,
-            coveredArea,
-            formula: null
-          };
-        }
-        return { error: null, kg: coveredArea * gsm * factor / 1000, coveredArea, formula: null };
-      }
-      const evaluated = evaluateFormula(weightFormula.expression, weightVars, [weightFormula.code]);
-      if (!evaluated.success || !Number.isFinite(Number(evaluated.result))) {
-        return {
-          error: evaluated.error || "Required weight could not be calculated from covered area.",
-          kg: null,
-          coveredArea,
-          formula: weightFormula
-        };
-      }
-      return { error: null, kg: evaluated.result, coveredArea, formula: weightFormula };
-    }
-
     function calculateMaterialCost(materialLine, context) {
       const line = {
         ...materialLine,
         error: null,
         yield: null,
         requiredWeightKg: null,
-        coveredArea: null,
-        materialQtyPerPiece: null,
-        materialOrderQty: null,
-        orderWastageQty: null,
-        orderGrossQty: null
+        materialOrderQty: null
       };
       const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
       const material = getRawMaterial(line.rawMaterialId);
@@ -6287,7 +6240,27 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
       } else {
-        const resolved = materialLineCostFormula(material, line);
+        const structuralLine = isStructuralBomMaterialLine(finishedGood, line);
+        const weightBound = structuralLine
+          ? boundRawMaterialFormula(material, material.qtyFormulaId, "Default Weight Formula")
+          : { formula: null, error: null };
+        if (structuralLine && weightBound.error) {
+          line.error = weightBound.error;
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        if (structuralLine && !weightBound.formula) {
+          line.error = "Default Weight Formula is None on the Raw Material master. Set it so required quantity can be calculated.";
+          line.netQty = 0;
+          line.grossQty = 0;
+          line.costPerPiece = 0;
+          return line;
+        }
+        const resolved = structuralLine
+          ? { formula: weightBound.formula, error: null }
+          : materialLineCostFormula(material, line);
         const formula = resolved.formula;
         if (formula) line.formulaId = formula.id;
         if (!formula) {
@@ -6335,41 +6308,27 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
         netQty = calculated.result;
-        if (isStructuralBomMaterialLine(finishedGood, line)) {
-          const weight = evaluateRawMaterialCoveredWeight(finishedGood, material, line, variables);
-          if (weight.error || !Number.isFinite(Number(weight.kg)) || Number(weight.kg) < 0) {
-            line.error = weight.error || "Required weight could not be calculated from covered area.";
+        if (structuralLine) {
+          line.requiredWeightKg = roundTo(calculated.result, 4);
+          const materialQtyBound = boundRawMaterialFormula(material, material.requiredQtyFormulaId, "Default Required Quantity Formula");
+          if (materialQtyBound.error || !materialQtyBound.formula) {
+            line.error = materialQtyBound.error || "Default Required Quantity Formula is None on the Raw Material master. Set it so material quantity can be calculated.";
             line.netQty = 0;
             line.grossQty = 0;
             line.costPerPiece = 0;
             return line;
           }
-          let perPiece;
-          try {
-            perPiece = convertQuantity(weight.kg, "kg", material.uom || "kg", {
-              gsm: material.gsm,
-              sheetArea: variables.SHEET_AREA
-            });
-          } catch (error) {
-            line.error = error && error.message ? error.message : "Required weight could not be converted to the raw material unit.";
+          const materialQtyVars = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, materialQtyBound.formula, line);
+          materialQtyVars.NET_QTY = calculated.result;
+          const materialQtyEval = evaluateFormula(materialQtyBound.formula.expression, materialQtyVars, [materialQtyBound.formula.code]);
+          if (!materialQtyEval.success || !Number.isFinite(Number(materialQtyEval.result))) {
+            line.error = materialQtyEval.error || "Default Required Quantity Formula could not be calculated.";
             line.netQty = 0;
             line.grossQty = 0;
             line.costPerPiece = 0;
             return line;
           }
-          if (!Number.isFinite(perPiece) || perPiece < 0) {
-            line.error = "Required weight could not be converted to the raw material unit.";
-            line.netQty = 0;
-            line.grossQty = 0;
-            line.costPerPiece = 0;
-            return line;
-          }
-          const orderQty = orderQuantityForFinishedGood(finishedGood);
-          line.requiredWeightKg = roundTo(weight.kg, 4);
-          line.coveredArea = roundTo(weight.coveredArea, 4);
-          line.materialQtyPerPiece = roundTo(perPiece, 4);
-          line.materialOrderQty = roundTo(perPiece * orderQty, 4);
-          netQty = perPiece;
+          line.materialOrderQty = roundTo(materialQtyEval.result, 4);
         }
       }
 
@@ -6470,22 +6429,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       line.netQty = roundTo(netQty, 4);
       line.wastageQty = roundTo(wstQty, 4);
       line.grossQty = roundTo(grossQty, 4);
-      if (line.materialQtyPerPiece != null) {
-        const orderQty = orderQuantityForFinishedGood(finishedGood);
-        line.orderWastageQty = roundTo(Number(line.wastageQty) * orderQty, 4);
-        line.orderGrossQty = roundTo(Number(line.grossQty) * orderQty, 4);
-      }
       delete line.rateFormulaId;
       line.dimensionVolume = null;
       let qtyForRate = null;
       let conversionError = null;
       try {
-        const sheetAreaForRate = line.materialQtyPerPiece != null && Number(variables.SHEET_AREA) > 0
-          ? Number(variables.SHEET_AREA)
-          : getSheetDimensions(finishedGood).area;
         const converted = convertQuantity(grossQty, material?.uom, formatRateUnit(rateRow?.rateUOM) || material?.uom, {
           gsm: material?.gsm,
-          sheetArea: sheetAreaForRate
+          sheetArea: getSheetDimensions(finishedGood).area
         });
         if (!Number.isFinite(converted) || converted < 0) {
           throw new Error("Quantity could not be converted to the purchasing rate unit.");
@@ -13578,8 +13529,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       renderBomMaterialQtyDisplay("material", material, line, getSelectedFinishedGood()),
                       formulaHelpButton("wastage-qty", line.id, "How wastage quantity was calculated"),
                       formulaHelpButton("gross-qty", line.id, "How gross quantity was calculated"),
-                      line.orderWastageQty != null ? line.orderWastageQty : line.wastageQty,
-                      line.orderGrossQty != null ? line.orderGrossQty : line.grossQty,
+                      line.wastageQty,
+                      line.grossQty,
                       renderBomYieldDisplay(material, line)
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
@@ -15304,14 +15255,14 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                 <select id="rm-qty-formula" class="full-select">
                   ${renderBoundFormulaOptions("Material", draft.qtyFormulaId, "Quantity")}
                 </select>
-                <p class="stat-hint" style="margin-top:6px;">Used to calculate quantity when covered-area weight is not applied.</p>
+                <p class="stat-hint" style="margin-top:6px;">Used for Required Qty on BOM structural raw materials. An error is shown when this is None.</p>
               </div>
               <div>
                 <label class="form-label" for="rm-required-qty-formula">Default Required Quantity Formula</label>
                 <select id="rm-required-qty-formula" class="full-select">
                   ${renderBoundFormulaOptions("Material", draft.requiredQtyFormulaId)}
                 </select>
-                <p class="stat-hint" style="margin-top:6px;">BOM structural Required Qty is the covered-area weight in kg. This formula is used for accessories and services.</p>
+                <p class="stat-hint" style="margin-top:6px;">Used for Material Qty on BOM structural raw materials. An error is shown when this is None.</p>
               </div>
               <div>
                 <label class="form-label" for="rm-wastage-formula">Default Wastage Formula</label>
@@ -19493,45 +19444,37 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
       const fg = getSelectedFinishedGood();
       if (line && material && fg && numericOrNull(line.requiredWeightKg) !== null) {
-        const weightFormula = getFormulaByCode("SHEET_WEIGHT");
+        const weightBound = boundRawMaterialFormula(material, material.qtyFormulaId, "Default Weight Formula");
+        const formula = weightBound.formula;
+        if (!formula) {
+          return { error: weightBound.error || "Default Weight Formula is None on this raw material." };
+        }
         const variables = buildFormulaVariables(
           fg,
           material,
           Number(line.wastagePercent) || 0,
           line.dimensionId,
-          weightFormula,
+          formula,
           line
         );
-        const expression = weightFormula && weightFormula.expression
-          ? weightFormula.expression
-          : "COVERED_AREA * GSM * SQ_IN_TO_SQ_M / 1000";
-        const weightVars = {
-          ...variables,
-          COVERED_AREA: line.coveredArea,
-          GSM: material.gsm != null ? roundTo(material.gsm, 1) : variables.GSM
-        };
-        const plugged = expressionToExplainHtml(expression, weightVars, { COVERED_AREA: line.coveredArea }, { COVERED_AREA: "step" });
-        const formulaLabel = weightFormula ? (weightFormula.name || weightFormula.code) : "Sheet Weight";
+        const entry = { formula, variables, material, line, finishedGood: fg };
+        const inputs = orderQtyExplainInputs(entry);
+        const inputHtml = inputs.map((input) =>
+          `<div><strong>${escapeHtml(input.code)}</strong> — ${escapeHtml(input.origin)}: <strong class="formula-val">${escapeHtml(input.shown)}</strong></div>`
+        ).join("");
+        const formulaLabel = (formula.name || formula.code) + " (" + formula.code + ")";
         return {
           title: "Required Qty",
-          subtitle: (material.name || material.code || "") + " · Covered area weight",
-          formulaName: formulaLabel,
+          subtitle: (material.name || material.code || "") + " · Default Weight Formula",
+          formulaName: formula.name || formula.code,
           sourceType: "formula",
-          summaryHtml: "Required Qty is the weight of one finished piece from the covered area formula. It is shown in kilograms. Order quantity and material quantity are not part of this number.",
-          steps: [
-            {
-              index: 1,
-              heading: "Covered Area",
-              expression: "Covered area formula",
-              pluggedHtml: `Covered Area: <strong class="formula-val">${escapeHtml(formatFormulaResult(line.coveredArea))}</strong>`
-            },
-            {
-              index: 2,
-              heading: formulaLabel + (weightFormula ? " (" + weightFormula.code + ")" : ""),
-              expression: prettyExpressionText(expression),
-              pluggedHtml: "= " + plugged + " = <strong class=\"formula-val\">" + escapeHtml(formatQty(line.requiredWeightKg)) + "</strong> kg"
-            }
-          ],
+          summaryHtml: "Required Qty is the result of the Default Weight Formula set on this raw material. Order quantity is not applied again outside that formula.",
+          steps: [{
+            index: 1,
+            heading: formulaLabel,
+            expression: prettyExpressionText(formula.expression),
+            pluggedHtml: inputHtml + `<div>Formula result: <strong class="formula-val">${escapeHtml(formatQty(line.requiredWeightKg))}</strong> kg</div>`
+          }],
           finalHtml: `Required Qty: <strong>${escapeHtml(formatQty(line.requiredWeightKg))}</strong> kg`
         };
       }
@@ -19566,36 +19509,40 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
       const fg = getSelectedFinishedGood();
-      if (line && material && fg && numericOrNull(line.materialOrderQty) !== null && numericOrNull(line.requiredWeightKg) !== null) {
+      if (line && material && fg && numericOrNull(line.materialOrderQty) !== null) {
+        const qtyBound = boundRawMaterialFormula(material, material.requiredQtyFormulaId, "Default Required Quantity Formula");
+        const formula = qtyBound.formula;
+        if (!formula) {
+          return { error: qtyBound.error || "Default Required Quantity Formula is None on this raw material." };
+        }
+        const variables = buildFormulaVariables(
+          fg,
+          material,
+          Number(line.wastagePercent) || 0,
+          line.dimensionId,
+          formula,
+          line
+        );
+        variables.NET_QTY = line.netQty;
+        const entry = { formula, variables, material, line, finishedGood: fg };
+        const inputs = orderQtyExplainInputs(entry);
+        const inputHtml = inputs.map((input) =>
+          `<div><strong>${escapeHtml(input.code)}</strong> — ${escapeHtml(input.origin)}: <strong class="formula-val">${escapeHtml(input.shown)}</strong></div>`
+        ).join("");
         const uom = material.uom || "";
-        const orderQty = orderQuantityForFinishedGood(fg);
         const unit = uom ? " " + escapeHtml(uom) : "";
         return {
           title: "Material Qty",
-          subtitle: (material.name || material.code || "") + (uom ? " · " + uom : ""),
-          formulaName: "Required weight in the raw material unit",
+          subtitle: (material.name || material.code || "") + " · Default Required Quantity Formula",
+          formulaName: formula.name || formula.code,
           sourceType: "formula",
-          summaryHtml: "Material Qty converts the required weight from kilograms into the raw material unit" + (uom ? " (" + uom + ")" : "") + ", then multiplies by the order quantity. Changing the order quantity changes material qty. It does not change required qty.",
-          steps: [
-            {
-              index: 1,
-              heading: "Required weight",
-              expression: "Covered area weight",
-              pluggedHtml: `Required Qty: <strong class="formula-val">${escapeHtml(formatQty(line.requiredWeightKg))}</strong> kg`
-            },
-            {
-              index: 2,
-              heading: "One piece in the raw material unit",
-              expression: "kg → " + (uom || "material unit"),
-              pluggedHtml: `${escapeHtml(formatQty(line.requiredWeightKg))} kg = <strong class="formula-val">${escapeHtml(formatQty(line.materialQtyPerPiece))}</strong>${unit}`
-            },
-            {
-              index: 3,
-              heading: "Material Qty",
-              expression: "Per piece × Order Quantity",
-              pluggedHtml: `${escapeHtml(formatQty(line.materialQtyPerPiece))} × ${escapeHtml(formatQty(orderQty))} = <strong class="formula-val">${escapeHtml(formatQty(line.materialOrderQty))}</strong>${unit}`
-            }
-          ],
+          summaryHtml: "Material Qty is the result of the Default Required Quantity Formula set on this raw material (" + (formula.name || formula.code) + "). The raw material unit is " + (uom || "not set") + ".",
+          steps: [{
+            index: 1,
+            heading: (formula.name || formula.code) + " (" + formula.code + ")",
+            expression: prettyExpressionText(formula.expression),
+            pluggedHtml: inputHtml + `<div>Formula result: <strong class="formula-val">${escapeHtml(formatQty(line.materialOrderQty))}</strong>${unit}</div>`
+          }],
           finalHtml: `Material Qty: <strong>${escapeHtml(formatQty(line.materialOrderQty))}</strong>${unit}`
         };
       }
@@ -19839,27 +19786,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
-    function withOrderScaledQtyExplain(model, lineId, perPieceKey, orderKey, label) {
-      if (!model || model.error) return model;
-      const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
-      const material = line ? getRawMaterial(line.rawMaterialId) : null;
-      if (!line || line.materialQtyPerPiece == null || line[orderKey] == null) return model;
-      const uom = material && material.uom ? material.uom : "";
-      const orderQty = orderQuantityForFinishedGood(getSelectedFinishedGood());
-      const steps = (model.steps || []).concat([{
-        index: (model.steps || []).length + 1,
-        heading: label + " for the order",
-        expression: "Per piece × Order Quantity",
-        pluggedHtml: `${escapeHtml(formatQty(line[perPieceKey]))} × Order Quantity ${escapeHtml(formatQty(orderQty))} = <strong class="formula-val">${escapeHtml(formatQty(line[orderKey]))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
-      }]);
-      return {
-        ...model,
-        summaryHtml: (model.summaryHtml ? model.summaryHtml + " " : "") + "The row multiplies that per-piece quantity by the order quantity.",
-        steps,
-        finalHtml: `${label}: <strong>${escapeHtml(formatQty(line[orderKey]))}</strong>${uom ? " " + escapeHtml(uom) : ""}`
-      };
-    }
-
     function buildFormulaExplainModel(kind, lineId) {
       if (kind === "order-qty") return buildFormulaExplainModel_OrderQty();
       if (kind === "entered-order-qty") return buildFormulaExplainModel_EnteredOrderQty();
@@ -19867,9 +19793,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (kind === "net-qty") return buildFormulaExplainModel_NetQty(lineId);
       if (kind === "material-qty") return buildFormulaExplainModel_MaterialQty(lineId);
       if (kind === "yield") return buildFormulaExplainModel_Yield(lineId);
-      if (kind === "gross-qty") return withOrderScaledQtyExplain(buildFormulaExplainModel_GrossQty(lineId), lineId, "grossQty", "orderGrossQty", "Gross Qty");
+      if (kind === "gross-qty") return buildFormulaExplainModel_GrossQty(lineId);
       if (kind === "column-net-qty") return buildFormulaExplainModel_ColumnNetQty(lineId);
-      if (kind === "wastage-qty") return withOrderScaledQtyExplain(buildFormulaExplainModel_WastageQty(lineId), lineId, "wastageQty", "orderWastageQty", "Wastage Qty");
+      if (kind === "wastage-qty") return buildFormulaExplainModel_WastageQty(lineId);
       if (kind === "line-cost") return buildFormulaExplainModel_LineCost(lineId);
       if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
