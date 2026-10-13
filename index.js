@@ -19690,9 +19690,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         sourceType: "formula",
         summaryHtml: "Required Qty is the Default Required Quantity Formula result multiplied by the Order Quantity entered in the cost summary.",
         steps,
-        finalHtml: scaled === null
-          ? "Required Qty could not be calculated."
-          : `Required Qty: <strong>${escapeHtml(formatQty(scaled))}</strong>`
+        finalHtml: hideOrderMultiply
+          ? (evaluation.error || evaluation.result == null
+            ? "Formula result could not be calculated."
+            : `Formula result: <strong class="formula-val">${escapeHtml(formatExplainNumber(evaluation.result))}</strong>`)
+          : (scaled === null
+            ? "Required Qty could not be calculated."
+            : `Required Qty: <strong>${escapeHtml(formatQty(scaled))}</strong>`)
       };
     }
 
