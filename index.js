@@ -13705,16 +13705,18 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
                     <td class="step-col-actions">
                       <div class="row-actions">
-                        <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
-                          <i data-lucide="sigma"></i>
-                        </button>
+                        ${accessory ? "" : `
+                          <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
+                            <i data-lucide="sigma"></i>
+                          </button>
+                        `}
                         <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
                           <i data-lucide="calculator"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="Edit calculation details">
+                        <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="${accessory ? "Edit" : "Edit calculation details"}">
                           <i data-lucide="pencil"></i>
                         </button>
-                        ${extra && !accessory ? `
+                        ${accessory || extra ? `
                           <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
                             <i data-lucide="trash-2"></i>
                           </button>
@@ -21053,11 +21055,6 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
 
     function openDeleteMaterialModal(lineId) {
       const fromCalculator = Boolean(findCostCalculatorAdditionalMaterialById(lineId));
-      const bomLine = state.bomMaterials.find((item) => item.id === Number(lineId));
-      if (!fromCalculator && isBomAccessoryLine(bomLine)) {
-        showNotification("Change this accessory on the finished good, not on the BOM.", "error");
-        return;
-      }
       state.modal = {
         type: "confirm-delete",
         collection: fromCalculator ? "cc-additional" : null,
@@ -21240,9 +21237,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const deleting = state.bomMaterials.find((line) => line.id === Number(state.modal.lineId));
       if (isBomAccessoryLine(deleting)) {
-        closeModal();
-        showNotification("Change this accessory on the finished good, not on the BOM.", "error");
-        return;
+        const fg = getSelectedFinishedGood();
+        const removeId = Number(deleting.rawMaterialId);
+        if (fg && removeId) {
+          fg.accessoryIds = finishedGoodAccessoryIds(fg).filter((id) => id !== removeId);
+          if (Number(fg.accessoryId) === removeId) delete fg.accessoryId;
+          afterDataChange("finishedGoods");
+        }
       }
       state.bomMaterials = state.bomMaterials.filter((line) => line.id !== state.modal.lineId);
       recalculateBOMCosts();
