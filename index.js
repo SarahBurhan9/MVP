@@ -13634,35 +13634,50 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               <table class="data-table step-grid-table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th class="step-col-dim">Dimension</th>
-                    ${renderPlyMaterialQtyHeaders(accessory, true)}
-                    <th class="step-col-compact">Rate</th>
-                    <th class="step-col-compact">Cost / Piece</th>
-                    <th class="step-col-actions">Action</th>
+                    ${accessory ? `
+                      <th>#</th>
+                      <th>Name</th>
+                      <th class="step-col-compact">Required Qty</th>
+                      <th class="step-col-compact">Rate</th>
+                      <th class="step-col-compact">Cost / Piece</th>
+                      <th class="step-col-actions">Action</th>
+                    ` : `
+                      <th>#</th>
+                      <th class="step-col-dim">Dimension</th>
+                      ${renderPlyMaterialQtyHeaders(false, true)}
+                      <th class="step-col-compact">Rate</th>
+                      <th class="step-col-compact">Cost / Piece</th>
+                      <th class="step-col-actions">Action</th>
+                    `}
                   </tr>
                 </thead>
                 <tbody>
                   <tr>
-                    <td>1</td>
-                    <td class="step-col-dim">${renderBomStepDimensionStack(getSelectedFinishedGood(), line)}</td>
-                    ${renderPlyMaterialQtyCells(
-                      renderBomNetQtyDisplay(material, line),
-                      line.netQty,
-                      line.grossQty,
-                      line.wastagePercent,
-                      Boolean(line.error),
-                      line.id,
-                      accessory,
-                      material && material.uom,
-                      renderBomMaterialQtyDisplay("material", material, line, getSelectedFinishedGood()),
-                      formulaHelpButton("wastage-qty", line.id, "How wastage quantity was calculated"),
-                      formulaHelpButton("gross-qty", line.id, "How gross quantity was calculated"),
-                      line.wastageQty,
-                      line.grossQty,
-                      renderBomYieldDisplay(material, line),
-                      renderBomSheetUtilizationDisplay(line)
-                    )}
+                    ${accessory ? `
+                      <td>1</td>
+                      <td>${escapeHtml(material ? material.name : materialTitle)}</td>
+                      <td class="step-num step-col-compact">${renderBomNetQtyDisplay(material, line)}</td>
+                    ` : `
+                      <td>1</td>
+                      <td class="step-col-dim">${renderBomStepDimensionStack(getSelectedFinishedGood(), line)}</td>
+                      ${renderPlyMaterialQtyCells(
+                        renderBomNetQtyDisplay(material, line),
+                        line.netQty,
+                        line.grossQty,
+                        line.wastagePercent,
+                        Boolean(line.error),
+                        line.id,
+                        false,
+                        material && material.uom,
+                        renderBomMaterialQtyDisplay("material", material, line, getSelectedFinishedGood()),
+                        formulaHelpButton("wastage-qty", line.id, "How wastage quantity was calculated"),
+                        formulaHelpButton("gross-qty", line.id, "How gross quantity was calculated"),
+                        line.wastageQty,
+                        line.grossQty,
+                        renderBomYieldDisplay(material, line),
+                        renderBomSheetUtilizationDisplay(line)
+                      )}
+                    `}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       (getMaterialRate(material.id) && Number(getMaterialRate(material.id).rate) > 0) ? formatRatePkr(getMaterialRate(material.id).rate, getMaterialRate(material.id).rateUOM) : "—",
                       "data-bom-material-rate",
