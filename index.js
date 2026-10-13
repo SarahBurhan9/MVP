@@ -2916,6 +2916,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `${shown}${formulaHelpButton("yield", lineId, "How yield was calculated")}`;
     }
 
+    function renderBomSheetUtilizationDisplay(line) {
+      const shown = !line || line.sheetUtilizationError || line.sheetUtilization == null || !Number.isFinite(Number(line.sheetUtilization)) ? "—" : formatQty(line.sheetUtilization);
+      const lineId = line && (line.id != null ? line.id : line.key);
+      if (lineId == null || lineId === "") return shown;
+      return `${shown}${formulaHelpButton("sheet-utilization", lineId, "How sheet utilization was calculated")}`;
+    }
+
     function formatCostTimesQuantity(costPerPiece, quantity, hasError) {
       if (hasError) return `<span class="calc-error-cost">Error</span>`;
       const qty = Number(quantity);
@@ -4850,7 +4857,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderPlyMaterialQtyHeaders(requiredQtyOnly, includeMaterialQty) {
-      const materialQtyHeader = includeMaterialQty ? `<th class="step-col-compact">Material Qty</th><th class="step-col-compact">Yield</th>` : "";
+      const materialQtyHeader = includeMaterialQty ? `<th class="step-col-compact">Material Qty</th><th class="step-col-compact">Yield</th><th class="step-col-compact">Sheet Utilization</th>` : "";
       if (requiredQtyOnly) {
         return `<th class="step-col-compact">Required Qty</th>${materialQtyHeader}`;
       }
@@ -4863,11 +4870,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
     }
 
-    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom, materialQtyHtml, wastageQtyHelpHtml, netQtyHelpHtml, wastageDisplayQty, trailingQty, yieldHtml) {
+    function renderPlyMaterialQtyCells(requiredQtyHtml, netQty, grossQty, wastagePercent, hasError, wastageLineId, requiredQtyOnly, qtyUom, materialQtyHtml, wastageQtyHelpHtml, netQtyHelpHtml, wastageDisplayQty, trailingQty, yieldHtml, sheetUtilizationHtml) {
       const materialQtyCell = materialQtyHtml == null ? "" : `<td class="step-num step-col-compact">${materialQtyHtml}</td>`;
       const yieldCell = materialQtyHtml == null ? "" : `<td class="step-num step-col-compact">${yieldHtml == null ? "—" : yieldHtml}</td>`;
+      const sheetUtilizationCell = materialQtyHtml == null ? "" : `<td class="step-num step-col-compact">${sheetUtilizationHtml == null ? "—" : sheetUtilizationHtml}</td>`;
       if (requiredQtyOnly) {
-        return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>${materialQtyCell}${yieldCell}`;
+        return `<td class="step-num step-col-compact">${requiredQtyHtml}</td>${materialQtyCell}${yieldCell}${sheetUtilizationCell}`;
       }
       const wastageHtml = formatWastagePercent(wastagePercent, hasError);
       const wastageCell = wastageLineId
@@ -4881,6 +4889,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         <td class="step-num step-col-compact">${requiredQtyHtml}</td>
         ${materialQtyCell}
         ${yieldCell}
+        ${sheetUtilizationCell}
         <td class="step-num step-col-compact">${wastageCell}</td>
         <td class="step-num step-col-compact">${appendHtmlUnit(wastageQtyText, qtyUom, " ")}${wastageQtyHelpHtml || ""}</td>
         <td class="step-num step-col-compact">${appendHtmlUnit(trailingText, qtyUom, " ")}${netQtyHelpHtml || ""}</td>
@@ -6221,6 +6230,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function calculateMaterialCost(materialLine, context) {
       const line = calculateMaterialCostLine(materialLine, context);
       attachMaterialQuantityFormula(line, context);
+      attachSheetUtilizationFormula(line, context);
       return line;
     }
 
@@ -6276,6 +6286,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return;
       }
       line.materialOrderQty = roundTo(evaluated.result, 4);
+    }
+
+    function attachSheetUtilizationFormula(line, context) {
+      if (!line) return;
+      line.sheetUtilization = null;
+      line.sheetUtilizationError = null;
+      const finishedGood = (context && context.finishedGood) || getSelectedFinishedGood();
+      if (!finishedGood || isCostCalculatorFinishedGood(finishedGood)) return;
+      const material = getRawMaterial(line.rawMaterialId);
+      if (!material) {
+        line.sheetUtilizationError = "This material does not exist in the Raw Material Master, so Sheet Utilization cannot be calculated.";
+        return;
+      }
+      const formula = activeFormulaByCode("SHT_UTL");
+      if (!formula) {
+        line.sheetUtilizationError = "Formula SHT_UTL was not found. Create an active formula with code SHT_UTL.";
+        return;
+      }
+      const wastage = isBomAccessoryLine(line) ? 0 : Number(line.wastagePercent) || 0;
+      const variables = buildFormulaVariables(finishedGood, material, wastage, line.dimensionId, formula, line);
+      const evaluated = evaluateFormula(formula.expression, variables, [formula.code]);
+      if (!evaluated.success || !Number.isFinite(Number(evaluated.result))) {
+        line.sheetUtilizationError = evaluated.error || "Formula SHT_UTL could not be calculated.";
+        return;
+      }
+      line.sheetUtilization = roundTo(evaluated.result, 4);
     }
 
     function calculateMaterialCostLine(materialLine, context) {
@@ -13624,7 +13660,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                       formulaHelpButton("gross-qty", line.id, "How gross quantity was calculated"),
                       line.wastageQty,
                       line.grossQty,
-                      renderBomYieldDisplay(material, line)
+                      renderBomYieldDisplay(material, line),
+                      renderBomSheetUtilizationDisplay(line)
                     )}
                     <td class="step-num step-col-compact">${material ? renderStepValueWithEdit(
                       (getMaterialRate(material.id) && Number(getMaterialRate(material.id).rate) > 0) ? formatRatePkr(getMaterialRate(material.id).rate, getMaterialRate(material.id).rateUOM) : "—",
@@ -19874,6 +19911,37 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function buildFormulaExplainModel_SheetUtilization(lineId) {
+      const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
+      const material = line ? getRawMaterial(line.rawMaterialId) : null;
+      const fg = getSelectedFinishedGood();
+      if (!line || !material || !fg) return { error: "Sheet utilization details are unavailable." };
+      const formula = activeFormulaByCode("SHT_UTL");
+      const shown = line.sheetUtilization == null || !Number.isFinite(Number(line.sheetUtilization)) ? "—" : formatQty(line.sheetUtilization);
+      if (!formula) {
+        return { error: line.sheetUtilizationError || "Formula SHT_UTL was not found. Create an active formula with code SHT_UTL." };
+      }
+      const wastage = isBomAccessoryLine(line) ? 0 : Number(line.wastagePercent) || 0;
+      const variables = buildFormulaVariables(fg, material, wastage, line.dimensionId, formula, line);
+      return {
+        title: "Sheet Utilization",
+        subtitle: (material.name || material.code || "") + " · " + (formula.name || formula.code),
+        formulaName: formula.name || formula.code,
+        sourceType: "formula",
+        summaryHtml: "Sheet Utilization uses the formula " + (formula.name || formula.code) + " (" + formula.code + ").",
+        steps: [
+          {
+            index: 1,
+            heading: (formula.name || "Sheet Utilization") + " (" + formula.code + ")",
+            expression: prettyExpressionText(formula.expression),
+            pluggedHtml: "= " + expressionToExplainHtml(formula.expression, variables, {}, { WASTAGE: "manual" }) +
+              " = <strong class=\"formula-val\">" + escapeHtml(shown) + "</strong>"
+          }
+        ],
+        finalHtml: `Sheet Utilization: <strong>${escapeHtml(shown)}</strong>`
+      };
+    }
+
     function buildFormulaExplainModel(kind, lineId) {
       if (kind === "order-qty") return buildFormulaExplainModel_OrderQty();
       if (kind === "entered-order-qty") return buildFormulaExplainModel_EnteredOrderQty();
@@ -19881,6 +19949,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (kind === "net-qty") return buildFormulaExplainModel_NetQty(lineId);
       if (kind === "material-qty") return buildFormulaExplainModel_MaterialQty(lineId);
       if (kind === "yield") return buildFormulaExplainModel_Yield(lineId);
+      if (kind === "sheet-utilization") return buildFormulaExplainModel_SheetUtilization(lineId);
       if (kind === "gross-qty") return buildFormulaExplainModel_GrossQty(lineId);
       if (kind === "column-net-qty") return buildFormulaExplainModel_ColumnNetQty(lineId);
       if (kind === "wastage-qty") return buildFormulaExplainModel_WastageQty(lineId);
@@ -19962,9 +20031,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "column-net-qty", "gross-qty", "wastage-qty", "line-cost", "material-rate"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "sheet-utilization", "column-net-qty", "gross-qty", "wastage-qty", "line-cost", "material-rate"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost" || resolved === "material-rate";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "sheet-utilization" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost" || resolved === "material-rate";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
