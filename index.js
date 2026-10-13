@@ -2901,14 +2901,20 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return calculated.result;
     }
 
-    function renderBomNetQtyDisplay(material, line) {
+    function renderAccessoryRequiredQtyDisplay(material, line) {
       const accessoryQty = accessoryFormulaRequiredQty(material, line);
-      const weight = accessoryQty === null && line && !line.error ? numericOrNull(line.requiredWeightKg) : null;
-      const shown = accessoryQty !== null
-        ? formatQty(accessoryQty)
-        : weight !== null
-          ? formatQty(weight)
-          : (line && line.error ? "—" : formatQty(line && line.netQty));
+      const shown = accessoryQty !== null ? formatQty(accessoryQty) : "—";
+      const value = appendHtmlUnit(shown, material && material.uom, " ");
+      const lineId = line && (line.id != null ? line.id : line.key);
+      if (lineId == null || lineId === "") return value;
+      return `${value}${formulaHelpButton("net-qty", lineId, "How required quantity was calculated")}`;
+    }
+
+    function renderBomNetQtyDisplay(material, line) {
+      const weight = line && !line.error ? numericOrNull(line.requiredWeightKg) : null;
+      const shown = weight !== null
+        ? formatQty(weight)
+        : (line && line.error ? "—" : formatQty(line && line.netQty));
       const unit = weight !== null ? "kg" : (material && material.uom);
       const value = appendHtmlUnit(shown, unit, " ");
       const lineId = line && (line.id != null ? line.id : line.key);
@@ -6205,14 +6211,15 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : { formula: null, error: "Formula WST_QTY was not found. Create an active formula with code WST_QTY." };
     }
 
-    function pieceCostFormula(material, line) {
-      if (line && isBomAccessoryLine(line)) {
-        const boundId = normalizeFormulaBinding(material && material.costPerPieceFormulaId);
-        if (boundId) return boundRawMaterialFormula(material, boundId, "Default Cost/Piece Formula");
-        const accessoriesCost = activeFormulaByCode("ACS_CST");
-        if (accessoriesCost) return { formula: accessoriesCost, error: null };
-        return { formula: null, error: null };
-      }
+    function accessoryPieceCostFormula(material) {
+      const boundId = normalizeFormulaBinding(material && material.costPerPieceFormulaId);
+      if (boundId) return boundRawMaterialFormula(material, boundId, "Default Cost/Piece Formula");
+      const accessoriesCost = activeFormulaByCode("ACS_CST");
+      if (accessoriesCost) return { formula: accessoriesCost, error: null };
+      return { formula: null, error: null };
+    }
+
+    function pieceCostFormula() {
       const byCode = activeFormulaByCode("PIECE_COST");
       return byCode
         ? { formula: byCode, error: null }
@@ -6475,7 +6482,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         line.grossQty = line.netQty;
         line.yield = null;
         line.error = null;
-        const accessoryCost = pieceCostFormula(material, line);
+        const accessoryCost = accessoryPieceCostFormula(material);
         if (accessoryCost.error) {
           line.error = accessoryCost.error;
           line.costPerPiece = 0;
@@ -6517,7 +6524,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
       const wastageBound = wastageQtyFormula(material);
       const grossBound = boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula");
-      const costBound = pieceCostFormula(material, line);
+      const costBound = pieceCostFormula();
       const yieldBound = yieldFormulaForMaterial(material);
       const bindingError = wastageBound.error || grossBound.error || costBound.error || yieldBound.error;
       if (bindingError) {
@@ -13723,7 +13730,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     ${accessory ? `
                       <td>1</td>
                       <td>${escapeHtml(material ? material.name : materialTitle)}</td>
-                      <td class="step-num step-col-compact">${renderBomNetQtyDisplay(material, line)}</td>
+                      <td class="step-num step-col-compact">${renderAccessoryRequiredQtyDisplay(material, line)}</td>
                     ` : `
                       <td>1</td>
                       <td class="step-col-dim">${renderBomStepDimensionStack(getSelectedFinishedGood(), line)}</td>
@@ -13756,22 +13763,32 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
                     <td class="step-num step-col-compact" data-bom-line-cost="material:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")}</td>
                     <td class="step-col-actions">
                       <div class="row-actions">
-                        ${accessory ? "" : `
-                          <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
-                            <i data-lucide="sigma"></i>
+                        ${accessory ? `
+                          <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                            <i data-lucide="calculator"></i>
                           </button>
-                        `}
-                        <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
-                          <i data-lucide="calculator"></i>
-                        </button>
-                        <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="${accessory ? "Edit" : "Edit calculation details"}">
-                          <i data-lucide="pencil"></i>
-                        </button>
-                        ${accessory || extra ? `
+                          <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="Edit">
+                            <i data-lucide="pencil"></i>
+                          </button>
                           <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
                             <i data-lucide="trash-2"></i>
                           </button>
-                        ` : ""}
+                        ` : `
+                          <button type="button" class="btn btn-sm btn-icon btn-icon-formula" data-formula-line="${line.id}" title="Quantity formula" aria-label="Quantity formula">
+                            <i data-lucide="sigma"></i>
+                          </button>
+                          <button type="button" class="btn btn-sm btn-icon btn-icon-calc" data-breakdown-line="${line.id}" title="Calculation breakdown">
+                            <i data-lucide="calculator"></i>
+                          </button>
+                          <button type="button" class="btn btn-sm btn-icon btn-icon-edit" data-edit-line="${line.id}" title="Edit calculation details">
+                            <i data-lucide="pencil"></i>
+                          </button>
+                          ${extra ? `
+                            <button type="button" class="btn btn-sm btn-icon btn-danger" data-delete-line="${line.id}" title="Delete">
+                              <i data-lucide="trash-2"></i>
+                            </button>
+                          ` : ""}
+                        `}
                       </div>
                     </td>
                   </tr>
@@ -20083,7 +20100,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!line || !material || !fg) return { error: "Cost details are unavailable." };
       const fgUnit = fg.uom || "pieces";
-      const costBound = pieceCostFormula(material, line);
+      const costBound = isBomAccessoryLine(line) ? accessoryPieceCostFormula(material) : pieceCostFormula();
       if (!costBound.formula) {
         if (isBomAccessoryLine(line)) {
           return { error: costBound.error || "Set Default Cost/Piece Formula on this accessory, or add an active formula with code ACS_CST." };
