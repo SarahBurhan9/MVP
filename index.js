@@ -19511,14 +19511,19 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         return { kind: "material", line: materialLine, item: getRawMaterial(materialLine.rawMaterialId) };
       }
       const serviceLists = [
-        state.bomServices,
-        state.bomAdditionalServices,
-        state.bomFinishingServices
+        { collection: "packaging", lines: state.bomServices },
+        { collection: "additional", lines: state.bomAdditionalServices },
+        { collection: "finishing", lines: state.bomFinishingServices }
       ];
       for (let i = 0; i < serviceLists.length; i += 1) {
-        const serviceLine = (serviceLists[i] || []).find((line) => line && line.id === id);
+        const serviceLine = (serviceLists[i].lines || []).find((line) => line && line.id === id);
         if (serviceLine) {
-          return { kind: "service", line: serviceLine, item: getService(serviceLine.serviceId) };
+          return {
+            kind: "service",
+            collection: serviceLists[i].collection,
+            line: serviceLine,
+            item: getService(serviceLine.serviceId)
+          };
         }
       }
       return null;
@@ -19585,26 +19590,30 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const multiplyHtml = scaled === null
         ? `<div>Required Qty could not be calculated.</div>`
         : `<div>${escapeHtml(formatExplainNumber(evaluation.result))} × Order Quantity ${escapeHtml(formatExplainNumber(orderQty))} = <strong class="formula-val">${escapeHtml(formatExplainNumber(scaled))}</strong></div>`;
+      const hideOrderMultiply = target.kind === "service" && (target.collection === "packaging" || target.collection === "finishing");
+      const steps = [
+        {
+          index: 1,
+          heading: (evaluation.formula.name || evaluation.formula.code) + " (" + evaluation.formula.code + ")",
+          expression: prettyExpressionText(evaluation.formula.expression),
+          pluggedHtml: inputHtml + formulaResultHtml
+        }
+      ];
+      if (!hideOrderMultiply) {
+        steps.push({
+          index: 2,
+          heading: "Required Qty",
+          expression: "Formula result × Order Quantity",
+          pluggedHtml: multiplyHtml
+        });
+      }
       return {
         title: "Required Qty",
         subtitle: (target.item.name || target.item.code || "") + " · Default Required Quantity Formula",
         formulaName: evaluation.formula.name || evaluation.formula.code,
         sourceType: "formula",
         summaryHtml: "Required Qty is the Default Required Quantity Formula result multiplied by the Order Quantity entered in the cost summary.",
-        steps: [
-          {
-            index: 1,
-            heading: (evaluation.formula.name || evaluation.formula.code) + " (" + evaluation.formula.code + ")",
-            expression: prettyExpressionText(evaluation.formula.expression),
-            pluggedHtml: inputHtml + formulaResultHtml
-          },
-          {
-            index: 2,
-            heading: "Required Qty",
-            expression: "Formula result × Order Quantity",
-            pluggedHtml: multiplyHtml
-          }
-        ],
+        steps,
         finalHtml: scaled === null
           ? "Required Qty could not be calculated."
           : `Required Qty: <strong>${escapeHtml(formatQty(scaled))}</strong>`
