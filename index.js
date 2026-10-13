@@ -2888,11 +2888,27 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       return `${value}${formulaHelpButton("entered-order-qty", lineId, "Required quantity is the order quantity you entered")}`;
     }
 
+    function accessoryFormulaRequiredQty(material, line) {
+      if (!line || !isBomAccessoryLine(line) || !material) return null;
+      if (line.calculationMethod === "manual") return manualEnteredRequiredQty(line);
+      const finishedGood = getSelectedFinishedGood();
+      if (!finishedGood) return null;
+      const formula = resolveAccessoryCostFormula(material).formula;
+      if (!formula) return null;
+      const variables = buildFormulaVariables(finishedGood, material, 0, line.dimensionId, formula, line);
+      const calculated = evaluateFormula(formula.expression, variables, [formula.code]);
+      if (!calculated.success || !Number.isFinite(Number(calculated.result))) return null;
+      return calculated.result;
+    }
+
     function renderBomNetQtyDisplay(material, line) {
-      const weight = line && !line.error ? numericOrNull(line.requiredWeightKg) : null;
-      const shown = weight !== null
-        ? formatQty(weight)
-        : (line && line.error ? "—" : formatQty(line && line.netQty));
+      const accessoryQty = accessoryFormulaRequiredQty(material, line);
+      const weight = accessoryQty === null && line && !line.error ? numericOrNull(line.requiredWeightKg) : null;
+      const shown = accessoryQty !== null
+        ? formatQty(accessoryQty)
+        : weight !== null
+          ? formatQty(weight)
+          : (line && line.error ? "—" : formatQty(line && line.netQty));
       const unit = weight !== null ? "kg" : (material && material.uom);
       const value = appendHtmlUnit(shown, unit, " ");
       const lineId = line && (line.id != null ? line.id : line.key);
