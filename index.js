@@ -6209,6 +6209,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (line && isBomAccessoryLine(line)) {
         const boundId = normalizeFormulaBinding(material && material.costPerPieceFormulaId);
         if (boundId) return boundRawMaterialFormula(material, boundId, "Default Cost/Piece Formula");
+        const accessoriesCost = activeFormulaByCode("ACS_CST");
+        if (accessoriesCost) return { formula: accessoriesCost, error: null };
         return { formula: null, error: null };
       }
       const byCode = activeFormulaByCode("PIECE_COST");
@@ -6465,6 +6467,50 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         if (structuralLine) {
           line.requiredWeightKg = roundTo(calculated.result, 4);
         }
+      }
+
+      if (accessoryLine) {
+        line.netQty = roundTo(netQty, 4);
+        line.wastageQty = 0;
+        line.grossQty = line.netQty;
+        line.yield = null;
+        line.error = null;
+        const accessoryCost = pieceCostFormula(material, line);
+        if (accessoryCost.error) {
+          line.error = accessoryCost.error;
+          line.costPerPiece = 0;
+          return line;
+        }
+        if (accessoryCost.formula) {
+          const costVars = buildFormulaVariables(finishedGood, material, 0, formulaDimensionId, accessoryCost.formula, line);
+          const costEval = evaluateFormula(
+            accessoryCost.formula.expression,
+            { ...costVars, NET_QTY: line.netQty, WASTAGE: 0, MATERIAL_RATE: line.rate },
+            [accessoryCost.formula.code]
+          );
+          if (!costEval.success) {
+            line.error = costEval.error || "Default Cost/Piece Formula could not be calculated.";
+            line.costPerPiece = 0;
+            return line;
+          }
+          line.costPerPiece = roundTo(costEval.result, 2);
+          return line;
+        }
+        try {
+          const converted = convertQuantity(line.grossQty, material?.uom, formatRateUnit(rateRow?.rateUOM) || material?.uom, {
+            gsm: material?.gsm,
+            sheetArea: getSheetDimensions(finishedGood).area
+          });
+          if (!Number.isFinite(converted) || converted < 0) {
+            throw new Error("Quantity could not be converted to the purchasing rate unit.");
+          }
+          line.qtyForRate = roundTo(converted, 4);
+          line.costPerPiece = roundTo(converted * line.rate, 2);
+        } catch (error) {
+          line.error = error && error.message ? error.message : "Unsupported unit conversion";
+          line.costPerPiece = 0;
+        }
+        return line;
       }
 
       const qtyFormula = line.calculationMethod === "formula" ? getFormula(line.formulaId) : null;
@@ -19882,6 +19928,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fgUnit = fg.uom || "pieces";
       const costBound = pieceCostFormula(material, line);
       if (!costBound.formula) {
+        if (isBomAccessoryLine(line)) {
+          return { error: costBound.error || "Set Default Cost/Piece Formula on this accessory, or add an active formula with code ACS_CST." };
+        }
         return { error: costBound.error || "Formula PIECE_COST was not found. Create an active formula with code PIECE_COST." };
       }
       const resolved = line.calculationMethod === "formula" ? materialLineCostFormula(material, line) : null;
