@@ -10498,6 +10498,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderProductInformation();
       renderStyleFormulasSection();
       renderMaterialSection();
+      renderAccessoryMaterialSection();
       renderOtherMaterialSection();
       renderServiceSection();
       renderFinishingServicesSection();
@@ -12626,6 +12627,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     const BOM_FLOW_SECTIONS = [
       { id: "fg-selector-root", label: "Finished Good" },
       { id: "bom-materials-root", label: "Raw Materials" },
+      { id: "bom-accessories-root", label: "Accessories Material" },
       { id: "bom-other-materials-root", label: "Additional materials" },
       { id: "bom-services-root", label: "Packaging Services" },
       { id: "bom-finishing-root", label: "Finishing Services" },
@@ -12638,6 +12640,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const steps = { selectFg: n++ };
       if (fg) {
         steps.materials = n++;
+        steps.accessories = n++;
         steps.otherMaterials = n++;
         steps.services = n++;
         steps.finishing = n++;
@@ -12714,6 +12717,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               </div>
             </div>
             <div id="bom-materials-root"></div>
+            <div id="bom-accessories-root"></div>
             <div id="bom-other-materials-root"></div>
             <div id="bom-services-root"></div>
             <div id="bom-finishing-root"></div>
@@ -12728,6 +12732,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       renderProductInformation();
       renderStyleFormulasSection();
       renderMaterialSection();
+      renderAccessoryMaterialSection();
       renderOtherMaterialSection();
       renderServiceSection();
       renderFinishingServicesSection();
@@ -13803,10 +13808,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     function renderMaterialSection() {
       const root = document.getElementById("bom-materials-root");
       if (!root) return;
-      unmountBomCostCells(["material"], ["bom-material-cost-total"]);
+      unmountBomCostCells(["material"], ["bom-material-cost-total", "bom-accessory-cost-total"]);
       const fg = getSelectedFinishedGood();
       if (!fg) {
         root.innerHTML = "";
+        const accessoryRoot = document.getElementById("bom-accessories-root");
+        if (accessoryRoot) accessoryRoot.innerHTML = "";
         return;
       }
       const layout = getBomMaterialSlotLayout(fg, state.bomMaterials);
@@ -13824,36 +13831,21 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         extra: false,
         index
       })).join("");
-      const accessoryCards = (layout.accessoryLines || []).map((line, accessoryIndex) => renderBomMaterialCard({
-        layer: "Accessories",
-        line,
-        ply: layout.ply,
-        extra: false,
-        accessory: true,
-        index: orderedSlots.length + accessoryIndex
-      })).join("");
-      const hasCalcErrors = (state.bomMaterials || []).some((line) => line.error);
+      const structuralLines = orderedSlots.map((slot) => slot.line).filter(Boolean);
+      const hasCalcErrors = structuralLines.some((line) => line.error);
+      const structuralCost = roundTo(structuralLines.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0), 2);
       root.innerHTML = `
         <section class="card cc-card">
           <div class="card-body">
             <div class="cc-step">Step ${getBomVisibleStepNumbers().materials}: Select Raw Materials</div>
-            <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Totals still use every BOM material line, including leftover extras.</p>
+            <p class="stat-hint" style="margin:0 0 12px;">One material slot per ${escapeHtml(String(layout.ply))}-ply structural layer. Materials are chosen from raw materials.</p>
             ${slotCards || `<p class="stat-hint">No structural layers for this ply.</p>`}
-            ${accessoryCards}
-            <div class="cc-total-line"><span>Total Material Cost</span><strong id="bom-material-cost-total">${hasCalcErrors ? "Error" : formatRupees(state.totalMaterialCost)}</strong></div>
+            <div class="cc-total-line"><span>Total Material Cost</span><strong id="bom-material-cost-total">${hasCalcErrors ? "Error" : formatRupees(structuralCost)}</strong></div>
           </div>
         </section>
       `;
       const lineModels = {};
-      orderedSlots.forEach((slot) => {
-        if (!slot.line) return;
-        lineModels["material:" + slot.line.id] = {
-          ...bomLineCostDisplayModel(slot.line),
-          explainKind: "line-cost",
-          explainLine: slot.line.id
-        };
-      });
-      (layout.accessoryLines || []).forEach((line) => {
+      structuralLines.forEach((line) => {
         lineModels["material:" + line.id] = {
           ...bomLineCostDisplayModel(line),
           explainKind: "line-cost",
@@ -13864,9 +13856,56 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         root,
         lineModels,
         "bom-material-cost-total",
-        bomSectionTotalDisplayModel(hasCalcErrors, state.totalMaterialCost)
+        bomSectionTotalDisplayModel(hasCalcErrors, structuralCost)
       );
+      renderAccessoryMaterialSection();
       if (state.bomInfoPopup === "material-formula") renderBomInfoPopup();
+    }
+
+    function renderAccessoryMaterialSection() {
+      const root = document.getElementById("bom-accessories-root");
+      if (!root) return;
+      const fg = getSelectedFinishedGood();
+      if (!fg) {
+        root.innerHTML = "";
+        return;
+      }
+      const layout = getBomMaterialSlotLayout(fg, state.bomMaterials);
+      const accessoryLines = layout.accessoryLines || [];
+      const accessoryCards = accessoryLines.map((line, accessoryIndex) => renderBomMaterialCard({
+        layer: "Accessories",
+        line,
+        ply: layout.ply,
+        extra: false,
+        accessory: true,
+        index: accessoryIndex
+      })).join("");
+      const hasCalcErrors = accessoryLines.some((line) => line.error);
+      const accessoryCost = roundTo(accessoryLines.reduce((sum, line) => sum + Number(line.costPerPiece || 0), 0), 2);
+      root.innerHTML = `
+        <section class="card cc-card">
+          <div class="card-body">
+            <div class="cc-step">Step ${getBomVisibleStepNumbers().accessories}: Accessories Material</div>
+            <p class="stat-hint" style="margin:0 0 12px;">Accessories set on the finished good. Cost uses each material’s Default Required Quantity Formula and Default Cost/Piece Formula.</p>
+            ${accessoryCards || `<p class="stat-hint">No accessories on this finished good.</p>`}
+            <div class="cc-total-line"><span>Total Accessories Cost</span><strong id="bom-accessory-cost-total">${hasCalcErrors ? "Error" : formatRupees(accessoryCost)}</strong></div>
+          </div>
+        </section>
+      `;
+      const lineModels = {};
+      accessoryLines.forEach((line) => {
+        lineModels["material:" + line.id] = {
+          ...bomLineCostDisplayModel(line),
+          explainKind: "line-cost",
+          explainLine: line.id
+        };
+      });
+      mountBomCostCellHosts(
+        root,
+        lineModels,
+        "bom-accessory-cost-total",
+        bomSectionTotalDisplayModel(hasCalcErrors, accessoryCost)
+      );
     }
 
     function renderBomAdditionalServiceCard(line, index) {
