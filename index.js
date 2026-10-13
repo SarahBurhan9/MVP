@@ -14127,7 +14127,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
               ${line.error ? `<div class="field-error">${line.error === SERVICE_CUSTOM_DIM_ERROR ? escapeHtml(line.error) : "⚠ " + escapeHtml(line.error)}</div>` : ""}
             </td>
             <td class="step-num">${line.serviceId ? renderBomRequiredQtyDisplay("service", service, line, getSelectedFinishedGood()) : "—"}</td>
-            <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (line.rateLocked && line.rateUOM) || (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-packaging-line-rate", line.id) : "—"}</td>
+            <td class="step-num">${line.serviceId ? renderLineRateWithEdit(service, formatRatePkr(line.rate, (line.rateLocked && line.rateUOM) || (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""), "data-bom-packaging-line-rate", line.id) + formulaHelpButton("service-rate", line.id, "How rate was picked") : "—"}</td>
             <td class="step-num" data-bom-line-cost="service:${line.id}">${line.serviceId ? (line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (getSelectedFinishedGood() || {}).uom, " / ")) : "—"}</td>
             <td>
               <div class="row-actions">
@@ -14183,7 +14183,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
       const lineModels = {};
       activeRows.forEach((line) => {
-        lineModels["service:" + line.id] = bomLineCostDisplayModel(line);
+        lineModels["service:" + line.id] = {
+          ...bomLineCostDisplayModel(line),
+          explainKind: "service-cost",
+          explainLine: line.id
+        };
       });
       mountBomCostCellHosts(
         root,
@@ -14225,13 +14229,13 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
             <td class="step-col-dim">${renderFinishingDimensionCell(fg, line)}</td>
             <td class="step-num step-col-compact">${renderBomRequiredQtyDisplay("service", service, line, fg)}</td>
             <td class="step-num">${service ? renderStepValueWithEdit(
-                formatRatePkr(line.rate, (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""),
+                formatRatePkr(line.rate, (line.rateLocked && line.rateUOM) || (getServiceRate(line.serviceId) && getServiceRate(line.serviceId).rateUOM) || ""),
                 "data-bom-service-rate",
                 service.id,
                 "Edit rate",
                 "pencil",
                 "rate"
-              ) : "—"}</td>
+              ) + formulaHelpButton("service-rate", line.id, "How rate was picked") : "—"}</td>
             <td class="step-num step-col-compact" data-bom-line-cost="finishing:${line.id}">${line.error ? `<span class="calc-error-cost">Error</span>` : appendHtmlUnit(formatRupees(line.costPerPiece), (fg || {}).uom, " / ")}</td>
             <td>
               <div class="row-actions">
@@ -14285,7 +14289,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       `;
       const lineModels = {};
       activeRows.forEach((line) => {
-        lineModels["finishing:" + line.id] = bomLineCostDisplayModel(line);
+        lineModels["finishing:" + line.id] = {
+          ...bomLineCostDisplayModel(line),
+          explainKind: "service-cost",
+          explainLine: line.id
+        };
       });
       mountBomCostCellHosts(
         root,
@@ -19893,6 +19901,155 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function serviceCostQuantityFormula(service) {
+      const resolved = resolveMasterCostFormula(service, "service");
+      const fieldName = normalizeFormulaBinding(service && service.qtyFormulaId)
+        ? "Default Weight Formula"
+        : "Default Required Quantity Formula";
+      return { fieldName, formula: resolved.formula, error: resolved.error };
+    }
+
+    function appendServiceCostMathSteps(model, line, service, formula, variables) {
+      const steps = Array.isArray(model.steps) ? model.steps.slice() : [];
+      const rateRow = getServiceRate(service.id);
+      const fromUnit = service.uom || "";
+      if (formula && !steps.some((step) => String(step.heading || "").indexOf("(" + formula.code + ")") !== -1)) {
+        steps.push({
+          index: steps.length + 1,
+          heading: (formula.name || "Quantity") + " (" + formula.code + ")",
+          expression: prettyExpressionText(formula.expression),
+          pluggedHtml: "= " + expressionToExplainHtml(formula.expression, variables || {}, {}, {}) +
+            " = <strong class=\"formula-val\">" + escapeHtml(formatQty(line.quantity)) + "</strong>" + (fromUnit ? " " + escapeHtml(fromUnit) : "")
+        });
+      }
+      const rateUom = line.rateLocked && line.rateUOM ? line.rateUOM : (rateRow && rateRow.rateUOM);
+      const rateUnit = formatRateUnit(rateUom) || service.uom || "";
+      const qty = Number(line.quantity);
+      const qtyForRate = line.qtyForRate != null && Number.isFinite(Number(line.qtyForRate)) ? Number(line.qtyForRate) : qty;
+      if (fromUnit && rateUnit && normalizeUnit(fromUnit) !== normalizeUnit(rateUnit)) {
+        steps.push({
+          index: steps.length + 1,
+          heading: "Convert quantity to the rate unit",
+          expression: fromUnit + " → " + rateUnit,
+          pluggedHtml: escapeHtml(formatQty(qty) + " " + fromUnit) + " = <strong class=\"formula-val\">" + escapeHtml(formatQty(qtyForRate) + " " + rateUnit) + "</strong>"
+        });
+      }
+      const rateTag = line.rateSource === "manual" ? "manual" : "input";
+      steps.push({
+        index: steps.length + 1,
+        heading: "Cost / Piece",
+        expression: "quantity × rate",
+        pluggedHtml: explainTaggedValueHtml(formatExplainNumber(qtyForRate), "step") + " × " + explainTaggedValueHtml(formatExplainNumber(line.rate), rateTag) +
+          " = <strong class=\"formula-val\">" + escapeHtml(formatRupees(line.costPerPiece)) + "</strong>"
+      });
+      steps.forEach((step, index) => { step.index = index + 1; });
+      return steps;
+    }
+
+    function buildFormulaExplainModel_ServiceRate(lineId) {
+      const line = findBomServiceLineById(lineId);
+      const service = line ? getService(line.serviceId) : null;
+      if (!line || !service) return { error: "Rate details are unavailable." };
+      const rateRow = getServiceRate(service.id);
+      const manual = line.rateSource === "manual" || Boolean(line.rateLocked);
+      const uom = (manual && line.rateUOM) || (rateRow && rateRow.rateUOM) || "";
+      const shown = formatRatePkr(line.rate, uom);
+      if (manual) {
+        return {
+          title: "Rate",
+          subtitle: (service.name || service.code || "") + " · this line",
+          formulaName: "manualRate",
+          sourceType: "manual",
+          kicker: "Manual rate",
+          summaryHtml: "This rate is the <strong>manualRate</strong> entered on this line. The Service Rates master is not used.",
+          steps: [{
+            index: 1,
+            heading: "Line rate (manualRate)",
+            expression: "manualRate",
+            pluggedHtml: `<strong class="formula-val">${escapeHtml(shown)}</strong>`
+          }],
+          finalHtml: `Rate: <strong>${escapeHtml(shown)}</strong>`
+        };
+      }
+      if (!rateRow || !Number.isFinite(Number(rateRow.rate)) || Number(rateRow.rate) <= 0) {
+        return { error: line.error || "No rate is saved for " + (service.name || service.code) + ". Set it on Service Rates." };
+      }
+      return {
+        title: "Rate",
+        subtitle: (service.name || service.code || "") + " · Service Rates",
+        formulaName: "Service Rate",
+        sourceType: "formula",
+        kicker: "Service Rates",
+        summaryHtml: "Rate is the <strong>rate</strong> saved for this service on Service Rates. It is not calculated from a formula.",
+        steps: [{
+          index: 1,
+          heading: "Service Rate (rate)",
+          expression: "rate",
+          pluggedHtml: `<strong class="formula-val">${escapeHtml(shown)}</strong>`
+        }],
+        finalHtml: `Rate: <strong>${escapeHtml(shown)}</strong>`
+      };
+    }
+
+    function buildFormulaExplainModel_ServiceCost(lineId) {
+      const fg = getSelectedFinishedGood();
+      const line = findBomServiceLineById(lineId);
+      const service = line ? getService(line.serviceId) : null;
+      if (!line || !service || !fg) return { error: "Cost details are unavailable." };
+      const fgUnit = fg.uom || "pieces";
+      const isManual = line.calculationMethod === "manual";
+      const bound = isManual ? null : serviceCostQuantityFormula(service);
+      const formula = bound && bound.formula;
+      if (!isManual && !formula) {
+        return { error: line.error || (bound && bound.error) || "A valid formula is required." };
+      }
+      const variables = buildServiceFormulaVariables(fg, service, line.dimensionId, line, formula);
+      const finalHtml = `Cost / Piece: <strong>${escapeHtml(formatRupees(line.costPerPiece))} / ${escapeHtml(fgUnit)}</strong>`;
+      const subtitle = (service.name || service.code || "") + (isManual ? " · manual quantity" : " · " + bound.fieldName);
+      if (isManual) {
+        const model = {
+          title: "Cost / Piece",
+          subtitle,
+          formulaName: "manualQty × rate",
+          sourceType: "manual",
+          kicker: "Manual quantity × rate",
+          summaryHtml: "Quantity is the <strong>manualQty</strong> entered on this line. Cost / Piece = that quantity × Rate.",
+          steps: [{
+            index: 1,
+            heading: "Quantity (manualQty)",
+            expression: "manualQty",
+            pluggedHtml: explainTaggedValueHtml(formatQty(line.manualQty), "manual") + (service.uom ? " " + escapeHtml(service.uom) : "")
+          }],
+          finalHtml
+        };
+        model.steps = appendServiceCostMathSteps(model, line, service, null, variables);
+        return model;
+      }
+      const formulaLabel = "<strong>" + escapeHtml(formula.code) + "</strong>" + (formula.name ? " (" + escapeHtml(formula.name) + ")" : "");
+      const base = buildFormulaExplainCore({
+        formula,
+        variables,
+        finishedGood: fg,
+        extraByCode: extraFormulasFromStyleRows(evaluateStyleFormulasForFinishedGood(fg)),
+        resultValue: line.quantity,
+        resultLabel: "Qty",
+        uom: service.uom || "",
+        title: "Cost / Piece",
+        subtitle,
+        includeGrossQty: false,
+        summaryHtml: "Quantity uses the " + bound.fieldName + " " + formulaLabel + ". Cost / Piece = that quantity × Rate.",
+        finalHtml
+      });
+      if (base.error) return base;
+      base.title = "Cost / Piece";
+      base.subtitle = subtitle;
+      base.summaryHtml = "Quantity uses the " + bound.fieldName + " " + formulaLabel + ". Cost / Piece = that quantity × Rate.";
+      base.finalHtml = finalHtml;
+      if (base.sourceType === "formula-flat") base.sourceType = "formula";
+      base.steps = appendServiceCostMathSteps(base, line, service, formula, variables);
+      return base;
+    }
+
     function buildFormulaExplainModel_MaterialRate(lineId) {
       const line = (state.bomMaterials || []).find((item) => item && item.id === Number(lineId));
       const material = line ? getRawMaterial(line.rawMaterialId) : null;
@@ -20051,6 +20208,8 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       if (kind === "wastage-qty") return buildFormulaExplainModel_WastageQty(lineId);
       if (kind === "line-cost") return buildFormulaExplainModel_LineCost(lineId);
       if (kind === "material-rate") return buildFormulaExplainModel_MaterialRate(lineId);
+      if (kind === "service-rate") return buildFormulaExplainModel_ServiceRate(lineId);
+      if (kind === "service-cost") return buildFormulaExplainModel_ServiceCost(lineId);
       if (kind === "cc-material") return buildFormulaExplainModel_CostCalcMaterial(lineId);
       if (kind === "cc-additional-material") return buildFormulaExplainModel_CostCalcAdditionalMaterial(lineId);
       if (kind === "cc-service") return buildFormulaExplainModel_CostCalcService(lineId);
@@ -20062,6 +20221,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function formulaExplainKicker(model) {
+      if (model.kicker) return model.kicker;
       if (model.sourceType === "manual") return "Manual quantity";
       if (model.sourceType === "hardcoded") return "Fixed implementation constant";
       if (model.sourceType === "formula-flat") return "Formula (fixed value): " + (model.formulaName || "");
@@ -20127,9 +20287,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function openFormulaExplainerModal(kind, lineId) {
-      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "sheet-utilization", "column-net-qty", "gross-qty", "wastage-qty", "line-cost", "material-rate"];
+      const allowed = ["material", "other-material", "service", "cc-material", "cc-additional-material", "cc-service", "style", "style-perimeter", "material-l", "material-w", "material-covered", "order-qty", "entered-order-qty", "required-qty", "net-qty", "material-qty", "yield", "sheet-utilization", "column-net-qty", "gross-qty", "wastage-qty", "line-cost", "material-rate", "service-rate", "service-cost"];
       const resolved = allowed.includes(kind) ? kind : "material";
-      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "sheet-utilization" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost" || resolved === "material-rate";
+      const numericId = resolved === "material" || resolved === "other-material" || resolved === "service" || resolved === "cc-service" || resolved === "cc-additional-material" || resolved === "material-l" || resolved === "material-w" || resolved === "material-covered" || resolved === "required-qty" || resolved === "net-qty" || resolved === "material-qty" || resolved === "yield" || resolved === "sheet-utilization" || resolved === "column-net-qty" || resolved === "gross-qty" || resolved === "wastage-qty" || resolved === "line-cost" || resolved === "material-rate" || resolved === "service-rate" || resolved === "service-cost";
       state.modal = {
         type: "formula-explainer",
         kind: resolved,
