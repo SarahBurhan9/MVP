@@ -6205,7 +6205,12 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         : { formula: null, error: "Formula WST_QTY was not found. Create an active formula with code WST_QTY." };
     }
 
-    function pieceCostFormula() {
+    function pieceCostFormula(material, line) {
+      if (line && isBomAccessoryLine(line)) {
+        const boundId = normalizeFormulaBinding(material && material.costPerPieceFormulaId);
+        if (boundId) return boundRawMaterialFormula(material, boundId, "Default Cost/Piece Formula");
+        return { formula: null, error: null };
+      }
       const byCode = activeFormulaByCode("PIECE_COST");
       return byCode
         ? { formula: byCode, error: null }
@@ -6438,7 +6443,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, formula, line);
         const style = findStyleByName(finishedGood.style);
         const layerPly = styleFormulaPlyForBomLine(finishedGood, line);
-        if (style && styleHasPlyCoveredAreaFormulas(style.id)) {
+        if (!accessoryLine && style && styleHasPlyCoveredAreaFormulas(style.id)) {
           const areaEval = evaluateCoveredAreaValue(finishedGood, variables, null, layerPly);
           if (!areaEval.success) {
             line.error = areaEval.error || ("No Covered Area formula linked for ply " + layerPly + ".");
@@ -6466,7 +6471,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const variables = buildFormulaVariables(finishedGood, material, wastage, formulaDimensionId, qtyFormula, line);
       const wastageBound = wastageQtyFormula(material);
       const grossBound = boundRawMaterialFormula(material, material.grossQtyFormulaId, "Default Gross Quantity Formula");
-      const costBound = pieceCostFormula(material);
+      const costBound = pieceCostFormula(material, line);
       const yieldBound = yieldFormulaForMaterial(material);
       const bindingError = wastageBound.error || grossBound.error || costBound.error || yieldBound.error;
       if (bindingError) {
@@ -19875,7 +19880,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       const fg = getSelectedFinishedGood();
       if (!line || !material || !fg) return { error: "Cost details are unavailable." };
       const fgUnit = fg.uom || "pieces";
-      const costBound = pieceCostFormula(material);
+      const costBound = pieceCostFormula(material, line);
       if (!costBound.formula) {
         return { error: costBound.error || "Formula PIECE_COST was not found. Create an active formula with code PIECE_COST." };
       }
