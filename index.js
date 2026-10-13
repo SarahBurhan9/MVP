@@ -2917,7 +2917,7 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
     }
 
     function renderBomSheetUtilizationDisplay(line) {
-      const shown = !line || line.sheetUtilizationError || line.sheetUtilization == null || !Number.isFinite(Number(line.sheetUtilization)) ? "—" : formatQty(line.sheetUtilization);
+      const shown = !line || line.sheetUtilizationError || line.sheetUtilization == null || !Number.isFinite(Number(line.sheetUtilization)) ? "—" : escapeHtml(formatQty(line.sheetUtilization)) + "%";
       const lineId = line && (line.id != null ? line.id : line.key);
       if (lineId == null || lineId === "") return shown;
       return `${shown}${formulaHelpButton("sheet-utilization", lineId, "How sheet utilization was calculated")}`;
