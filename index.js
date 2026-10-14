@@ -2841,9 +2841,17 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       };
     }
 
+    function bomServiceSkipsOrderQtyScale(line) {
+      if (!line || line.id == null) return false;
+      const id = Number(line.id);
+      const inList = (list) => (list || []).some((item) => item && Number(item.id) === id);
+      return inList(state.bomServices) || inList(state.bomFinishingServices);
+    }
+
     function scaledMasterRequiredQty(evaluation, finishedGood) {
       if (!evaluation || evaluation.result === null) return null;
-      const factor = isCostCalculatorFinishedGood(finishedGood) ? 1 : bomOrderQuantityValue();
+      const skipScale = evaluation.kind === "service" && bomServiceSkipsOrderQtyScale(evaluation.line);
+      const factor = (isCostCalculatorFinishedGood(finishedGood) || skipScale) ? 1 : bomOrderQuantityValue();
       return roundTo(evaluation.result * factor, 4);
     }
 
@@ -19727,7 +19735,9 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         subtitle: (target.item.name || target.item.code || "") + " · Default Required Quantity Formula",
         formulaName: evaluation.formula.name || evaluation.formula.code,
         sourceType: "formula",
-        summaryHtml: "Required Qty is the Default Required Quantity Formula result multiplied by the Order Quantity entered in the cost summary.",
+        summaryHtml: hideOrderMultiply
+          ? "Required Qty is the Default Required Quantity Formula result."
+          : "Required Qty is the Default Required Quantity Formula result multiplied by the Order Quantity entered in the cost summary.",
         steps,
         finalHtml: hideOrderMultiply
           ? (evaluation.error || evaluation.result == null
