@@ -19703,7 +19703,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
       }
       const orderQty = bomOrderQuantityValue();
       const scaled = scaledMasterRequiredQty(evaluation, fg);
-      const inputs = orderQtyExplainInputs(evaluation);
+      const inputs = orderQtyExplainInputs(evaluation).filter((input) => {
+        if (target.kind !== "service") return true;
+        const code = String(input.code || "").toUpperCase();
+        return code !== "ORDER_QTY" && code !== "ORDER_QUANTITY";
+      });
       const inputHtml = inputs.map((input) =>
         `<div><strong>${escapeHtml(input.code)}</strong> — ${escapeHtml(input.origin)}: <strong class="formula-val">${escapeHtml(input.shown)}</strong></div>`
       ).join("");
