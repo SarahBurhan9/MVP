@@ -6484,10 +6484,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
         }
       }
 
-      if (accessoryLine) {
+      if (accessoryLine || String(line.layer || "") === "Additional") {
         line.netQty = roundTo(netQty, 4);
-        line.wastageQty = 0;
-        line.grossQty = line.netQty;
+        const wstQty = accessoryLine ? 0 : line.netQty * (Number(wastage) || 0) / 100;
+        line.wastageQty = roundTo(wstQty, 4);
+        line.grossQty = roundTo(line.netQty + wstQty, 4);
         line.yield = null;
         line.error = null;
         const accessoryCost = accessoryPieceCostFormula(material);
@@ -6497,10 +6498,11 @@ googleProvider.setCustomParameters({ prompt: "select_account" });
           return line;
         }
         if (accessoryCost.formula) {
-          const costVars = buildFormulaVariables(finishedGood, material, 0, formulaDimensionId, accessoryCost.formula, line);
+          const costWastage = accessoryLine ? 0 : (Number(wastage) || 0);
+          const costVars = buildFormulaVariables(finishedGood, material, costWastage, formulaDimensionId, accessoryCost.formula, line);
           const costEval = evaluateFormula(
             accessoryCost.formula.expression,
-            { ...costVars, NET_QTY: line.netQty, WASTAGE: 0, MATERIAL_RATE: line.rate },
+            { ...costVars, NET_QTY: line.netQty, WASTAGE: costWastage, WST_QTY: line.wastageQty, MATERIAL_RATE: line.rate },
             [accessoryCost.formula.code]
           );
           if (!costEval.success) {
